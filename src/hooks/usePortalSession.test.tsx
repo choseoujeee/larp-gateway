@@ -26,8 +26,6 @@ describe("usePortalSession", () => {
   });
 
   it("vyhodí chybu mimo PortalProvider", () => {
-    // Bez PortalProvider musí hook vyhodit – wrapper vykresluje children, ale neposkytuje PortalProvider.
-    // React může chybu zachytit a reportovat asynchronně, proto kontrolujeme přes spy.
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       renderHook(() => usePortalSession(), {
@@ -56,7 +54,7 @@ describe("usePortalSession", () => {
 
     let ok: boolean = false;
     await act(async () => {
-      ok = await result.current.verifyAccess("token-uuid", "heslo");
+      ok = await result.current.verifyAccess("bublik", "heslo");
     });
 
     expect(ok).toBe(false);
@@ -71,7 +69,7 @@ describe("usePortalSession", () => {
 
     let ok: boolean = false;
     await act(async () => {
-      ok = await result.current.verifyAccess("token-uuid", "heslo");
+      ok = await result.current.verifyAccess("bublik", "heslo");
     });
 
     expect(ok).toBe(false);
@@ -83,16 +81,12 @@ describe("usePortalSession", () => {
       person_id: "person-1",
       person_name: "Jan Novák",
       person_type: "postava",
-      run_id: "run-1",
+      larp_id: "larp-1",
       larp_name: "Krypta",
-      run_name: "Běh 1",
-      mission_briefing: "Briefing text",
+      larp_theme: "wwii",
       group_name: "Skupina A",
       performer: null,
       performance_times: null,
-      run_contact: "kontakt@example.com",
-      run_footer_text: "Poznámka",
-      larp_theme: "wwii",
     };
     mockRpc.mockResolvedValue({ data: [row], error: null });
     const { result } = renderHook(() => usePortalSession(), { wrapper });
@@ -100,7 +94,7 @@ describe("usePortalSession", () => {
 
     let ok: boolean = false;
     await act(async () => {
-      ok = await result.current.verifyAccess("token-uuid", "heslo");
+      ok = await result.current.verifyAccess("bublik", "heslo");
     });
 
     expect(ok).toBe(true);
@@ -109,8 +103,8 @@ describe("usePortalSession", () => {
     expect(result.current.session?.personName).toBe("Jan Novák");
     expect(result.current.session?.personType).toBe("postava");
     expect(result.current.session?.larpName).toBe("Krypta");
-    expect(result.current.session?.runContact).toBe("kontakt@example.com");
     expect(result.current.session?.larpTheme).toBe("wwii");
+    expect(result.current.session?.personSlug).toBe("bublik");
     expect(localStorage.getItem("larp_portal_session")).toBeTruthy();
   });
 
@@ -119,22 +113,18 @@ describe("usePortalSession", () => {
       person_id: "p1",
       person_name: "X",
       person_type: "postava",
-      run_id: "r1",
+      larp_id: "l1",
       larp_name: "L",
-      run_name: "R",
-      mission_briefing: null,
+      larp_theme: null,
       group_name: null,
       performer: null,
       performance_times: null,
-      run_contact: null,
-      run_footer_text: null,
-      larp_theme: null,
     };
     mockRpc.mockResolvedValue({ data: [row], error: null });
     const { result } = renderHook(() => usePortalSession(), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
-      await result.current.verifyAccess("t", "h");
+      await result.current.verifyAccess("slug", "h");
     });
     expect(result.current.session).not.toBeNull();
 

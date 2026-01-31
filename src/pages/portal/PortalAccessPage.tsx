@@ -9,7 +9,7 @@ import { Stamp } from "@/components/ui/stamp";
 import { usePortalSession } from "@/hooks/usePortalSession";
 
 export default function PortalAccessPage() {
-  const { token } = useParams<{ token: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { verifyAccess, loading, error } = usePortalSession();
   const [password, setPassword] = useState("");
@@ -17,12 +17,12 @@ export default function PortalAccessPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token) return;
+    if (!slug) return;
 
-    const success = await verifyAccess(token, password);
+    const success = await verifyAccess(slug, password);
     
     if (success) {
-      navigate(`/portal/${token}/view`);
+      navigate(`/hrac/${slug}/view`);
     }
   };
 
