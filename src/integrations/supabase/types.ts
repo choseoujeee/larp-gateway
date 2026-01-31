@@ -216,6 +216,47 @@ export type Database = {
           },
         ]
       }
+      portal_feedback: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          larp_id: string | null
+          resolved_at: string | null
+          source_page: string
+          status: Database["public"]["Enums"]["feedback_status"]
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          larp_id?: string | null
+          resolved_at?: string | null
+          source_page: string
+          status?: Database["public"]["Enums"]["feedback_status"]
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          larp_id?: string | null
+          resolved_at?: string | null
+          source_page?: string
+          status?: Database["public"]["Enums"]["feedback_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_feedback_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       printables: {
         Row: {
           created_at: string
@@ -584,6 +625,7 @@ export type Database = {
         | "presun"
         | "informace"
         | "vystoupeni_cp"
+      feedback_status: "new" | "read" | "resolved"
       person_type: "postava" | "cp"
     }
     CompositeTypes: {
@@ -721,6 +763,7 @@ export const Constants = {
         "informace",
         "vystoupeni_cp",
       ],
+      feedback_status: ["new", "read", "resolved"],
       person_type: ["postava", "cp"],
     },
   },

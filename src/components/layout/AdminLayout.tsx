@@ -13,7 +13,8 @@ import {
   UserPlus,
   LogOut,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const larpContentNavigation = [
 // Sekce 3: Správa (globální)
 const larpManagement = [
   { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
+  { name: "Portál", href: "/admin/portal", icon: MessageSquare },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
