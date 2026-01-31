@@ -62,6 +62,7 @@ export default function PersonsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [medailonekDialogOpen, setMedailonekDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
@@ -69,8 +70,8 @@ export default function PersonsPage() {
     slug: "",
     group_name: "",
     password: "",
-    medailonek: "",
   });
+  const [medailonekContent, setMedailonekContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [personDocuments, setPersonDocuments] = useState<PersonDocument[]>([]);
@@ -192,7 +193,7 @@ export default function PersonsPage() {
 
   const openCreateDialog = () => {
     setSelectedPerson(null);
-    setFormData({ name: "", slug: "", group_name: "", password: "", medailonek: "" });
+    setFormData({ name: "", slug: "", group_name: "", password: "" });
     setDialogOpen(true);
   };
 
@@ -204,9 +205,35 @@ export default function PersonsPage() {
       slug: person.slug,
       group_name: person.group_name || "",
       password: "",
-      medailonek: person.medailonek || "",
     });
     setDialogOpen(true);
+  };
+
+  const openMedailonekDialog = (person: Person) => {
+    setSelectedPerson(person);
+    setMedailonekContent(person.medailonek || "");
+    setMedailonekDialogOpen(true);
+  };
+
+  const handleSaveMedailonek = async () => {
+    if (!selectedPerson) return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("persons")
+      .update({ medailonek: medailonekContent || null })
+      .eq("id", selectedPerson.id);
+
+    if (error) {
+      toast.error("Chyba při ukládání medailonku");
+      setSaving(false);
+      return;
+    }
+
+    toast.success("Medailonek uložen");
+    setSaving(false);
+    setMedailonekDialogOpen(false);
+    fetchPersons();
   };
 
   const handleSave = async () => {
@@ -227,7 +254,6 @@ export default function PersonsPage() {
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
-        medailonek: formData.medailonek || null,
       };
 
       if (formData.password) {
@@ -252,7 +278,6 @@ export default function PersonsPage() {
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
-        medailonek: formData.medailonek || null,
         password_hash: formData.password,
       } as never);
       if (error) {
@@ -341,13 +366,20 @@ export default function PersonsPage() {
                     <p>{detailPerson.group_name}</p>
                   </div>
                 )}
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-wrap gap-2 pt-4">
                   <Button
                     variant="outline"
                     onClick={() => openEditDialog(detailPerson)}
                   >
                     <Pencil className="mr-2 h-4 w-4" />
                     Upravit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openMedailonekDialog(detailPerson)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Medailonek
                   </Button>
                   <Button
                     variant="outline"
@@ -509,6 +541,36 @@ export default function PersonsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Medailonek Dialog */}
+        <Dialog open={medailonekDialogOpen} onOpenChange={setMedailonekDialogOpen}>
+          <DialogContent className="paper-card max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-typewriter">
+                Medailonek - {selectedPerson?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="py-4">
+              <RichTextEditor
+                value={medailonekContent}
+                onChange={setMedailonekContent}
+                placeholder="Popis postavy, její příběh, charakteristika..."
+                minHeight="300px"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMedailonekDialogOpen(false)}>
+                Zrušit
+              </Button>
+              <Button onClick={handleSaveMedailonek} disabled={saving} className="btn-vintage">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Uložit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AdminLayout>
     );
   }
@@ -677,16 +739,6 @@ export default function PersonsPage() {
                 onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
                 placeholder="např. Odboj, Gestapo..."
                 className="input-vintage"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Medailonek</Label>
-              <RichTextEditor
-                value={formData.medailonek}
-                onChange={(val) => setFormData({ ...formData, medailonek: val })}
-                placeholder="Popis postavy, její příběh, charakteristika..."
-                minHeight="150px"
               />
             </div>
 
