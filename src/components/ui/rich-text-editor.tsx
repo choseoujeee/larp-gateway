@@ -1,9 +1,10 @@
-import { useEffect, useCallback } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect, useCallback, useState } from "react";
+import { useEditor, EditorContent, Extension } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,8 @@ import {
   Code,
   Quote,
   Minus,
+  IndentDecrease,
+  IndentIncrease,
 } from "lucide-react";
 import {
   Popover,
@@ -38,7 +41,148 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+
+// Custom FontSize extension
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    fontSize: {
+      setFontSize: (size: string) => ReturnType;
+      unsetFontSize: () => ReturnType;
+    };
+  }
+}
+
+const FontSize = Extension.create({
+  name: "fontSize",
+  addOptions() {
+    return {
+      types: ["textStyle"],
+    };
+  },
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize?.replace(/['"]+/g, "") || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+              return {
+                style: `font-size: ${attributes.fontSize}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      setFontSize:
+        (fontSize: string) =>
+        ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize }).run();
+        },
+      unsetFontSize:
+        () =>
+        ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run();
+        },
+    };
+  },
+});
+
+// Custom Indent extension
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    indent: {
+      indent: () => ReturnType;
+      outdent: () => ReturnType;
+    };
+  }
+}
+
+const Indent = Extension.create({
+  name: "indent",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph", "heading"],
+        attributes: {
+          indent: {
+            default: 0,
+            parseHTML: (element) => {
+              const marginLeft = element.style.marginLeft;
+              if (marginLeft) {
+                const match = marginLeft.match(/(\d+)/);
+                return match ? Math.floor(parseInt(match[1]) / 24) : 0;
+              }
+              return 0;
+            },
+            renderHTML: (attributes) => {
+              if (!attributes.indent || attributes.indent === 0) {
+                return {};
+              }
+              return {
+                style: `margin-left: ${attributes.indent * 24}px`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      indent:
+        () =>
+        ({ tr, state, dispatch }) => {
+          const { selection } = state;
+          const { $from, $to } = selection;
+
+          state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+            if (node.type.name === "paragraph" || node.type.name === "heading") {
+              const currentIndent = node.attrs.indent || 0;
+              if (currentIndent < 10) {
+                tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  indent: currentIndent + 1,
+                });
+              }
+            }
+          });
+
+          if (dispatch) dispatch(tr);
+          return true;
+        },
+      outdent:
+        () =>
+        ({ tr, state, dispatch }) => {
+          const { selection } = state;
+          const { $from, $to } = selection;
+
+          state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+            if (node.type.name === "paragraph" || node.type.name === "heading") {
+              const currentIndent = node.attrs.indent || 0;
+              if (currentIndent > 0) {
+                tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  indent: currentIndent - 1,
+                });
+              }
+            }
+          });
+
+          if (dispatch) dispatch(tr);
+          return true;
+        },
+    };
+  },
+});
 
 export interface RichTextEditorProps {
   value: string;
@@ -65,10 +209,7 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={cn(
-        "h-8 w-8 p-0",
-        isActive && "bg-accent text-accent-foreground"
-      )}
+      className={cn("h-8 w-8 p-0", isActive && "bg-accent text-accent-foreground")}
     >
       {children}
     </Button>
@@ -78,6 +219,15 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
 function ToolbarDivider() {
   return <div className="w-px h-6 bg-border mx-1" />;
 }
+
+const FONT_SIZES = [
+  { label: "Malé", value: "12px" },
+  { label: "Normální", value: "14px" },
+  { label: "Střední", value: "16px" },
+  { label: "Velké", value: "18px" },
+  { label: "Velmi velké", value: "24px" },
+  { label: "Obrovské", value: "32px" },
+];
 
 /**
  * WYSIWYG editor pro tělo dokumentu. Výstup HTML; ukládá se do DB a při zobrazení sanitizuje (DOMPurify).
@@ -105,11 +255,15 @@ export function RichTextEditor({
       TextAlign.configure({
         types: ["heading", "paragraph"],
       }),
+      TextStyle,
+      FontSize,
+      Indent,
     ],
     content: value || "",
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2",
+        class:
+          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0",
       },
     },
     onUpdate: ({ editor }) => {
@@ -129,7 +283,7 @@ export function RichTextEditor({
 
   const handleSetLink = () => {
     if (!editor) return;
-    
+
     if (linkUrl) {
       editor.chain().focus().extendMarkRange("link").setLink({ href: linkUrl }).run();
     } else {
@@ -146,15 +300,19 @@ export function RichTextEditor({
     setLinkPopoverOpen(true);
   };
 
+  const getCurrentFontSize = () => {
+    if (!editor) return "";
+    const attrs = editor.getAttributes("textStyle");
+    return attrs.fontSize || "";
+  };
+
   if (!editor) {
     return (
       <div
         className={cn("rounded-md border border-input bg-background", className)}
         style={{ minHeight }}
       >
-        <div className="animate-pulse p-3 text-sm text-muted-foreground">
-          Načítání editoru…
-        </div>
+        <div className="animate-pulse p-3 text-sm text-muted-foreground">Načítání editoru…</div>
       </div>
     );
   }
@@ -162,10 +320,10 @@ export function RichTextEditor({
   const currentHeadingLevel = editor.isActive("heading", { level: 1 })
     ? "h1"
     : editor.isActive("heading", { level: 2 })
-    ? "h2"
-    : editor.isActive("heading", { level: 3 })
-    ? "h3"
-    : "paragraph";
+      ? "h2"
+      : editor.isActive("heading", { level: 3 })
+        ? "h3"
+        : "paragraph";
 
   return (
     <div
@@ -210,7 +368,7 @@ export function RichTextEditor({
             }
           }}
         >
-          <SelectTrigger className="h-8 w-[110px] text-xs">
+          <SelectTrigger className="h-8 w-[100px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -218,6 +376,30 @@ export function RichTextEditor({
             <SelectItem value="h1">Nadpis 1</SelectItem>
             <SelectItem value="h2">Nadpis 2</SelectItem>
             <SelectItem value="h3">Nadpis 3</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Font Size */}
+        <Select
+          value={getCurrentFontSize()}
+          onValueChange={(val) => {
+            if (val === "default") {
+              editor.chain().focus().unsetFontSize().run();
+            } else {
+              editor.chain().focus().setFontSize(val).run();
+            }
+          }}
+        >
+          <SelectTrigger className="h-8 w-[90px] text-xs">
+            <SelectValue placeholder="Velikost" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Výchozí</SelectItem>
+            {FONT_SIZES.map((size) => (
+              <SelectItem key={size.value} value={size.value}>
+                {size.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -251,6 +433,16 @@ export function RichTextEditor({
           title="Přeškrtnuté"
         >
           <Strikethrough className="h-4 w-4" />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        {/* Indent */}
+        <ToolbarButton onClick={() => editor.chain().focus().outdent().run()} title="Zmenšit odsazení">
+          <IndentDecrease className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().indent().run()} title="Zvětšit odsazení">
+          <IndentIncrease className="h-4 w-4" />
         </ToolbarButton>
 
         <ToolbarDivider />
@@ -314,10 +506,7 @@ export function RichTextEditor({
               size="sm"
               onClick={openLinkPopover}
               title="Vložit odkaz"
-              className={cn(
-                "h-8 w-8 p-0",
-                editor.isActive("link") && "bg-accent text-accent-foreground"
-              )}
+              className={cn("h-8 w-8 p-0", editor.isActive("link") && "bg-accent text-accent-foreground")}
             >
               <LinkIcon className="h-4 w-4" />
             </Button>
@@ -359,10 +548,7 @@ export function RichTextEditor({
         </Popover>
 
         {editor.isActive("link") && (
-          <ToolbarButton
-            onClick={() => editor.chain().focus().unsetLink().run()}
-            title="Odebrat odkaz"
-          >
+          <ToolbarButton onClick={() => editor.chain().focus().unsetLink().run()} title="Odebrat odkaz">
             <Unlink className="h-4 w-4" />
           </ToolbarButton>
         )}
@@ -384,10 +570,7 @@ export function RichTextEditor({
         >
           <Code className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="Vodorovná čára"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Vodorovná čára">
           <Minus className="h-4 w-4" />
         </ToolbarButton>
       </div>
