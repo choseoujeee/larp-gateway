@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Pencil, Trash2, ExternalLink, Loader2, Check } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLarpContext } from "@/hooks/useLarpContext";
 import { toast } from "sonner";
 
 interface Larp {
@@ -39,6 +41,8 @@ interface Larp {
 
 export default function LarpsPage() {
   const { user, session } = useAuth();
+  const { currentLarpId, setCurrentLarpId, fetchLarps: refreshContext } = useLarpContext();
+  const navigate = useNavigate();
   const [larps, setLarps] = useState<Larp[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -164,6 +168,13 @@ export default function LarpsPage() {
     setSaving(false);
     setDialogOpen(false);
     fetchLarps();
+    refreshContext();
+  };
+
+  const handleSelectLarp = (larpId: string) => {
+    setCurrentLarpId(larpId);
+    navigate("/admin");
+    toast.success("LARP přepnut");
   };
 
   const handleDelete = async () => {
@@ -220,42 +231,62 @@ export default function LarpsPage() {
           </PaperCard>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {larps.map((larp) => (
-              <PaperCard key={larp.id}>
-                <PaperCardHeader>
-                  <div className="flex items-start justify-between">
-                    <PaperCardTitle className="text-lg">{larp.name}</PaperCardTitle>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(larp)}
-                        className="h-8 w-8"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDeleteDialog(larp)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            {larps.map((larp) => {
+              const isActive = larp.id === currentLarpId;
+              return (
+                <PaperCard 
+                  key={larp.id}
+                  onClick={() => handleSelectLarp(larp.id)}
+                  className={`cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                    isActive ? "ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <PaperCardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        {isActive && (
+                          <Check className="h-5 w-5 text-primary" />
+                        )}
+                        <PaperCardTitle className="text-lg">{larp.name}</PaperCardTitle>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(larp);
+                          }}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteDialog(larp);
+                          }}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </PaperCardHeader>
-                <PaperCardContent>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {larp.description || "Bez popisu"}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="font-mono">{larp.slug}</span>
-                  </div>
-                </PaperCardContent>
-              </PaperCard>
-            ))}
+                  </PaperCardHeader>
+                  <PaperCardContent>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {larp.description || "Bez popisu"}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ExternalLink className="h-3 w-3" />
+                      <span className="font-mono">{larp.slug}</span>
+                    </div>
+                  </PaperCardContent>
+                </PaperCard>
+              );
+            })}
           </div>
         )}
       </div>
