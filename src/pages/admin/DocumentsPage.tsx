@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Loader2, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
+import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocBadge } from "@/components/ui/doc-badge";
+import { DocumentListItem } from "@/components/admin/DocumentListItem";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,11 @@ import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
+
+interface HiddenDocument {
+  document_id: string;
+  person_id: string;
+}
 
 interface Person {
   id: string;
@@ -58,6 +64,7 @@ export default function DocumentsPage() {
   const { currentLarpId, currentLarp } = useLarpContext();
   const { selectedRunId, runs } = useRunContext();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [hiddenDocs, setHiddenDocs] = useState<HiddenDocument[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +105,19 @@ export default function DocumentsPage() {
     }
 
     setDocuments(data || []);
+    
+    // Fetch hidden documents for all documents in this larp
+    const docIds = (data || []).map((d) => d.id);
+    if (docIds.length > 0) {
+      const { data: hiddenData } = await supabase
+        .from("hidden_documents")
+        .select("document_id, person_id")
+        .in("document_id", docIds);
+      setHiddenDocs(hiddenData || []);
+    } else {
+      setHiddenDocs([]);
+    }
+    
     setLoading(false);
   };
 
@@ -269,6 +289,16 @@ export default function DocumentsPage() {
     return "";
   };
 
+  // Get names of persons this document is hidden from
+  const getHiddenFromNames = (docId: string): string[] => {
+    const hiddenPersonIds = hiddenDocs
+      .filter((h) => h.document_id === docId)
+      .map((h) => h.person_id);
+    return hiddenPersonIds
+      .map((pid) => persons.find((p) => p.id === pid)?.name)
+      .filter((name): name is string => !!name);
+  };
+
   const filterBySearch = (doc: Document) => {
     if (!blockSearch.trim()) return true;
     const q = blockSearch.toLowerCase();
@@ -392,71 +422,20 @@ export default function DocumentsPage() {
                   <p className="text-sm text-muted-foreground">Žádné společné dokumenty.</p>
                 ) : (
                   commonDocs.map((doc) => (
-                    <PaperCard key={doc.id}>
-                      <PaperCardContent className="py-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <DocBadge type={doc.doc_type} />
-                              <h4 className="font-typewriter">{doc.title}</h4>
-                            </div>
-                            {doc.content && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-1 ml-4">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </PaperCardContent>
-                    </PaperCard>
+                    <DocumentListItem
+                      key={doc.id}
+                      doc={doc}
+                      persons={persons}
+                      runs={runs}
+                      hiddenFromPersons={getHiddenFromNames(doc.id)}
+                      onEdit={() => openEditDialog(doc)}
+                      onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
+                    />
                   ))
                 )}
               </div>
             </section>
             <section>
-              <h3 className="font-typewriter text-lg mb-3">Po skupinách</h3>
-              {Object.keys(groupDocsMap).length === 0 ? (
-                <p className="text-sm text-muted-foreground">Žádné dokumenty cílené na skupiny.</p>
-              ) : (
-                Object.entries(groupDocsMap).map(([groupName, docs]) => (
-                  <div key={groupName} className="mb-6">
-                    <h4 className="font-mono text-sm text-muted-foreground mb-2">{groupName} ({docs.length})</h4>
-                    <div className="space-y-3">
-                      {docs.map((doc) => (
-                        <PaperCard key={doc.id}>
-                          <PaperCardContent className="py-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <DocBadge type={doc.doc_type} />
-                                  <h4 className="font-typewriter">{doc.title}</h4>
-                                </div>
-                                {doc.content && (
-                                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                    {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex gap-1 ml-4">
-                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </div>
-                          </PaperCardContent>
-                        </PaperCard>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
             </section>
             <section>
               <h3 className="font-typewriter text-lg mb-3">Po postavách / CP</h3>
@@ -472,27 +451,15 @@ export default function DocumentsPage() {
                       </h4>
                       <div className="space-y-3">
                         {docs.map((doc) => (
-                          <PaperCard key={doc.id}>
-                            <PaperCardContent className="py-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3">
-                                    <DocBadge type={doc.doc_type} />
-                                    <h4 className="font-typewriter">{doc.title}</h4>
-                                  </div>
-                                  {doc.content && (
-                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                      {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex gap-1 ml-4">
-                                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}><Pencil className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                              </div>
-                            </PaperCardContent>
-                          </PaperCard>
+                          <DocumentListItem
+                            key={doc.id}
+                            doc={doc}
+                            persons={persons}
+                            runs={runs}
+                            hiddenFromPersons={getHiddenFromNames(doc.id)}
+                            onEdit={() => openEditDialog(doc)}
+                            onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
+                          />
                         ))}
                       </div>
                     </div>
@@ -511,33 +478,16 @@ export default function DocumentsPage() {
                 </h3>
                 <div className="space-y-3">
                   {docs.map((doc) => (
-                    <PaperCard key={doc.id}>
-                      <PaperCardContent className="py-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <h4 className="font-typewriter">{doc.title}</h4>
-                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                {getTargetLabel(doc)}
-                              </span>
-                            </div>
-                            {doc.content && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-1 ml-4">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </PaperCardContent>
-                    </PaperCard>
+                    <DocumentListItem
+                      key={doc.id}
+                      doc={doc}
+                      persons={persons}
+                      runs={runs}
+                      hiddenFromPersons={getHiddenFromNames(doc.id)}
+                      showDocType={false}
+                      onEdit={() => openEditDialog(doc)}
+                      onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
+                    />
                   ))}
                 </div>
               </div>
