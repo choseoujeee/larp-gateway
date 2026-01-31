@@ -51,6 +51,7 @@ interface Document {
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
+  priority: number; // 1 = prioritní, 2 = normální, 3 = volitelné
 }
 
 export default function DocumentsPage() {
@@ -74,6 +75,7 @@ export default function DocumentsPage() {
     target_group: "",
     target_person_id: "",
     sort_order: 0,
+    priority: 2, // default = normální
     run_id: "__all__" as string, // "__all__" = všechny běhy, jinak konkrétní run_id
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
@@ -137,6 +139,7 @@ export default function DocumentsPage() {
       target_group: "",
       target_person_id: "",
       sort_order: 0,
+      priority: 2,
       run_id: "__all__", // výchozí = pro všechny běhy
     });
     setHiddenFromPersonIds([]);
@@ -153,6 +156,7 @@ export default function DocumentsPage() {
       target_group: doc.target_group || "",
       target_person_id: doc.target_person_id || "",
       sort_order: doc.sort_order,
+      priority: doc.priority ?? 2,
       run_id: doc.run_id || "__all__",
     });
     const { data: hiddenRows } = await supabase
@@ -181,6 +185,7 @@ export default function DocumentsPage() {
       target_group: formData.target_type === "skupina" ? formData.target_group : null,
       target_person_id: formData.target_type === "osoba" ? formData.target_person_id : null,
       sort_order: formData.sort_order,
+      priority: formData.priority,
     };
 
     let documentId: string;
@@ -643,7 +648,24 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Priorita</Label>
+                <Select
+                  value={String(formData.priority)}
+                  onValueChange={(v) => setFormData({ ...formData, priority: parseInt(v) })}
+                >
+                  <SelectTrigger className="input-vintage">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Prioritní</SelectItem>
+                    <SelectItem value="2">Normální</SelectItem>
+                    <SelectItem value="3">Volitelné</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label>Pořadí</Label>
                 <Input
