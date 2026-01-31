@@ -9,9 +9,9 @@
 
 | Stav | Počet |
 |------|--------|
-| **Prošlo** | 27 testů |
+| **Prošlo** | 78 testů |
 | **Selhalo** | 0 |
-| **Soubory** | 6 testovacích souborů |
+| **Soubory** | 13 testovacích souborů |
 
 ---
 
@@ -34,7 +34,7 @@
 
 ### 4. `src/pages/portal/PortalAccessPage.test.tsx` (4 testy)
 - **Účel:** Stránka ověření přístupu k portálu (heslo).
-- **Testy:** Zobrazení nadpisu a formuláře hesla; odkaz „Zpět na úvodní stránku“; po úspěšném ověření přesměrování na `/portal/:token/view` a volání RPC; zobrazení chybové hlášky při neplatném hesle.
+- **Testy:** Zobrazení nadpisu a formuláře hesla; odkaz „Zpět na úvodní stránku"; po úspěšném ověření přesměrování na `/portal/:token/view` a volání RPC; zobrazení chybové hlášky při neplatném hesle.
 - **Výsledek:** ✓ Vše prošlo.
 
 ### 5. `src/App.routes.test.tsx` (4 testy)
@@ -47,6 +47,36 @@
 - **Účel:** Základní sanity test.
 - **Výsledek:** ✓ Prošel.
 
+### 7. `src/hooks/useAuth.test.tsx` (6 testů)
+- **Účel:** Autentizační hook – stav session, login, logout, registrace.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 8. `src/hooks/useLarpContext.test.tsx` (6 testů)
+- **Účel:** Kontext pro správu LARPů – načtení, výběr, aktualizace.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 9. `src/hooks/useRunContext.test.tsx` (6 testů)
+- **Účel:** Kontext pro správu běhů – načtení běhů podle LARPu, výběr běhu.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 10. `src/pages/LandingPage.test.tsx` (6 testů)
+- **Účel:** Úvodní stránka – zobrazení nadpisu, tlačítek, navigace.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 11. `src/pages/auth/LoginPage.test.tsx` (8 testů)
+- **Účel:** Přihlašovací stránka – formulář, validace, přihlášení.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 12. `src/pages/admin/SchedulePage.test.tsx` (10 testů)
+- **Účel:** Stránka harmonogramu – zobrazení, vytváření, filtrování událostí.
+- **Testy:** Zobrazení nadpisu; prázdný stav; tlačítko přidat; existující události; typ jako badge; otevření dialogu; zpráva bez běhů; vyhledávací pole; filtrování; tlačítko spustit běh.
+- **Výsledek:** ✓ Vše prošlo.
+
+### 13. `src/pages/admin/RunsPage.test.tsx` (9 testů)
+- **Účel:** Stránka běhů – CRUD, navigace na detail, přiřazení hráčů.
+- **Testy:** Zobrazení nadpisu; prázdný stav; tlačítko nový běh; existující běhy; otevření dialogu; LarpPicker bez vybraného LARPu; navigace na detail; detail s přiřazeními hráčů.
+- **Výsledek:** ✓ Vše prošlo.
+
 ---
 
 ## Úpravy aplikace provedené na základě testů
@@ -58,10 +88,12 @@
    Výraz `(session.performer ?? session.groupName || session.performanceTimes)` byl upraven na `((session.performer ?? session.groupName) || session.performanceTimes)` kvůli požadavku linteru na závorky při míchání `??` a `||`.
 
 3. **Testy**  
-   - Oprava testu „vyhodí chybu mimo PortalProvider“ (expect().toThrow() nechytal chybu v Reactu) – doplněn try/catch a kontrola console.error.  
+   - Oprava testu „vyhodí chybu mimo PortalProvider" (expect().toThrow() nechytal chybu v Reactu) – doplněn try/catch a kontrola console.error.  
    - App.routes: zrušen render celého App uvnitř MemoryRouter (dva Routery), místo toho render jednotlivých stránek s Routes a potřebnými providery.  
    - Landing a Login vyžadují AuthProvider (a Landing i RunProvider); doplněno do testů.  
-   - Landing test: na stránce je více výskytů textu „LARP PORTÁL“ – assertion změněna na `getAllByText(...).length > 0`.
+   - Landing test: na stránce je více výskytů textu „LARP PORTÁL" – assertion změněna na `getAllByText(...).length > 0`.
+   - RunsPage.test.tsx: Opraveny selektory pro dialog (použití `getByRole("heading", { level: 2 })` místo `getByText`).
+   - RunsPage.test.tsx: Opraven test „zobrazí zprávu když není vybrán LARP" – stránka zobrazuje LarpPicker, ne vlastní zprávu.
 
 ---
 
@@ -69,6 +101,7 @@
 
 - **React Router Future Flag:** varování k v7_startTransition a v7_relativeSplatPath – informační, žádná úprava v této fázi.
 - **An update to AuthProvider inside a test was not wrapped in act(...):** asynchronní nastavení session v AuthProvider po getSession(); testy procházejí, případně lze v budoucnu obalit render do `waitFor` / `act`.
+- **Missing `Description` for {DialogContent}:** varování pro dialogy bez aria-describedby – kosmetické.
 
 ---
 

@@ -183,11 +183,12 @@ describe("RunsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Nový běh/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Nový běh")).toBeInTheDocument();
+      // Dialog heading je h2 s role="heading"
+      expect(screen.getByRole("heading", { level: 2, name: "Nový běh" })).toBeInTheDocument();
     });
   });
 
-  it("zobrazí zprávu když není vybrán LARP", async () => {
+  it("zobrazí LarpPicker když není vybrán LARP", async () => {
     mockUseLarpContext.mockReturnValue({
       currentLarpId: null,
       currentLarp: null,
@@ -198,7 +199,8 @@ describe("RunsPage", () => {
     renderRunsPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/Nejprve vyberte LARP/i)).toBeInTheDocument();
+      // Když není vybrán LARP, zobrazí se LarpPickerPage s hlavičkou "Vaše LARPy"
+      expect(screen.getByText(/Vaše LARPy/i)).toBeInTheDocument();
     });
   });
 
@@ -262,7 +264,8 @@ describe("RunsPage", () => {
     renderRunsPage("/admin/behy/beh-detail");
 
     await waitFor(() => {
-      expect(screen.getByText("Běh Detail")).toBeInTheDocument();
+      // Detail běhu by měl zobrazit název běhu a záložky
+      expect(screen.getByRole("heading", { name: "Běh Detail" })).toBeInTheDocument();
     });
 
     // Detail běhu by měl zobrazit záložky
