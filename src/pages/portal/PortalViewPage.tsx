@@ -1,17 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Printer, LogOut, Loader2 } from "lucide-react";
+import { ChevronRight, Printer, LogOut, Loader2, FoldVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
-import { DocBadge } from "@/components/ui/doc-badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { supabase } from "@/integrations/supabase/client";
 import { DOCUMENT_TYPES } from "@/lib/constants";
 import { sanitizeHtml } from "@/lib/sanitize";
-
-/** Id sekcí accordionu podle typu dokumentů */
-const DOC_SECTION_IDS = ["organizacni", "herni", "osobni", "cp"] as const;
+import { format } from "date-fns";
+import { cs } from "date-fns/locale";
 
 interface Document {
   id: string;
@@ -28,8 +27,10 @@ export default function PortalViewPage() {
   const { session, loading: sessionLoading, clearSession } = usePortalSession();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  /** Otevřené sekce accordionu (pro „Otevřít vše pro tisk") */
-  const [accordionOpen, setAccordionOpen] = useState<string[]>([]);
+  
+  // Track open categories and open documents separately
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [openDocuments, setOpenDocuments] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!sessionLoading && !session) {
@@ -56,35 +57,72 @@ export default function PortalViewPage() {
     }
   }, [session]);
 
-  /** Id sekcí, které mají alespoň jeden dokument (pro výchozí otevření a „Otevřít vše pro tisk") */
-  const sectionIdsWithDocs = useMemo(() => {
-    const ids: string[] = [];
-    if (documents.some((d) => d.doc_type === "organizacni")) ids.push("organizacni");
-    if (documents.some((d) => d.doc_type === "herni")) ids.push("herni");
-    if (documents.some((d) => ["postava", "medailonek"].includes(d.doc_type))) ids.push("osobni");
-    if (session?.personType === "cp" && documents.some((d) => d.doc_type === "cp")) ids.push("cp");
-    return ids;
-  }, [documents, session?.personType]);
+  // Group documents by type
+  const groupedDocs = useMemo(() => ({
+    organizacni: documents.filter((d) => d.doc_type === "organizacni"),
+    herni: documents.filter((d) => d.doc_type === "herni"),
+    osobni: documents.filter((d) => ["postava", "medailonek"].includes(d.doc_type)),
+    cp: documents.filter((d) => d.doc_type === "cp"),
+  }), [documents]);
 
-  useEffect(() => {
-    if (!loading && sectionIdsWithDocs.length > 0 && accordionOpen.length === 0) {
-      setAccordionOpen([sectionIdsWithDocs[0]]);
-    }
-  }, [loading, sectionIdsWithDocs, accordionOpen.length]);
+  // Get medailonek document for character card
+  const medailonekDoc = useMemo(() => 
+    documents.find((d) => d.doc_type === "medailonek"),
+    [documents]
+  );
 
-  const openAllForPrint = () => setAccordionOpen([...DOC_SECTION_IDS]);
+  const toggleCategory = (category: string) => {
+    setOpenCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
 
-  const handlePrint = (category?: string) => {
-    if (category) {
-      document.body.dataset.printCategory = category;
-    }
-    window.print();
-    delete document.body.dataset.printCategory;
+  const toggleDocument = (docId: string) => {
+    setOpenDocuments(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
+  };
+
+  const collapseAllDocuments = () => {
+    setOpenDocuments(new Set());
+  };
+
+  const handlePrint = () => {
+    // Open all categories and documents for print
+    const allCategories = new Set(["organizacni", "herni", "osobni", "cp"]);
+    const allDocIds = new Set(documents.map(d => d.id));
+    setOpenCategories(allCategories);
+    setOpenDocuments(allDocIds);
+    setTimeout(() => window.print(), 100);
   };
 
   const handleLogout = () => {
     clearSession();
     navigate(`/hrac/${slug}`);
+  };
+
+  // Format date range
+  const formatDateRange = (from: string | null, to: string | null) => {
+    if (!from) return null;
+    const fromDate = new Date(from);
+    const toDate = to ? new Date(to) : null;
+    
+    if (toDate) {
+      return `${format(fromDate, "d.", { locale: cs })} – ${format(toDate, "d. MMMM yyyy", { locale: cs })}`;
+    }
+    return format(fromDate, "d. MMMM yyyy", { locale: cs });
   };
 
   if (sessionLoading || !session) {
@@ -95,81 +133,143 @@ export default function PortalViewPage() {
     );
   }
 
-  // Group documents by type
-  const groupedDocs = {
-    organizacni: documents.filter((d) => d.doc_type === "organizacni"),
-    herni: documents.filter((d) => d.doc_type === "herni"),
-    osobni: documents.filter((d) => ["postava", "medailonek"].includes(d.doc_type)),
-    cp: documents.filter((d) => d.doc_type === "cp"),
-  };
+  const hasAnyOpenDocuments = openDocuments.size > 0;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="no-print border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-primary">
-                <FileText className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-typewriter text-lg tracking-wider text-foreground">
-                  {session.larpName}
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  {session.personName}
-                  {session.groupName && ` • ${session.groupName}`}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={openAllForPrint} className="no-print">
-                Otevřít vše pro tisk
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handlePrint()}>
-                <Printer className="h-4 w-4 mr-2" />
-                Tisk
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Odhlásit
-              </Button>
-            </div>
-          </div>
+      {/* Header - LARP name and motto */}
+      <header className="py-8 px-4 text-center border-b border-border">
+        <h1 className="font-typewriter text-4xl md:text-5xl tracking-widest text-foreground uppercase mb-2">
+          {session.larpName}
+        </h1>
+        {session.larpMotto && (
+          <p className="text-muted-foreground italic text-lg max-w-2xl mx-auto">
+            „{session.larpMotto}"
+          </p>
+        )}
+        
+        {/* Quick actions */}
+        <div className="flex items-center justify-center gap-2 mt-6 no-print">
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Tisk
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Odhlásit
+          </Button>
         </div>
       </header>
 
       {/* Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto space-y-8">
-          {/* Act Info for CP – performer a časy vystoupení */}
-          {session.personType === "cp" && (session.performer || session.groupName || session.performanceTimes) && (
+        <div className="max-w-3xl mx-auto space-y-6">
+          
+          {/* Character Card */}
+          <PaperCard>
+            <PaperCardContent className="py-6">
+              <div className="text-center space-y-3">
+                <h2 className="font-typewriter text-2xl md:text-3xl tracking-wide text-foreground">
+                  {session.personName}
+                </h2>
+                {session.groupName && (
+                  <Badge variant="secondary" className="uppercase tracking-wider text-xs px-3 py-1">
+                    {session.groupName}
+                  </Badge>
+                )}
+                {medailonekDoc?.content && (
+                  <div 
+                    className="prose prose-sm max-w-none text-muted-foreground mt-4 text-left"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(medailonekDoc.content) }}
+                  />
+                )}
+              </div>
+            </PaperCardContent>
+          </PaperCard>
+
+          {/* Mission Briefing - only if run data exists */}
+          {(session.runName || session.runLocation || session.missionBriefing) && (
             <PaperCard>
               <PaperCardHeader>
-                <PaperCardTitle>Informace o vystoupení</PaperCardTitle>
+                <PaperCardTitle className="font-typewriter tracking-wider uppercase">
+                  Mission Briefing
+                </PaperCardTitle>
               </PaperCardHeader>
-              <PaperCardContent className="space-y-2">
-                {(session.performer || session.groupName) && (
-                  <p>
-                    <span className="font-medium text-foreground">Performer:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {session.performer || session.groupName}
-                    </span>
-                  </p>
+              <PaperCardContent className="space-y-2 text-sm">
+                <div className="grid gap-2">
+                  <div className="flex">
+                    <span className="font-semibold w-24 text-foreground">Operation:</span>
+                    <span className="text-muted-foreground">{session.larpName}</span>
+                  </div>
+                  {session.runName && (
+                    <div className="flex">
+                      <span className="font-semibold w-24 text-foreground">Run:</span>
+                      <span className="text-muted-foreground">{session.runName}</span>
+                    </div>
+                  )}
+                  {(session.runDateFrom || session.runDateTo) && (
+                    <div className="flex">
+                      <span className="font-semibold w-24 text-foreground">Datum:</span>
+                      <span className="text-muted-foreground">
+                        {formatDateRange(session.runDateFrom, session.runDateTo)}
+                      </span>
+                    </div>
+                  )}
+                  {session.runLocation && (
+                    <div className="flex">
+                      <span className="font-semibold w-24 text-foreground">Lokace:</span>
+                      <span className="text-muted-foreground">{session.runLocation}</span>
+                    </div>
+                  )}
+                  {session.runAddress && (
+                    <div className="flex">
+                      <span className="font-semibold w-24 text-foreground">Adresa:</span>
+                      <span className="text-muted-foreground">{session.runAddress}</span>
+                    </div>
+                  )}
+                </div>
+                {session.missionBriefing && (
+                  <div 
+                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
+                  />
                 )}
-                {session.performanceTimes && (
-                  <p>
-                    <span className="font-medium text-foreground">Časy vystoupení:</span>{" "}
-                    <span className="text-muted-foreground">{session.performanceTimes}</span>
-                  </p>
-                )}
-                <p className="text-muted-foreground text-sm">
-                  Jako CP máte přístup ke všem dokumentům.
-                </p>
               </PaperCardContent>
             </PaperCard>
+          )}
+
+          {/* CP Info */}
+          {session.personType === "cp" && (session.performer || session.performanceTimes) && (
+            <PaperCard>
+              <PaperCardHeader>
+                <PaperCardTitle className="font-typewriter tracking-wider uppercase">
+                  Informace o vystoupení
+                </PaperCardTitle>
+              </PaperCardHeader>
+              <PaperCardContent className="space-y-2 text-sm">
+                {session.performer && (
+                  <div className="flex">
+                    <span className="font-semibold w-24 text-foreground">Performer:</span>
+                    <span className="text-muted-foreground">{session.performer}</span>
+                  </div>
+                )}
+                {session.performanceTimes && (
+                  <div className="flex">
+                    <span className="font-semibold w-24 text-foreground">Časy:</span>
+                    <span className="text-muted-foreground">{session.performanceTimes}</span>
+                  </div>
+                )}
+              </PaperCardContent>
+            </PaperCard>
+          )}
+
+          {/* Documents Section Title */}
+          {!loading && documents.length > 0 && (
+            <div className="pt-4">
+              <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4">
+                Dokumenty
+              </h2>
+            </div>
           )}
 
           {/* Documents */}
@@ -186,155 +286,178 @@ export default function PortalViewPage() {
               </PaperCardContent>
             </PaperCard>
           ) : (
-            <Accordion
-              type="multiple"
-              value={accordionOpen}
-              onValueChange={setAccordionOpen}
-              className="space-y-4"
-            >
+            <div className="space-y-4">
               {/* Organizační dokumenty */}
               {groupedDocs.organizacni.length > 0 && (
-                <AccordionItem value="organizacni" className="border-none">
-                  <PaperCard>
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <DocBadge type="organizacni" />
-                        <span className="font-typewriter text-lg">Organizační informace</span>
-                        <span className="text-sm text-muted-foreground">
-                          ({groupedDocs.organizacni.length})
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="px-6 pb-6 space-y-6">
-                        {groupedDocs.organizacni.map((doc) => (
-                          <div key={doc.id} className="space-y-2">
-                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
-                            {doc.content && (
-                              <div
-                                className="prose prose-sm max-w-none text-muted-foreground"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </PaperCard>
-                </AccordionItem>
+                <DocumentCategory
+                  title="Organizační"
+                  count={groupedDocs.organizacni.length}
+                  documents={groupedDocs.organizacni}
+                  isOpen={openCategories.has("organizacni")}
+                  onToggle={() => toggleCategory("organizacni")}
+                  openDocuments={openDocuments}
+                  onToggleDocument={toggleDocument}
+                />
               )}
 
               {/* Herní dokumenty */}
               {groupedDocs.herni.length > 0 && (
-                <AccordionItem value="herni" className="border-none">
-                  <PaperCard>
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <DocBadge type="herni" />
-                        <span className="font-typewriter text-lg">Herní materiály</span>
-                        <span className="text-sm text-muted-foreground">
-                          ({groupedDocs.herni.length})
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="px-6 pb-6 space-y-6">
-                        {groupedDocs.herni.map((doc) => (
-                          <div key={doc.id} className="space-y-2">
-                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
-                            {doc.content && (
-                              <div
-                                className="prose prose-sm max-w-none text-muted-foreground"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </PaperCard>
-                </AccordionItem>
+                <DocumentCategory
+                  title="Herní"
+                  count={groupedDocs.herni.length}
+                  documents={groupedDocs.herni}
+                  isOpen={openCategories.has("herni")}
+                  onToggle={() => toggleCategory("herni")}
+                  openDocuments={openDocuments}
+                  onToggleDocument={toggleDocument}
+                />
               )}
 
-              {/* Osobní dokumenty (postava + medailonek) */}
-              {groupedDocs.osobni.length > 0 && (
-                <AccordionItem value="osobni" className="border-none">
-                  <PaperCard>
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <DocBadge type="postava" />
-                        <span className="font-typewriter text-lg">Vaše postava</span>
-                        <span className="text-sm text-muted-foreground">
-                          ({groupedDocs.osobni.length})
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="px-6 pb-6 space-y-6">
-                        {groupedDocs.osobni.map((doc) => (
-                          <div key={doc.id} className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-foreground">{doc.title}</h3>
-                              {doc.doc_type === "medailonek" && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                                  Medailonek
-                                </span>
-                              )}
-                            </div>
-                            {doc.content && (
-                              <div
-                                className="prose prose-sm max-w-none text-muted-foreground"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </PaperCard>
-                </AccordionItem>
+              {/* Osobní dokumenty (bez medailonku - ten je v kartě postavy) */}
+              {groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length > 0 && (
+                <DocumentCategory
+                  title="Osobní"
+                  count={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length}
+                  documents={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek")}
+                  isOpen={openCategories.has("osobni")}
+                  onToggle={() => toggleCategory("osobni")}
+                  openDocuments={openDocuments}
+                  onToggleDocument={toggleDocument}
+                />
               )}
 
               {/* CP dokumenty - pouze pro CP */}
               {session.personType === "cp" && groupedDocs.cp.length > 0 && (
-                <AccordionItem value="cp" className="border-none">
-                  <PaperCard>
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <DocBadge type="cp" />
-                        <span className="font-typewriter text-lg">CP materiály</span>
-                        <span className="text-sm text-muted-foreground">
-                          ({groupedDocs.cp.length})
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="px-6 pb-6 space-y-6">
-                        {groupedDocs.cp.map((doc) => (
-                          <div key={doc.id} className="space-y-2">
-                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
-                            {doc.content && (
-                              <div
-                                className="prose prose-sm max-w-none text-muted-foreground"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </PaperCard>
-                </AccordionItem>
+                <DocumentCategory
+                  title="CP materiály"
+                  count={groupedDocs.cp.length}
+                  documents={groupedDocs.cp}
+                  isOpen={openCategories.has("cp")}
+                  onToggle={() => toggleCategory("cp")}
+                  openDocuments={openDocuments}
+                  onToggleDocument={toggleDocument}
+                />
               )}
-            </Accordion>
+            </div>
+          )}
+
+          {/* Collapse All Button */}
+          {hasAnyOpenDocuments && (
+            <div className="text-center pt-4 no-print">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={collapseAllDocuments}
+                className="btn-vintage"
+              >
+                <FoldVertical className="h-4 w-4 mr-2" />
+                Sbalit vše
+              </Button>
+            </div>
           )}
         </div>
       </main>
 
-      {/* Print actions */}
-      <div className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground">
-        <p>Pro tisk jednotlivých kategorií klikněte na „Tisk" v odpovídající sekci.</p>
-      </div>
+      {/* Footer */}
+      <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border">
+        <p>Kliknutím na název dokumentu rozbalíte jeho obsah.</p>
+      </footer>
     </div>
+  );
+}
+
+// Separate component for document category
+interface DocumentCategoryProps {
+  title: string;
+  count: number;
+  documents: Document[];
+  isOpen: boolean;
+  onToggle: () => void;
+  openDocuments: Set<string>;
+  onToggleDocument: (docId: string) => void;
+}
+
+function DocumentCategory({
+  title,
+  count,
+  documents,
+  isOpen,
+  onToggle,
+  openDocuments,
+  onToggleDocument,
+}: DocumentCategoryProps) {
+  return (
+    <PaperCard>
+      <Collapsible open={isOpen} onOpenChange={onToggle}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <ChevronRight 
+                className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} 
+              />
+              <span className="font-typewriter text-lg tracking-wide uppercase">
+                {title}
+              </span>
+              <span className="text-sm text-muted-foreground">({count})</span>
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-6 pb-4 space-y-1">
+            {documents.map((doc) => (
+              <DocumentItem
+                key={doc.id}
+                document={doc}
+                isOpen={openDocuments.has(doc.id)}
+                onToggle={() => onToggleDocument(doc.id)}
+              />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </PaperCard>
+  );
+}
+
+// Separate component for individual document
+interface DocumentItemProps {
+  document: Document;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
+  return (
+    <Collapsible open={isOpen} onOpenChange={onToggle}>
+      <CollapsibleTrigger asChild>
+        <button className="w-full text-left py-2 px-3 rounded hover:bg-muted/50 transition-colors flex items-center gap-2">
+          <ChevronRight 
+            className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
+          />
+          <span className="font-medium text-foreground">{document.title}</span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="ml-6 pl-3 border-l-2 border-border py-3">
+          {document.content && (
+            <div
+              className="prose prose-sm max-w-none text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(document.content) }}
+            />
+          )}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="mt-4 text-xs uppercase tracking-wider no-print"
+          >
+            Sbalit dokument
+          </Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

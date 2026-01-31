@@ -36,6 +36,7 @@ interface Larp {
   slug: string;
   description: string | null;
   theme: string | null;
+  motto: string | null;
   created_at: string;
 }
 
@@ -57,6 +58,7 @@ export default function LarpsPage() {
     slug: "",
     description: "",
     theme: "wwii",
+    motto: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -90,7 +92,7 @@ export default function LarpsPage() {
 
   const openCreateDialog = () => {
     setSelectedLarp(null);
-    setFormData({ name: "", slug: "", description: "", theme: "wwii" });
+    setFormData({ name: "", slug: "", description: "", theme: "wwii", motto: "" });
     setDialogOpen(true);
   };
 
@@ -101,6 +103,7 @@ export default function LarpsPage() {
       slug: larp.slug,
       description: larp.description || "",
       theme: larp.theme && ["wwii", "fantasy"].includes(larp.theme) ? larp.theme : "wwii",
+      motto: larp.motto || "",
     });
     setDialogOpen(true);
   };
@@ -132,6 +135,7 @@ export default function LarpsPage() {
           slug: formData.slug,
           description: formData.description || null,
           theme: formData.theme || null,
+          motto: formData.motto || null,
         })
         .eq("id", selectedLarp.id);
 
@@ -149,6 +153,7 @@ export default function LarpsPage() {
         slug: formData.slug,
         description: formData.description || null,
         theme: formData.theme || null,
+        motto: formData.motto || null,
         owner_id: user?.id,
       });
 
@@ -354,6 +359,22 @@ export default function LarpsPage() {
               </Select>
               <p className="text-xs text-muted-foreground">
                 Určuje barvy a styl portálu a landingu pro tento LARP
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="motto">Motto</Label>
+              <Input
+                id="motto"
+                value={formData.motto}
+                onChange={(e) =>
+                  setFormData({ ...formData, motto: e.target.value })
+                }
+                placeholder="Úvodní citát nebo motto hry..."
+                className="input-vintage"
+              />
+              <p className="text-xs text-muted-foreground">
+                Zobrazí se na hráčském portálu pod názvem LARPu
               </p>
             </div>
 
