@@ -72,7 +72,6 @@ export default function PersonsPage() {
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [personDocuments, setPersonDocuments] = useState<PersonDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
-  const [personAccessToken, setPersonAccessToken] = useState<string | null>(null);
 
   const fetchPersons = async () => {
     if (!currentLarpId) return;
@@ -150,15 +149,6 @@ export default function PersonsPage() {
     setLoadingDocuments(false);
   };
 
-  const fetchPersonAccessToken = async (personId: string) => {
-    const { data } = await supabase
-      .from("persons")
-      .select("access_token")
-      .eq("id", personId)
-      .maybeSingle();
-    setPersonAccessToken(data?.access_token || null);
-  };
-
   useEffect(() => {
     if (currentLarpId) {
       setLoading(true);
@@ -177,14 +167,12 @@ export default function PersonsPage() {
       if (person) {
         setDetailPerson(person);
         fetchPersonDocuments(person.id, person.group_name);
-        fetchPersonAccessToken(person.id);
       } else {
         navigate("/admin/osoby", { replace: true });
       }
     } else if (!slug) {
       setDetailPerson(null);
       setPersonDocuments([]);
-      setPersonAccessToken(null);
     }
   }, [slug, persons, navigate, currentLarpId]);
 
@@ -366,15 +354,13 @@ export default function PersonsPage() {
                     <Trash2 className="mr-2 h-4 w-4" />
                     Smazat
                   </Button>
-                  {personAccessToken && (
-                    <Button
-                      variant="outline"
-                      onClick={() => window.open(`/portal/${personAccessToken}`, "_blank")}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Zobrazit portál postavy
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(`/hrac/${detailPerson.slug}`, "_blank")}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Zobrazit portál postavy
+                  </Button>
                 </div>
               </div>
             </PaperCardContent>

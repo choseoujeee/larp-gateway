@@ -31,10 +31,11 @@ import { FeedbackButton } from "./components/FeedbackButton";
 
 const queryClient = new QueryClient();
 
-/** Redirect /hrac/:token → /portal/:token (zpětná kompatibilita s původním portálem) */
-function RedirectHracToPortal() {
+/** Redirect /portal/:token → /hrac/:slug (zpětná kompatibilita se starým portálem) */
+function RedirectPortalToHrac() {
   const { token } = useParams<{ token: string }>();
-  return <Navigate to={token ? `/portal/${token}` : "/"} replace />;
+  // Token je nyní slug, přesměrujeme na novou URL
+  return <Navigate to={token ? `/hrac/${token}` : "/"} replace />;
 }
 
 const App = () => (
@@ -54,9 +55,10 @@ const App = () => (
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
 
-                  {/* Alias: původní URL → nové (zpětná kompatibilita) */}
+                  {/* Alias: staré URL → nové (zpětná kompatibilita) */}
                   <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
-                  <Route path="/hrac/:token" element={<RedirectHracToPortal />} />
+                  <Route path="/portal/:token" element={<RedirectPortalToHrac />} />
+                  <Route path="/portal/:token/view" element={<RedirectPortalToHrac />} />
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminDashboard />} />
@@ -73,9 +75,9 @@ const App = () => (
                   <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
                   <Route path="/admin/portal" element={<PortalFeedbackPage />} />
 
-                  {/* Portal */}
-                  <Route path="/portal/:token" element={<PortalAccessPage />} />
-                  <Route path="/portal/:token/view" element={<PortalViewPage />} />
+                  {/* Portal - hráčský portál */}
+                  <Route path="/hrac/:slug" element={<PortalAccessPage />} />
+                  <Route path="/hrac/:slug/view" element={<PortalViewPage />} />
 
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />

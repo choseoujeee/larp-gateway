@@ -615,6 +615,20 @@ export type Database = {
           run_payment_due_date: string
         }[]
       }
+      verify_person_by_slug: {
+        Args: { p_password: string; p_slug: string }
+        Returns: {
+          group_name: string
+          larp_id: string
+          larp_name: string
+          larp_theme: string
+          performance_times: string
+          performer: string
+          person_id: string
+          person_name: string
+          person_type: Database["public"]["Enums"]["person_type"]
+        }[]
+      }
     }
     Enums: {
       document_target: "vsichni" | "skupina" | "osoba"

@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Printer, LogOut, Loader2, CreditCard, AlertCircle } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { FileText, Printer, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
-import { Stamp } from "@/components/ui/stamp";
 import { DocBadge } from "@/components/ui/doc-badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePortalSession } from "@/hooks/usePortalSession";
@@ -14,32 +12,6 @@ import { sanitizeHtml } from "@/lib/sanitize";
 
 /** Id sekcí accordionu podle typu dokumentů */
 const DOC_SECTION_IDS = ["organizacni", "herni", "osobni", "cp"] as const;
-
-/**
- * Sestaví SPAYD řetězec pro QR platbu (český standard).
- * ACC = účet (ideálně IBAN CZ...), AM = částka, CC = CZK, DT = splatnost YYYYMMDD.
- */
-function buildSpayd(account: string, amountText: string | null, dueDate: string | null): string {
-  const parts = ["SPD*1.0"];
-  const acc = account?.trim();
-  if (acc) parts.push(`ACC:${acc}`);
-  if (amountText) {
-    const num = amountText.replace(/[^\d,.]/g, "").replace(",", ".");
-    const amount = parseFloat(num);
-    if (!Number.isNaN(amount)) parts.push(`AM:${amount.toFixed(2)}`);
-  }
-  parts.push("CC:CZK");
-  if (dueDate) {
-    try {
-      const d = new Date(dueDate);
-      const yyyymmdd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
-      parts.push(`DT:${yyyymmdd}`);
-    } catch {
-      // ignore invalid date
-    }
-  }
-  return parts.join("*");
-}
 
 interface Document {
   id: string;
@@ -51,19 +23,19 @@ interface Document {
 }
 
 export default function PortalViewPage() {
-  const { token } = useParams<{ token: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { session, loading: sessionLoading, clearSession } = usePortalSession();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  /** Otevřené sekce accordionu (pro „Otevřít vše pro tisk“) */
+  /** Otevřené sekce accordionu (pro „Otevřít vše pro tisk") */
   const [accordionOpen, setAccordionOpen] = useState<string[]>([]);
 
   useEffect(() => {
     if (!sessionLoading && !session) {
-      navigate(`/portal/${token}`);
+      navigate(`/hrac/${slug}`);
     }
-  }, [session, sessionLoading, token, navigate]);
+  }, [session, sessionLoading, slug, navigate]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -84,7 +56,7 @@ export default function PortalViewPage() {
     }
   }, [session]);
 
-  /** Id sekcí, které mají alespoň jeden dokument (pro výchozí otevření a „Otevřít vše pro tisk“) */
+  /** Id sekcí, které mají alespoň jeden dokument (pro výchozí otevření a „Otevřít vše pro tisk") */
   const sectionIdsWithDocs = useMemo(() => {
     const ids: string[] = [];
     if (documents.some((d) => d.doc_type === "organizacni")) ids.push("organizacni");
@@ -103,7 +75,6 @@ export default function PortalViewPage() {
   const openAllForPrint = () => setAccordionOpen([...DOC_SECTION_IDS]);
 
   const handlePrint = (category?: string) => {
-    // Add print class to filter content
     if (category) {
       document.body.dataset.printCategory = category;
     }
@@ -113,7 +84,7 @@ export default function PortalViewPage() {
 
   const handleLogout = () => {
     clearSession();
-    navigate(`/portal/${token}`);
+    navigate(`/hrac/${slug}`);
   };
 
   if (sessionLoading || !session) {
@@ -147,7 +118,8 @@ export default function PortalViewPage() {
                   {session.larpName}
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  {session.runName} • {session.personName}
+                  {session.personName}
+                  {session.groupName && ` • ${session.groupName}`}
                 </p>
               </div>
             </div>
@@ -172,287 +144,196 @@ export default function PortalViewPage() {
       {/* Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto space-y-8">
-          {/* Mission Briefing */}
-          {session.missionBriefing && (
-            <PaperCard className="border-2 border-primary/30">
-              <PaperCardHeader className="text-center">
-                <Stamp variant="primary" className="mb-2">
-                  Mission Briefing
-                </Stamp>
-              </PaperCardHeader>
-              <PaperCardContent>
-                <div 
-                  className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing || "") }}
-                />
-              </PaperCardContent>
-            </PaperCard>
-          )}
-
           {/* Act Info for CP – performer a časy vystoupení */}
-          {session.personType === "cp" && (
+          {session.personType === "cp" && (session.performer || session.groupName || session.performanceTimes) && (
             <PaperCard>
               <PaperCardHeader>
                 <PaperCardTitle>Informace o vystoupení</PaperCardTitle>
               </PaperCardHeader>
               <PaperCardContent className="space-y-2">
-                {((session.performer ?? session.groupName) || session.performanceTimes) && (
-                  <>
-                    {(session.performer ?? session.groupName) && (
-                      <p>
-                        <span className="font-medium text-foreground">Performer:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {session.performer ?? session.groupName}
-                        </span>
-                      </p>
-                    )}
-                    {session.performanceTimes && (
-                      <p>
-                        <span className="font-medium text-foreground">Časy vystoupení:</span>{" "}
-                        <span className="text-muted-foreground">{session.performanceTimes}</span>
-                      </p>
-                    )}
-                  </>
+                {(session.performer || session.groupName) && (
+                  <p>
+                    <span className="font-medium text-foreground">Performer:</span>{" "}
+                    <span className="text-muted-foreground">
+                      {session.performer || session.groupName}
+                    </span>
+                  </p>
+                )}
+                {session.performanceTimes && (
+                  <p>
+                    <span className="font-medium text-foreground">Časy vystoupení:</span>{" "}
+                    <span className="text-muted-foreground">{session.performanceTimes}</span>
+                  </p>
                 )}
                 <p className="text-muted-foreground text-sm">
-                  Jako CP máte přístup ke všem dokumentům včetně harmonogramu.
+                  Jako CP máte přístup ke všem dokumentům.
                 </p>
               </PaperCardContent>
             </PaperCard>
           )}
 
-          {/* Sekce Platba – účet, cena, splatnost, QR kód; upozornění pokud neuhrazeno */}
-          {(session.runPaymentAccount || session.runPaymentAmount || session.runPaymentDueDate) && (
-            <PaperCard className={session.personPaidAt ? "" : "border-2 border-amber-500/50"}>
-              <PaperCardHeader>
-                <PaperCardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Platba za LARP
-                  {!session.personPaidAt && (
-                    <span className="inline-flex items-center gap-1.5 rounded bg-amber-500/20 px-2 py-0.5 text-sm font-medium text-amber-700 dark:text-amber-400">
-                      <AlertCircle className="h-4 w-4" />
-                      Neuhrazeno
-                    </span>
-                  )}
-                </PaperCardTitle>
-              </PaperCardHeader>
-              <PaperCardContent className="space-y-4">
-                {session.runPaymentAccount && (
-                  <p>
-                    <span className="font-medium text-foreground">Účet:</span>{" "}
-                    <span className="font-mono text-muted-foreground break-all">{session.runPaymentAccount}</span>
-                  </p>
-                )}
-                {session.runPaymentAmount && (
-                  <p>
-                    <span className="font-medium text-foreground">Částka:</span>{" "}
-                    <span className="text-muted-foreground">{session.runPaymentAmount}</span>
-                  </p>
-                )}
-                {session.runPaymentDueDate && (
-                  <p>
-                    <span className="font-medium text-foreground">Splatnost:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {new Date(session.runPaymentDueDate).toLocaleDateString("cs-CZ", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </p>
-                )}
-                {session.runPaymentAccount && (
-                  <div className="flex flex-col items-start gap-2">
-                    <span className="text-sm font-medium text-foreground">QR kód pro platbu</span>
-                    <div className="rounded border border-border bg-white p-3 dark:bg-white">
-                      <QRCodeSVG
-                        value={buildSpayd(
-                          session.runPaymentAccount,
-                          session.runPaymentAmount,
-                          session.runPaymentDueDate
-                        )}
-                        size={180}
-                        level="M"
-                        includeMargin={false}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Naskenujte QR kód v aplikaci své banky pro rychlou platbu.
-                    </p>
-                  </div>
-                )}
-              </PaperCardContent>
-            </PaperCard>
-          )}
-
+          {/* Documents */}
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : documents.length === 0 ? (
+            <PaperCard>
+              <PaperCardContent className="py-12 text-center">
+                <p className="text-muted-foreground">
+                  Zatím nejsou k dispozici žádné dokumenty.
+                </p>
+              </PaperCardContent>
+            </PaperCard>
           ) : (
-            <>
-              {/* Dokumenty v rozbalovacích sekcích (accordion) – přehlednost na mobilu, „Otevřít vše pro tisk“ */}
-              {documents.length > 0 ? (
-                <Accordion
-                  type="multiple"
-                  value={accordionOpen}
-                  onValueChange={setAccordionOpen}
-                  className="w-full"
-                >
-                  {groupedDocs.organizacni.length > 0 && (
-                    <AccordionItem value="organizacni">
-                      <AccordionTrigger className="font-typewriter text-lg">
-                        <span className="flex items-center gap-3">
-                          <DocBadge type="organizacni" />
-                          Organizační dokumenty
+            <Accordion
+              type="multiple"
+              value={accordionOpen}
+              onValueChange={setAccordionOpen}
+              className="space-y-4"
+            >
+              {/* Organizační dokumenty */}
+              {groupedDocs.organizacni.length > 0 && (
+                <AccordionItem value="organizacni" className="border-none">
+                  <PaperCard>
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <DocBadge type="organizacni" />
+                        <span className="font-typewriter text-lg">Organizační informace</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({groupedDocs.organizacni.length})
                         </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4">
-                          {groupedDocs.organizacni.map((doc) => (
-                            <PaperCard key={doc.id} data-category="organizacni">
-                              <PaperCardHeader>
-                                <PaperCardTitle className="text-lg">{doc.title}</PaperCardTitle>
-                              </PaperCardHeader>
-                              <PaperCardContent>
-                                <div
-                                  className="prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || "") }}
-                                />
-                              </PaperCardContent>
-                            </PaperCard>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                  {groupedDocs.herni.length > 0 && (
-                    <AccordionItem value="herni">
-                      <AccordionTrigger className="font-typewriter text-lg">
-                        <span className="flex items-center gap-3">
-                          <DocBadge type="herni" />
-                          Herní dokumenty
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4">
-                          {groupedDocs.herni.map((doc) => (
-                            <PaperCard key={doc.id} data-category="herni">
-                              <PaperCardHeader>
-                                <PaperCardTitle className="text-lg">{doc.title}</PaperCardTitle>
-                              </PaperCardHeader>
-                              <PaperCardContent>
-                                <div
-                                  className="prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || "") }}
-                                />
-                              </PaperCardContent>
-                            </PaperCard>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                  {groupedDocs.osobni.length > 0 && (
-                    <AccordionItem value="osobni">
-                      <AccordionTrigger className="font-typewriter text-lg">
-                        <span className="flex items-center gap-3">
-                          <DocBadge type="postava" />
-                          Osobní dokumenty
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4">
-                          {groupedDocs.osobni.map((doc) => (
-                            <PaperCard key={doc.id} data-category="osobni">
-                              <PaperCardHeader>
-                                <div className="flex items-center justify-between">
-                                  <PaperCardTitle className="text-lg">{doc.title}</PaperCardTitle>
-                                  {doc.doc_type === "medailonek" && <DocBadge type="medailonek" />}
-                                </div>
-                              </PaperCardHeader>
-                              <PaperCardContent>
-                                <div
-                                  className="prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || "") }}
-                                />
-                              </PaperCardContent>
-                            </PaperCard>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                  {session.personType === "cp" && groupedDocs.cp.length > 0 && (
-                    <AccordionItem value="cp">
-                      <AccordionTrigger className="font-typewriter text-lg">
-                        <span className="flex items-center gap-3">
-                          <DocBadge type="cp" />
-                          CP dokumenty
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4">
-                          {groupedDocs.cp.map((doc) => (
-                            <PaperCard key={doc.id} data-category="cp">
-                              <PaperCardHeader>
-                                <PaperCardTitle className="text-lg">{doc.title}</PaperCardTitle>
-                              </PaperCardHeader>
-                              <PaperCardContent>
-                                <div
-                                  className="prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || "") }}
-                                />
-                              </PaperCardContent>
-                            </PaperCard>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                </Accordion>
-              ) : (
-                <PaperCard>
-                  <PaperCardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
-                      Zatím pro vás nejsou k dispozici žádné dokumenty.
-                    </p>
-                  </PaperCardContent>
-                </PaperCard>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-6 pb-6 space-y-6">
+                        {groupedDocs.organizacni.map((doc) => (
+                          <div key={doc.id} className="space-y-2">
+                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
+                            {doc.content && (
+                              <div
+                                className="prose prose-sm max-w-none text-muted-foreground"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </PaperCard>
+                </AccordionItem>
               )}
 
-              {/* Zápatí – kontakt a poznámka z konfigurace běhu */}
-              {(session.runContact || session.runFooterText) && (
-                <footer className="mt-12 pt-6 border-t border-border text-sm text-muted-foreground space-y-1">
-                  {session.runContact && (
-                    <p><span className="font-medium text-foreground">Kontakt:</span> {session.runContact}</p>
-                  )}
-                  {session.runFooterText && (
-                    <p className="whitespace-pre-wrap">{session.runFooterText}</p>
-                  )}
-                </footer>
+              {/* Herní dokumenty */}
+              {groupedDocs.herni.length > 0 && (
+                <AccordionItem value="herni" className="border-none">
+                  <PaperCard>
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <DocBadge type="herni" />
+                        <span className="font-typewriter text-lg">Herní materiály</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({groupedDocs.herni.length})
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-6 pb-6 space-y-6">
+                        {groupedDocs.herni.map((doc) => (
+                          <div key={doc.id} className="space-y-2">
+                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
+                            {doc.content && (
+                              <div
+                                className="prose prose-sm max-w-none text-muted-foreground"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </PaperCard>
+                </AccordionItem>
               )}
-            </>
+
+              {/* Osobní dokumenty (postava + medailonek) */}
+              {groupedDocs.osobni.length > 0 && (
+                <AccordionItem value="osobni" className="border-none">
+                  <PaperCard>
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <DocBadge type="postava" />
+                        <span className="font-typewriter text-lg">Vaše postava</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({groupedDocs.osobni.length})
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-6 pb-6 space-y-6">
+                        {groupedDocs.osobni.map((doc) => (
+                          <div key={doc.id} className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-foreground">{doc.title}</h3>
+                              {doc.doc_type === "medailonek" && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                  Medailonek
+                                </span>
+                              )}
+                            </div>
+                            {doc.content && (
+                              <div
+                                className="prose prose-sm max-w-none text-muted-foreground"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </PaperCard>
+                </AccordionItem>
+              )}
+
+              {/* CP dokumenty - pouze pro CP */}
+              {session.personType === "cp" && groupedDocs.cp.length > 0 && (
+                <AccordionItem value="cp" className="border-none">
+                  <PaperCard>
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <DocBadge type="cp" />
+                        <span className="font-typewriter text-lg">CP materiály</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({groupedDocs.cp.length})
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-6 pb-6 space-y-6">
+                        {groupedDocs.cp.map((doc) => (
+                          <div key={doc.id} className="space-y-2">
+                            <h3 className="font-semibold text-foreground">{doc.title}</h3>
+                            {doc.content && (
+                              <div
+                                className="prose prose-sm max-w-none text-muted-foreground"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </PaperCard>
+                </AccordionItem>
+              )}
+            </Accordion>
           )}
         </div>
       </main>
 
       {/* Print actions */}
-      <div className="no-print fixed bottom-4 right-4">
-        <div className="bg-card border border-border rounded-lg shadow-lg p-2 flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => handlePrint("organizacni")}>
-            Tisk org.
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => handlePrint("herni")}>
-            Tisk herní
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => handlePrint("osobni")}>
-            Tisk osobní
-          </Button>
-          <Button size="sm" onClick={() => handlePrint()}>
-            Tisk vše
-          </Button>
-        </div>
+      <div className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground">
+        <p>Pro tisk jednotlivých kategorií klikněte na „Tisk" v odpovídající sekci.</p>
       </div>
     </div>
   );

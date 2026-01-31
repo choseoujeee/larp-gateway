@@ -5,55 +5,33 @@ interface PortalSession {
   personId: string;
   personName: string;
   personType: "postava" | "cp";
-  runId: string;
+  personSlug: string;
+  larpId: string;
   larpName: string;
-  runName: string;
-  missionBriefing: string | null;
-  /** Skupina (postava) nebo performer (CP) */
-  groupName: string | null;
-  /** Pro CP: performer / interpret */
-  performer: string | null;
-  /** Pro CP: časy vystoupení */
-  performanceTimes: string | null;
-  /** Kontakt (zápatí portálu) */
-  runContact: string | null;
-  /** Text zápatí (poznámka) */
-  runFooterText: string | null;
-  /** Téma LARPu (pro data-theme na portálu) */
   larpTheme: string | null;
-  /** Platba: transparentní účet, cena, splatnost, zda hráč zaplatil */
-  runPaymentAccount: string | null;
-  runPaymentAmount: string | null;
-  runPaymentDueDate: string | null;
-  personPaidAt: string | null;
+  groupName: string | null;
+  performer: string | null;
+  performanceTimes: string | null;
 }
 
-/** Řádek vrácený RPC verify_person_access (snake_case z DB) */
-interface VerifyPersonAccessRow {
+/** Řádek vrácený RPC verify_person_by_slug (snake_case z DB) */
+interface VerifyPersonBySlugRow {
   person_id: string;
   person_name: string;
   person_type: "postava" | "cp";
-  run_id: string;
+  larp_id: string;
   larp_name: string;
-  run_name: string;
-  mission_briefing: string | null;
+  larp_theme: string | null;
   group_name: string | null;
   performer: string | null;
   performance_times: string | null;
-  run_contact: string | null;
-  run_footer_text: string | null;
-  larp_theme: string | null;
-  run_payment_account: string | null;
-  run_payment_amount: string | null;
-  run_payment_due_date: string | null;
-  person_paid_at: string | null;
 }
 
 interface PortalContextType {
   session: PortalSession | null;
   loading: boolean;
   error: string | null;
-  verifyAccess: (accessToken: string, password: string) => Promise<boolean>;
+  verifyAccess: (slug: string, password: string) => Promise<boolean>;
   clearSession: () => void;
 }
 
@@ -81,17 +59,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const verifyAccess = async (accessToken: string, password: string): Promise<boolean> => {
+  const verifyAccess = async (slug: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("verify_person_access", {
-        p_access_token: accessToken,
+      const { data, error: rpcError } = await supabase.rpc("verify_person_by_slug", {
+        p_slug: slug,
         p_password: password,
       });
 
       if (rpcError) {
+        console.error("RPC error:", rpcError);
         setError("Chyba při ověřování přístupu");
         setLoading(false);
         return false;
@@ -103,25 +82,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const row = data[0] as VerifyPersonAccessRow;
+      const row = data[0] as VerifyPersonBySlugRow;
       const newSession: PortalSession = {
         personId: row.person_id,
         personName: row.person_name,
         personType: row.person_type,
-        runId: row.run_id,
+        personSlug: slug,
+        larpId: row.larp_id,
         larpName: row.larp_name,
-        runName: row.run_name,
-        missionBriefing: row.mission_briefing,
+        larpTheme: row.larp_theme ?? null,
         groupName: row.group_name ?? null,
         performer: row.performer ?? null,
         performanceTimes: row.performance_times ?? null,
-        runContact: row.run_contact ?? null,
-        runFooterText: row.run_footer_text ?? null,
-        larpTheme: row.larp_theme ?? null,
-        runPaymentAccount: row.run_payment_account ?? null,
-        runPaymentAmount: row.run_payment_amount ?? null,
-        runPaymentDueDate: row.run_payment_due_date ?? null,
-        personPaidAt: row.person_paid_at ?? null,
       };
 
       setSession(newSession);
@@ -130,7 +102,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       document.documentElement.dataset.theme = theme;
       setLoading(false);
       return true;
-    } catch {
+    } catch (err) {
+      console.error("Unexpected error:", err);
       setError("Neočekávaná chyba");
       setLoading(false);
       return false;
