@@ -105,6 +105,7 @@ export default function PersonsPage() {
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [personDocuments, setPersonDocuments] = useState<PersonDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [personDocCounts, setPersonDocCounts] = useState<Record<string, { organizacni: number; herni: number; postava: number }>>({});
   
   // Document editing state
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
@@ -202,6 +203,39 @@ export default function PersonsPage() {
     setLoadingDocuments(false);
   };
 
+  const fetchPersonDocCounts = async () => {
+    if (!currentLarpId || persons.length === 0) return;
+    
+    // Fetch all documents for this larp
+    const { data: docs } = await supabase
+      .from("documents")
+      .select("id, doc_type, target_type, target_group, target_person_id")
+      .eq("larp_id", currentLarpId);
+    
+    if (!docs) return;
+    
+    // Calculate counts per person
+    const counts: Record<string, { organizacni: number; herni: number; postava: number }> = {};
+    
+    for (const person of persons) {
+      counts[person.id] = { organizacni: 0, herni: 0, postava: 0 };
+      
+      for (const doc of docs) {
+        // Check if document is visible to this person
+        const isVisible = 
+          doc.target_type === "vsichni" ||
+          (doc.target_type === "skupina" && doc.target_group === person.group_name) ||
+          (doc.target_type === "osoba" && doc.target_person_id === person.id);
+        
+        if (isVisible && (doc.doc_type === "organizacni" || doc.doc_type === "herni" || doc.doc_type === "postava")) {
+          counts[person.id][doc.doc_type as "organizacni" | "herni" | "postava"]++;
+        }
+      }
+    }
+    
+    setPersonDocCounts(counts);
+  };
+
   useEffect(() => {
     if (currentLarpId) {
       setLoading(true);
@@ -209,6 +243,12 @@ export default function PersonsPage() {
       fetchAllPersonsAndGroups();
     }
   }, [currentLarpId]);
+
+  useEffect(() => {
+    if (persons.length > 0 && currentLarpId) {
+      fetchPersonDocCounts();
+    }
+  }, [persons, currentLarpId]);
 
   useEffect(() => {
     fetchAssignments();
@@ -830,9 +870,19 @@ export default function PersonsPage() {
                                 nepřiřazeno ({selectedRun.name})
                               </p>
                             ) : null}
-                            <p className="text-xs text-muted-foreground font-mono mt-1">
-                              {person.slug}
-                            </p>
+                            {personDocCounts[person.id] && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                {personDocCounts[person.id].organizacni > 0 && (
+                                  <span title="Organizační">📋 {personDocCounts[person.id].organizacni}</span>
+                                )}
+                                {personDocCounts[person.id].herni > 0 && (
+                                  <span title="Herní">🎮 {personDocCounts[person.id].herni}</span>
+                                )}
+                                {personDocCounts[person.id].postava > 0 && (
+                                  <span title="Postava">👤 {personDocCounts[person.id].postava}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-1">
                             <Button
