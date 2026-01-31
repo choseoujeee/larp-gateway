@@ -25,18 +25,26 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
-  { name: "Přehled", href: "/admin", icon: LayoutDashboard },
+// Dashboard - samostatně nahoře
+const dashboardItem = { name: "Přehled", href: "/admin", icon: LayoutDashboard };
+
+// Sekce 1: Organizace běhů (dynamická data per běh)
+const runOrganizationNavigation = [
   { name: "Běhy", href: "/admin/behy", icon: Calendar },
   { name: "Přiřazení hráčů", href: "/admin/prirazeni", icon: UserPlus },
   { name: "Harmonogram", href: "/admin/harmonogram", icon: Clock },
+];
+
+// Sekce 2: Obsah LARPu (statická data)
+const larpContentNavigation = [
+  { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText },
   { name: "Postavy", href: "/admin/osoby", icon: Users },
   { name: "Cizí postavy", href: "/admin/cp", icon: UserCog },
-  { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText },
   { name: "Produkce", href: "/admin/produkce", icon: LinkIcon },
   { name: "Tiskoviny", href: "/admin/tiskoviny", icon: Printer },
 ];
 
+// Sekce 3: Správa (globální)
 const larpManagement = [
   { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
 ];
@@ -94,8 +102,31 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-            {/* Main LARP navigation */}
-            {navigation.map((item) => {
+            {/* Přehled - samostatně */}
+            <Link
+              to={dashboardItem.href}
+              className={cn(
+                "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
+                location.pathname === dashboardItem.href
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              )}
+            >
+              <dashboardItem.icon className="h-4 w-4" />
+              <span className="font-mono">{dashboardItem.name}</span>
+              {location.pathname === dashboardItem.href && <ChevronRight className="ml-auto h-4 w-4" />}
+            </Link>
+
+            {/* Divider */}
+            <div className="py-2">
+              <div className="border-t border-sidebar-border" />
+            </div>
+
+            {/* Organizace běhů */}
+            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
+              Organizace běhů
+            </div>
+            {runOrganizationNavigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -114,13 +145,42 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               );
             })}
-            
+
             {/* Divider */}
             <div className="py-2">
               <div className="border-t border-sidebar-border" />
             </div>
-            
-            {/* LARP Management */}
+
+            {/* Obsah LARPu */}
+            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
+              Obsah LARPu
+            </div>
+            {larpContentNavigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="font-mono">{item.name}</span>
+                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+                </Link>
+              );
+            })}
+
+            {/* Divider */}
+            <div className="py-2">
+              <div className="border-t border-sidebar-border" />
+            </div>
+
+            {/* Správa */}
             <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
               Správa
             </div>
