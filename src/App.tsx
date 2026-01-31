@@ -61,7 +61,9 @@ const App = () => (
               <Route path="/admin/larpy" element={<LarpsPage />} />
               <Route path="/admin/behy" element={<RunsPage />} />
               <Route path="/admin/osoby" element={<PersonsPage />} />
+              <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
               <Route path="/admin/cp" element={<CpPage />} />
+              <Route path="/admin/cp/:slug" element={<CpPage />} />
               <Route path="/admin/dokumenty" element={<DocumentsPage />} />
               <Route path="/admin/harmonogram" element={<SchedulePage />} />
               <Route path="/admin/produkce" element={<ProductionPage />} />
