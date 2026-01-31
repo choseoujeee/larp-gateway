@@ -6,6 +6,7 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Image from "@tiptap/extension-image";
+import Highlight from "@tiptap/extension-highlight";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ import {
   IndentIncrease,
   ImageIcon,
   Loader2,
+  Highlighter,
 } from "lucide-react";
 import {
   Popover,
@@ -236,6 +238,16 @@ const FONT_SIZES = [
   { label: "Obrovské", value: "32px" },
 ];
 
+const HIGHLIGHT_COLORS = [
+  { label: "Žádné", value: "", color: "transparent" },
+  { label: "Žlutá", value: "#fef08a", color: "#fef08a" },
+  { label: "Zelená", value: "#bbf7d0", color: "#bbf7d0" },
+  { label: "Modrá", value: "#bfdbfe", color: "#bfdbfe" },
+  { label: "Červená", value: "#c4846c", color: "#c4846c" },
+  { label: "Oranžová", value: "#fed7aa", color: "#fed7aa" },
+  { label: "Fialová", value: "#ddd6fe", color: "#ddd6fe" },
+];
+
 /**
  * WYSIWYG editor pro tělo dokumentu. Výstup HTML; ukládá se do DB a při zobrazení sanitizuje (DOMPurify).
  */
@@ -275,6 +287,9 @@ export function RichTextEditor({
         HTMLAttributes: {
           class: "max-w-full h-auto rounded-md",
         },
+      }),
+      Highlight.configure({
+        multicolor: true,
       }),
     ],
     content: value || "",
@@ -524,6 +539,44 @@ export function RichTextEditor({
         >
           <Strikethrough className="h-4 w-4" />
         </ToolbarButton>
+
+        {/* Highlight */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              title="Zvýraznění"
+              className={cn("h-8 w-8 p-0", editor.isActive("highlight") && "bg-accent text-accent-foreground")}
+            >
+              <Highlighter className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="start">
+            <div className="flex flex-wrap gap-1 max-w-[140px]">
+              {HIGHLIGHT_COLORS.map((color) => (
+                <button
+                  key={color.value || "none"}
+                  type="button"
+                  onClick={() => {
+                    if (color.value) {
+                      editor.chain().focus().toggleHighlight({ color: color.value }).run();
+                    } else {
+                      editor.chain().focus().unsetHighlight().run();
+                    }
+                  }}
+                  title={color.label}
+                  className={cn(
+                    "w-6 h-6 rounded border border-border hover:scale-110 transition-transform",
+                    !color.value && "bg-background relative after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(135deg,transparent_45%,hsl(var(--destructive))_45%,hsl(var(--destructive))_55%,transparent_55%)]"
+                  )}
+                  style={{ backgroundColor: color.value || undefined }}
+                />
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <ToolbarDivider />
 
