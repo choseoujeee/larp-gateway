@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -85,6 +92,8 @@ export default function PersonsPage() {
   const [medailonekDialogOpen, setMedailonekDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterMedailonek, setFilterMedailonek] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -382,11 +391,26 @@ export default function PersonsPage() {
     navigate(`/admin/osoby/${person.slug}`);
   };
 
-  const filteredPersons = persons.filter(
-    (p) =>
+  const filteredPersons = persons.filter((p) => {
+    // Text search
+    const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.group_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+      (p.group_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    
+    // Group filter
+    const matchesGroup =
+      filterGroup === "all" ||
+      (filterGroup === "none" && !p.group_name) ||
+      p.group_name === filterGroup;
+    
+    // Medailonek filter
+    const matchesMedailonek =
+      filterMedailonek === "all" ||
+      (filterMedailonek === "filled" && p.medailonek?.trim()) ||
+      (filterMedailonek === "empty" && !p.medailonek?.trim());
+    
+    return matchesSearch && matchesGroup && matchesMedailonek;
+  });
 
   const groupedPersons = filteredPersons.reduce((acc, person) => {
     const group = person.group_name || "Bez skupiny";
@@ -683,7 +707,33 @@ export default function PersonsPage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={filterGroup} onValueChange={setFilterGroup}>
+            <SelectTrigger className="w-48 input-vintage">
+              <SelectValue placeholder="Všechny skupiny" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny skupiny</SelectItem>
+              <SelectItem value="none">Bez skupiny</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group} value={group}>
+                  {group}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterMedailonek} onValueChange={setFilterMedailonek}>
+            <SelectTrigger className="w-48 input-vintage">
+              <SelectValue placeholder="Stav medailonku" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny stavy</SelectItem>
+              <SelectItem value="filled">Má medailonek</SelectItem>
+              <SelectItem value="empty">Bez medailonku</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Input
             placeholder="Hledat postavu..."
             value={searchTerm}
