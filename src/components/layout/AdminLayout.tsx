@@ -10,16 +10,15 @@ import {
   Clock, 
   Link as LinkIcon, 
   Printer,
+  UserPlus,
   LogOut,
   ChevronRight,
   ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useLarpContext } from "@/hooks/useLarpContext";
-import { useRunContext } from "@/hooks/useRunContext";
 import LarpPickerPage from "@/pages/admin/LarpPickerPage";
 
 interface AdminLayoutProps {
@@ -28,20 +27,23 @@ interface AdminLayoutProps {
 
 const navigation = [
   { name: "Přehled", href: "/admin", icon: LayoutDashboard },
-  { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
   { name: "Běhy", href: "/admin/behy", icon: Calendar },
-  { name: "Postavy", href: "/admin/osoby", icon: Users, filter: "postava" },
-  { name: "Cizí postavy", href: "/admin/cp", icon: UserCog, filter: "cp" },
-  { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText },
+  { name: "Přiřazení hráčů", href: "/admin/prirazeni", icon: UserPlus },
   { name: "Harmonogram", href: "/admin/harmonogram", icon: Clock },
+  { name: "Postavy", href: "/admin/osoby", icon: Users },
+  { name: "Cizí postavy", href: "/admin/cp", icon: UserCog },
+  { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText },
   { name: "Produkce", href: "/admin/produkce", icon: LinkIcon },
   { name: "Tiskoviny", href: "/admin/tiskoviny", icon: Printer },
+];
+
+const larpManagement = [
+  { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { user, loading, signOut } = useAuth();
   const { currentLarpId, currentLarp, setCurrentLarpId, loading: larpsLoading } = useLarpContext();
-  const { runs, selectedRunId, setSelectedRunId, loading: runsLoading } = useRunContext();
   const location = useLocation();
 
   if (loading) {
@@ -91,8 +93,38 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
+          <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
+            {/* Main LARP navigation */}
             {navigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="font-mono">{item.name}</span>
+                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+                </Link>
+              );
+            })}
+            
+            {/* Divider */}
+            <div className="py-2">
+              <div className="border-t border-sidebar-border" />
+            </div>
+            
+            {/* LARP Management */}
+            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
+              Správa
+            </div>
+            {larpManagement.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -115,34 +147,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           {/* User info */}
           <div className="border-t border-sidebar-border p-4">
-          {/* Výběr aktuálního běhu */}
-          {runs.length > 0 && (
-            <div className="mb-3">
-              <label className="text-[10px] text-sidebar-foreground/60 tracking-widest uppercase block mb-1.5">
-                Aktuální běh
-              </label>
-              <Select
-                value={selectedRunId}
-                onValueChange={setSelectedRunId}
-                disabled={runsLoading}
-              >
-                <SelectTrigger className="h-8 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground">
-                  <SelectValue placeholder="Vyberte běh" />
-                </SelectTrigger>
-                <SelectContent>
-                  {runs.map((run) => (
-                    <SelectItem key={run.id} value={run.id} className="text-xs">
-                      {run.larps?.name ?? "LARP"} – {run.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="mb-3 text-xs text-sidebar-foreground/60 truncate">
+              {user.email}
             </div>
-          )}
-          <div className="mb-3 text-xs text-sidebar-foreground/60 truncate">
-            {user.email}
-          </div>
-          <Button
+            <Button
               variant="ghost" 
               size="sm" 
               onClick={signOut}

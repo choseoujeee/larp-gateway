@@ -21,6 +21,7 @@ import DocumentsPage from "./pages/admin/DocumentsPage";
 import SchedulePage from "./pages/admin/SchedulePage";
 import ProductionPage from "./pages/admin/ProductionPage";
 import PrintablesPage from "./pages/admin/PrintablesPage";
+import RunAssignmentsPage from "./pages/admin/RunAssignmentsPage";
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
 import PortalViewPage from "./pages/portal/PortalViewPage";
 import NotFound from "./pages/NotFound";
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/admin/harmonogram" element={<SchedulePage />} />
               <Route path="/admin/produkce" element={<ProductionPage />} />
               <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
+              <Route path="/admin/prirazeni" element={<RunAssignmentsPage />} />
 
               {/* Portal */}
               <Route path="/portal/:token" element={<PortalAccessPage />} />
