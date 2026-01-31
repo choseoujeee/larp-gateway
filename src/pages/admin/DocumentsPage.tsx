@@ -74,7 +74,7 @@ export default function DocumentsPage() {
     target_group: "",
     target_person_id: "",
     sort_order: 0,
-    run_id: "" as string, // "" = všechny běhy, jinak konkrétní run_id
+    run_id: "__all__" as string, // "__all__" = všechny běhy, jinak konkrétní run_id
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -137,7 +137,7 @@ export default function DocumentsPage() {
       target_group: "",
       target_person_id: "",
       sort_order: 0,
-      run_id: "", // výchozí = pro všechny běhy
+      run_id: "__all__", // výchozí = pro všechny běhy
     });
     setHiddenFromPersonIds([]);
     setDialogOpen(true);
@@ -153,7 +153,7 @@ export default function DocumentsPage() {
       target_group: doc.target_group || "",
       target_person_id: doc.target_person_id || "",
       sort_order: doc.sort_order,
-      run_id: doc.run_id || "",
+      run_id: doc.run_id || "__all__",
     });
     const { data: hiddenRows } = await supabase
       .from("hidden_documents")
@@ -173,7 +173,7 @@ export default function DocumentsPage() {
 
     const payload = {
       larp_id: currentLarpId,
-      run_id: formData.run_id || null, // prázdný string = pro všechny běhy (null)
+      run_id: formData.run_id === "__all__" ? null : formData.run_id, // "__all__" = pro všechny běhy (null)
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
@@ -664,7 +664,7 @@ export default function DocumentsPage() {
                     <SelectValue placeholder="Všechny běhy" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Všechny běhy</SelectItem>
+                    <SelectItem value="__all__">Všechny běhy</SelectItem>
                     {runs.map((run) => (
                       <SelectItem key={run.id} value={run.id}>
                         {run.name}
