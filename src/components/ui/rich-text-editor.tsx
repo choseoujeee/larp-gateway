@@ -1,10 +1,11 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useEditor, EditorContent, Extension } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
+import Image from "@tiptap/extension-image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,8 @@ import {
   Minus,
   IndentDecrease,
   IndentIncrease,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
 import {
   Popover,
@@ -41,6 +44,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 // Custom FontSize extension
 declare module "@tiptap/core" {
@@ -190,6 +195,8 @@ export interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   minHeight?: string;
+  /** Optional folder path for image uploads (e.g., larp slug) */
+  imageFolderPath?: string;
 }
 
 interface ToolbarButtonProps {
@@ -238,9 +245,13 @@ export function RichTextEditor({
   placeholder = "Napište obsah dokumentu…",
   className,
   minHeight = "200px",
+  imageFolderPath = "general",
 }: RichTextEditorProps) {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const editor = useEditor({
     extensions: [
@@ -258,6 +269,13 @@ export function RichTextEditor({
       TextStyle,
       FontSize,
       Indent,
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: "max-w-full h-auto rounded-md",
+        },
+      }),
     ],
     content: value || "",
   editorProps: {
@@ -304,6 +322,78 @@ export function RichTextEditor({
     if (!editor) return "";
     const attrs = editor.getAttributes("textStyle");
     return attrs.fontSize || "";
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editor) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Neplatný typ souboru",
+        description: "Vyberte prosím obrázek (JPG, PNG, GIF, WebP).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "Soubor je příliš velký",
+        description: "Maximální velikost obrázku je 5 MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Generate unique filename
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${imageFolderPath}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("document-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("document-images")
+        .getPublicUrl(data.path);
+
+      // Insert image into editor
+      editor.chain().focus().setImage({ src: urlData.publicUrl, alt: file.name }).run();
+
+      toast({
+        title: "Obrázek nahrán",
+        description: "Obrázek byl úspěšně vložen do dokumentu.",
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast({
+        title: "Chyba při nahrávání",
+        description: "Nepodařilo se nahrát obrázek. Zkuste to znovu.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   if (!editor) {
@@ -552,6 +642,28 @@ export function RichTextEditor({
             <Unlink className="h-4 w-4" />
           </ToolbarButton>
         )}
+
+        <ToolbarDivider />
+
+        {/* Image Upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+        <ToolbarButton
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploadingImage}
+          title="Vložit obrázek"
+        >
+          {isUploadingImage ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ImageIcon className="h-4 w-4" />
+          )}
+        </ToolbarButton>
 
         <ToolbarDivider />
 
