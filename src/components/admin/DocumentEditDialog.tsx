@@ -476,14 +476,16 @@ export function DocumentEditDialog({
 
           <div className="space-y-2">
             <Label>Obsah (WYSIWYG)</Label>
-            <RichTextEditor
-              key={document?.id ?? "new"}
-              value={formData.content}
-              onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
-              placeholder="Napište obsah dokumentu…"
-              minHeight="240px"
-              className="border-input"
-            />
+            <div className="max-h-[50vh] overflow-y-auto rounded-md border border-input">
+              <RichTextEditor
+                key={document?.id ?? "new"}
+                value={formData.content}
+                onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
+                placeholder="Napište obsah dokumentu…"
+                minHeight="240px"
+                className="border-0"
+              />
+            </div>
           </div>
         </div>
 

@@ -438,8 +438,8 @@ export function RichTextEditor({
       )}
       style={{ minHeight }}
     >
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-1 py-1">
+      {/* Toolbar - sticky for scrolling within dialogs */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-1 py-1 rounded-t-md">
         {/* Undo/Redo */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
