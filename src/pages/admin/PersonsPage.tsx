@@ -496,9 +496,28 @@ export default function PersonsPage() {
           <PaperCard>
             <PaperCardContent className="py-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <h2 className="font-typewriter text-xl">Viditelné dokumenty</h2>
+                  {personDocuments.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {(() => {
+                        const counts = personDocuments.reduce((acc, doc) => {
+                          acc[doc.doc_type] = (acc[doc.doc_type] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>);
+                        return (
+                          <>
+                            {counts.organizacni && <span title="Organizační">📋 {counts.organizacni}</span>}
+                            {counts.herni && <span title="Herní">🎮 {counts.herni}</span>}
+                            {counts.postava && <span title="Postava">👤 {counts.postava}</span>}
+                            {counts.cp && <span title="CP">🎭 {counts.cp}</span>}
+                            {counts.medailonek && <span title="Medailonek">📜 {counts.medailonek}</span>}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="outline"
