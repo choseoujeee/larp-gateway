@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,13 @@ interface Person {
   group_name: string | null;
 }
 
+interface PersonDocument {
+  id: string;
+  title: string;
+  doc_type: string;
+  target_type: string;
+}
+
 interface Assignment {
   person_id: string;
   player_name: string | null;
@@ -63,6 +70,9 @@ export default function PersonsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
+  const [personDocuments, setPersonDocuments] = useState<PersonDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [personAccessToken, setPersonAccessToken] = useState<string | null>(null);
 
   const fetchPersons = async () => {
     if (!currentLarpId) return;
@@ -96,6 +106,59 @@ export default function PersonsPage() {
     setAssignments((data as Assignment[]) || []);
   };
 
+  const fetchPersonDocuments = async (personId: string, groupName: string | null) => {
+    if (!currentLarpId) return;
+    setLoadingDocuments(true);
+    
+    // Fetch documents that this person can see:
+    // 1. target_type = 'vsichni' (for all)
+    // 2. target_type = 'skupina' AND target_group = person's group
+    // 3. target_type = 'osoba' AND target_person_id = person's id
+    // Also exclude hidden documents
+    
+    let query = supabase
+      .from("documents")
+      .select("id, title, doc_type, target_type")
+      .eq("larp_id", currentLarpId)
+      .order("doc_type")
+      .order("sort_order")
+      .order("title");
+    
+    // Build OR condition for visibility
+    const orConditions = ["target_type.eq.vsichni"];
+    if (groupName) {
+      orConditions.push(`and(target_type.eq.skupina,target_group.eq.${groupName})`);
+    }
+    orConditions.push(`and(target_type.eq.osoba,target_person_id.eq.${personId})`);
+    
+    const { data: docs, error } = await query.or(orConditions.join(","));
+    
+    if (error) {
+      console.error("Error fetching person documents:", error);
+      setPersonDocuments([]);
+    } else {
+      // Now filter out hidden documents
+      const { data: hiddenDocs } = await supabase
+        .from("hidden_documents")
+        .select("document_id")
+        .eq("person_id", personId);
+      
+      const hiddenIds = new Set((hiddenDocs || []).map(h => h.document_id));
+      const visibleDocs = (docs || []).filter(d => !hiddenIds.has(d.id));
+      setPersonDocuments(visibleDocs);
+    }
+    setLoadingDocuments(false);
+  };
+
+  const fetchPersonAccessToken = async (personId: string) => {
+    const { data } = await supabase
+      .from("persons")
+      .select("access_token")
+      .eq("id", personId)
+      .maybeSingle();
+    setPersonAccessToken(data?.access_token || null);
+  };
+
   useEffect(() => {
     if (currentLarpId) {
       setLoading(true);
@@ -113,13 +176,17 @@ export default function PersonsPage() {
       const person = persons.find((p) => p.slug === slug);
       if (person) {
         setDetailPerson(person);
+        fetchPersonDocuments(person.id, person.group_name);
+        fetchPersonAccessToken(person.id);
       } else {
         navigate("/admin/osoby", { replace: true });
       }
     } else if (!slug) {
       setDetailPerson(null);
+      setPersonDocuments([]);
+      setPersonAccessToken(null);
     }
-  }, [slug, persons, navigate]);
+  }, [slug, persons, navigate, currentLarpId]);
 
   const getAssignment = (personId: string) => assignments.find((a) => a.person_id === personId);
 
@@ -299,12 +366,68 @@ export default function PersonsPage() {
                     <Trash2 className="mr-2 h-4 w-4" />
                     Smazat
                   </Button>
+                  {personAccessToken && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(`/portal/${personAccessToken}`, "_blank")}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Zobrazit portál postavy
+                    </Button>
+                  )}
                 </div>
               </div>
             </PaperCardContent>
           </PaperCard>
 
-          {/* TODO: Show related documents, assignments etc. */}
+          {/* Documents visible to this person */}
+          <PaperCard>
+            <PaperCardContent className="py-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h2 className="font-typewriter text-xl">Viditelné dokumenty</h2>
+              </div>
+              
+              {loadingDocuments ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : personDocuments.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Tato postava zatím nemá žádné přístupné dokumenty.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {personDocuments.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/admin/dokumenty`)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{doc.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="px-2 py-0.5 rounded bg-muted">
+                          {doc.doc_type === "organizacni" && "Organizační"}
+                          {doc.doc_type === "herni" && "Herní"}
+                          {doc.doc_type === "postava" && "Postava"}
+                          {doc.doc_type === "medailonek" && "Medailonek"}
+                          {doc.doc_type === "cp" && "CP"}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-muted/50">
+                          {doc.target_type === "vsichni" && "Všichni"}
+                          {doc.target_type === "skupina" && "Skupina"}
+                          {doc.target_type === "osoba" && "Osobní"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </PaperCardContent>
+          </PaperCard>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
