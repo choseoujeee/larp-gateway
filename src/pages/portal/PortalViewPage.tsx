@@ -454,7 +454,8 @@ export default function PortalViewPage() {
                   value={generateQrPaymentString(
                     session.runPaymentAccount,
                     session.runPaymentAmount || "",
-                    session.personName
+                    session.playerName || session.personName,
+                    session.runName || ""
                   )}
                   size={180}
                   level="M"
@@ -470,15 +471,49 @@ export default function PortalViewPage() {
   );
 }
 
-/** Generate SPAYD QR payment string */
-function generateQrPaymentString(account: string, amount: string, message: string): string {
+/** 
+ * Generate SPAYD QR payment string
+ * @param account - Czech account in format "123456789/0800" or "000000-123456789/0800" or IBAN
+ * @param amount - Amount string like "1500 Kč" or "1500"
+ * @param playerName - Player's real name
+ * @param runName - Name of the run
+ */
+function generateQrPaymentString(account: string, amount: string, playerName: string, runName: string): string {
   // Parse amount - extract numeric value
   const numericAmount = amount.replace(/[^\d.,]/g, "").replace(",", ".");
+  
+  // Convert Czech account format to IBAN
+  // Format: prefix-account/bank or account/bank
+  const accountMatch = account.match(/^(?:(\d{1,6})-)?(\d{2,10})\/(\d{4})$/);
+  
+  let iban: string;
+  if (accountMatch) {
+    // Czech account format - convert to IBAN
+    const prefix = accountMatch[1] || "";
+    const accountNum = accountMatch[2];
+    const bankCode = accountMatch[3];
+    
+    // IBAN format: CZ + 2 check digits + bank code (4) + prefix (6, padded) + account (10, padded)
+    const prefixPadded = prefix.padStart(6, "0");
+    const accountPadded = accountNum.padStart(10, "0");
+    const bban = bankCode + prefixPadded + accountPadded;
+    
+    // Calculate check digits (simplified - move CZ00 to end, convert letters, mod 97)
+    const numericBban = bban + "123500"; // CZ = 12 35, 00 for initial check
+    const checkDigits = 98n - (BigInt(numericBban) % 97n);
+    iban = `CZ${checkDigits.toString().padStart(2, "0")}${bban}`;
+  } else if (account.match(/^CZ\d{22}$/i)) {
+    // Already IBAN format
+    iban = account.toUpperCase();
+  } else {
+    // Unknown format - try to use as-is
+    iban = `CZ${account.replace(/[^0-9]/g, "").padStart(22, "0")}`;
+  }
   
   // SPAYD format for Czech payment QR codes
   const parts = [
     "SPD*1.0",
-    `ACC:CZ${account.replace(/[^0-9]/g, "")}`,
+    `ACC:${iban}`,
   ];
   
   if (numericAmount) {
@@ -486,8 +521,10 @@ function generateQrPaymentString(account: string, amount: string, message: strin
     parts.push("CC:CZK");
   }
   
+  // Message: Player name + Run name
+  const message = [playerName, runName].filter(Boolean).join(" - ");
   if (message) {
-    // Truncate and sanitize message
+    // Truncate to 60 chars, remove special characters that break SPAYD
     const sanitizedMsg = message.substring(0, 60).replace(/[*]/g, "");
     parts.push(`MSG:${sanitizedMsg}`);
   }

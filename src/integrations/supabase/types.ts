@@ -650,6 +650,7 @@ export type Database = {
           person_name: string
           person_paid_at: string
           person_type: Database["public"]["Enums"]["person_type"]
+          player_name: string
           run_address: string
           run_contact: string
           run_date_from: string

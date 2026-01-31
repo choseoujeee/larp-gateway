@@ -27,6 +27,7 @@ interface PortalSession {
   runPaymentAmount: string | null;
   runPaymentDueDate: string | null;
   personPaidAt: string | null;
+  playerName: string | null;
 }
 
 /** Řádek vrácený RPC verify_person_by_slug (snake_case z DB) */
@@ -55,6 +56,7 @@ interface VerifyPersonBySlugRow {
   run_payment_amount: string | null;
   run_payment_due_date: string | null;
   person_paid_at: string | null;
+  player_name: string | null;
 }
 
 interface PortalContextType {
@@ -139,6 +141,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         runPaymentAmount: row.run_payment_amount ?? null,
         runPaymentDueDate: row.run_payment_due_date ?? null,
         personPaidAt: row.person_paid_at ?? null,
+        playerName: row.player_name ?? null,
       };
 
       setSession(newSession);
