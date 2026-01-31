@@ -5,8 +5,10 @@ import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocBadge } from "@/components/ui/doc-badge";
 import {
   Dialog,
@@ -28,13 +30,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
-
-interface Run {
-  id: string;
-  name: string;
-  larp_id: string;
-  larps?: { name: string };
-}
+import { useRunContext } from "@/hooks/useRunContext";
 
 interface Person {
   id: string;
@@ -56,16 +52,17 @@ interface Document {
 }
 
 export default function DocumentsPage() {
-  const [runs, setRuns] = useState<Run[]>([]);
+  const { runs, selectedRunId } = useRunContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"type" | "blocks">("type");
+  const [blockSearch, setBlockSearch] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -75,18 +72,8 @@ export default function DocumentsPage() {
     target_person_id: "",
     sort_order: 0,
   });
+  const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-
-  const fetchRuns = async () => {
-    const { data } = await supabase
-      .from("runs")
-      .select("id, name, larp_id, larps(name)")
-      .order("date_from", { ascending: false });
-    setRuns(data || []);
-    if (data && data.length > 0 && !selectedRunId) {
-      setSelectedRunId(data[0].id);
-    }
-  };
 
   const fetchDocuments = async () => {
     if (!selectedRunId) return;
@@ -129,10 +116,6 @@ export default function DocumentsPage() {
   };
 
   useEffect(() => {
-    fetchRuns();
-  }, []);
-
-  useEffect(() => {
     if (selectedRunId) {
       setLoading(true);
       fetchDocuments();
@@ -151,10 +134,11 @@ export default function DocumentsPage() {
       target_person_id: "",
       sort_order: 0,
     });
+    setHiddenFromPersonIds([]);
     setDialogOpen(true);
   };
 
-  const openEditDialog = (doc: Document) => {
+  const openEditDialog = async (doc: Document) => {
     setSelectedDoc(doc);
     setFormData({
       title: doc.title,
@@ -165,6 +149,11 @@ export default function DocumentsPage() {
       target_person_id: doc.target_person_id || "",
       sort_order: doc.sort_order,
     });
+    const { data: hiddenRows } = await supabase
+      .from("hidden_documents")
+      .select("person_id")
+      .eq("document_id", doc.id);
+    setHiddenFromPersonIds((hiddenRows ?? []).map((r) => r.person_id));
     setDialogOpen(true);
   };
 
@@ -187,6 +176,8 @@ export default function DocumentsPage() {
       sort_order: formData.sort_order,
     };
 
+    let documentId: string;
+
     if (selectedDoc) {
       const { error } = await supabase
         .from("documents")
@@ -198,16 +189,30 @@ export default function DocumentsPage() {
         setSaving(false);
         return;
       }
+      documentId = selectedDoc.id;
       toast.success("Dokument upraven");
     } else {
-      const { error } = await supabase.from("documents").insert(payload);
+      const { data: inserted, error } = await supabase
+        .from("documents")
+        .insert(payload)
+        .select("id")
+        .single();
 
       if (error) {
         toast.error("Chyba při vytváření");
         setSaving(false);
         return;
       }
+      documentId = inserted.id;
       toast.success("Dokument vytvořen");
+    }
+
+    // Synchronizace „skrýt před“: smazat staré záznamy, vložit nové
+    await supabase.from("hidden_documents").delete().eq("document_id", documentId);
+    if (hiddenFromPersonIds.length > 0) {
+      await supabase.from("hidden_documents").insert(
+        hiddenFromPersonIds.map((person_id) => ({ document_id: documentId, person_id }))
+      );
     }
 
     setSaving(false);
@@ -251,6 +256,35 @@ export default function DocumentsPage() {
     return "";
   };
 
+  const filterBySearch = (doc: Document) => {
+    if (!blockSearch.trim()) return true;
+    const q = blockSearch.toLowerCase();
+    const titleMatch = doc.title?.toLowerCase().includes(q);
+    const contentMatch = doc.content?.toLowerCase().includes(q);
+    const targetMatch = getTargetLabel(doc).toLowerCase().includes(q);
+    return titleMatch || contentMatch || targetMatch;
+  };
+
+  const commonDocs = documents.filter((d) => d.target_type === "vsichni").filter(filterBySearch);
+  const groupDocsMap = documents
+    .filter((d) => d.target_type === "skupina" && d.target_group)
+    .filter(filterBySearch)
+    .reduce((acc, doc) => {
+      const g = doc.target_group!;
+      if (!acc[g]) acc[g] = [];
+      acc[g].push(doc);
+      return acc;
+    }, {} as Record<string, Document[]>);
+  const personDocsMap = documents
+    .filter((d) => d.target_type === "osoba" && d.target_person_id)
+    .filter(filterBySearch)
+    .reduce((acc, doc) => {
+      const pid = doc.target_person_id!;
+      if (!acc[pid]) acc[pid] = [];
+      acc[pid].push(doc);
+      return acc;
+    }, {} as Record<string, Document[]>);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -269,36 +303,43 @@ export default function DocumentsPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <Label className="font-mono">Běh:</Label>
-            <Select value={selectedRunId} onValueChange={setSelectedRunId}>
-              <SelectTrigger className="w-64 input-vintage">
-                <SelectValue placeholder="Vyberte běh" />
-              </SelectTrigger>
-              <SelectContent>
-                {runs.map((run) => (
-                  <SelectItem key={run.id} value={run.id}>
-                    {run.larps?.name} - {run.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="font-mono">Typ:</Label>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Label className="font-mono">Zobrazení:</Label>
+            <Select value={viewMode} onValueChange={(v: "type" | "blocks") => setViewMode(v)}>
               <SelectTrigger className="w-48 input-vintage">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Všechny typy</SelectItem>
-                {Object.entries(DOCUMENT_TYPES).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="type">Podle typu</SelectItem>
+                <SelectItem value="blocks">Společné / Skupiny / Osoby</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {viewMode === "type" && (
+            <div className="flex items-center gap-2">
+              <Label className="font-mono">Typ:</Label>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-48 input-vintage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Všechny typy</SelectItem>
+                  {Object.entries(DOCUMENT_TYPES).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {viewMode === "blocks" && (
+            <Input
+              placeholder="Hledat v dokumentech…"
+              value={blockSearch}
+              onChange={(e) => setBlockSearch(e.target.value)}
+              className="w-64 input-vintage"
+            />
+          )}
         </div>
 
         {/* Content */}
@@ -326,15 +367,134 @@ export default function DocumentsPage() {
               </Button>
             </PaperCardContent>
           </PaperCard>
+        ) : viewMode === "blocks" ? (
+          <div className="space-y-8">
+            <section>
+              <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
+                Společné dokumenty
+                <span className="text-sm text-muted-foreground">({commonDocs.length})</span>
+              </h3>
+              <div className="space-y-3">
+                {commonDocs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Žádné společné dokumenty.</p>
+                ) : (
+                  commonDocs.map((doc) => (
+                    <PaperCard key={doc.id}>
+                      <PaperCardContent className="py-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <DocBadge type={doc.doc_type} />
+                              <h4 className="font-typewriter">{doc.title}</h4>
+                            </div>
+                            {doc.content && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1 ml-4">
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </PaperCardContent>
+                    </PaperCard>
+                  ))
+                )}
+              </div>
+            </section>
+            <section>
+              <h3 className="font-typewriter text-lg mb-3">Po skupinách</h3>
+              {Object.keys(groupDocsMap).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Žádné dokumenty cílené na skupiny.</p>
+              ) : (
+                Object.entries(groupDocsMap).map(([groupName, docs]) => (
+                  <div key={groupName} className="mb-6">
+                    <h4 className="font-mono text-sm text-muted-foreground mb-2">{groupName} ({docs.length})</h4>
+                    <div className="space-y-3">
+                      {docs.map((doc) => (
+                        <PaperCard key={doc.id}>
+                          <PaperCardContent className="py-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <DocBadge type={doc.doc_type} />
+                                  <h4 className="font-typewriter">{doc.title}</h4>
+                                </div>
+                                {doc.content && (
+                                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                    {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex gap-1 ml-4">
+                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                              </div>
+                            </div>
+                          </PaperCardContent>
+                        </PaperCard>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </section>
+            <section>
+              <h3 className="font-typewriter text-lg mb-3">Po postavách / CP</h3>
+              {Object.keys(personDocsMap).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Žádné dokumenty cílené na konkrétní osobu.</p>
+              ) : (
+                Object.entries(personDocsMap).map(([personId, docs]) => {
+                  const person = persons.find((p) => p.id === personId);
+                  return (
+                    <div key={personId} className="mb-6">
+                      <h4 className="font-mono text-sm text-muted-foreground mb-2">
+                        {person?.name ?? "Osoba"} ({docs.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {docs.map((doc) => (
+                          <PaperCard key={doc.id}>
+                            <PaperCardContent className="py-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <DocBadge type={doc.doc_type} />
+                                    <h4 className="font-typewriter">{doc.title}</h4>
+                                  </div>
+                                  {doc.content && (
+                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                      {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-1 ml-4">
+                                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                </div>
+                              </div>
+                            </PaperCardContent>
+                          </PaperCard>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </section>
+          </div>
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedDocs).map(([type, docs]) => (
               <div key={type}>
                 <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
                   <DocBadge type={type as keyof typeof DOCUMENT_TYPES} />
-                  <span className="text-sm text-muted-foreground">
-                    ({docs.length})
-                  </span>
+                  <span className="text-sm text-muted-foreground">({docs.length})</span>
                 </h3>
                 <div className="space-y-3">
                   {docs.map((doc) => (
@@ -355,22 +515,10 @@ export default function DocumentsPage() {
                             )}
                           </div>
                           <div className="flex gap-1 ml-4">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(doc)}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedDoc(doc);
-                                setDeleteDialogOpen(true);
-                              }}
-                              className="text-destructive hover:text-destructive"
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }} className="text-destructive hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -498,17 +646,48 @@ export default function DocumentsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Obsah</Label>
-              <Textarea
+              <Label>Skrýt před (dokument se těmto osobám nezobrazí)</Label>
+              <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                <div className="space-y-2">
+                  {persons.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">V tomto běhu zatím nejsou žádné osoby.</p>
+                  ) : (
+                    persons.map((person) => (
+                      <label
+                        key={person.id}
+                        className="flex items-center gap-2 cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={hiddenFromPersonIds.includes(person.id)}
+                          onCheckedChange={(checked) => {
+                            setHiddenFromPersonIds((prev) =>
+                              checked
+                                ? [...prev, person.id]
+                                : prev.filter((id) => id !== person.id)
+                            );
+                          }}
+                        />
+                        <span>
+                          {person.name}
+                          {person.group_name ? ` (${person.group_name})` : ""}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Obsah (WYSIWYG)</Label>
+              <RichTextEditor
+                key={selectedDoc?.id ?? "new"}
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Text dokumentu... (podporuje HTML)"
-                rows={12}
-                className="input-vintage font-mono text-sm"
+                onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
+                placeholder="Napište obsah dokumentu…"
+                minHeight="240px"
+                className="border-input"
               />
-              <p className="text-xs text-muted-foreground">
-                Můžete používat HTML tagy pro formátování
-              </p>
             </div>
           </div>
 

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -25,13 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Larp {
-  id: string;
-  name: string;
-}
 
 interface Run {
   id: string;
@@ -46,13 +41,15 @@ interface Run {
   footer_text: string | null;
   mission_briefing: string | null;
   is_active: boolean;
+  payment_account: string | null;
+  payment_amount: string | null;
+  payment_due_date: string | null;
   larps?: { name: string };
 }
 
 export default function RunsPage() {
-  const [larps, setLarps] = useState<Larp[]>([]);
+  const { currentLarpId } = useLarpContext();
   const [runs, setRuns] = useState<Run[]>([]);
-  const [selectedLarpId, setSelectedLarpId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,31 +66,27 @@ export default function RunsPage() {
     footer_text: "",
     mission_briefing: "",
     is_active: false,
+    payment_account: "",
+    payment_amount: "",
+    payment_due_date: "",
   });
   const [saving, setSaving] = useState(false);
 
-  const fetchLarps = async () => {
-    const { data } = await supabase.from("larps").select("id, name").order("name");
-    setLarps(data || []);
-    if (data && data.length > 0 && !selectedLarpId) {
-      setSelectedLarpId(data[0].id);
-    }
-  };
-
   const fetchRuns = async () => {
-    let query = supabase
+    if (!currentLarpId) {
+      setRuns([]);
+      setLoading(false);
+      return;
+    }
+    const { data, error } = await supabase
       .from("runs")
       .select("*, larps(name)")
+      .eq("larp_id", currentLarpId)
       .order("date_from", { ascending: false });
-
-    if (selectedLarpId) {
-      query = query.eq("larp_id", selectedLarpId);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       toast.error("Chyba při načítání běhů");
+      setLoading(false);
       return;
     }
 
@@ -102,14 +95,8 @@ export default function RunsPage() {
   };
 
   useEffect(() => {
-    fetchLarps();
-  }, []);
-
-  useEffect(() => {
-    if (selectedLarpId) {
-      fetchRuns();
-    }
-  }, [selectedLarpId]);
+    fetchRuns();
+  }, [currentLarpId]);
 
   const generateSlug = (name: string) => {
     return name
@@ -123,7 +110,7 @@ export default function RunsPage() {
   const openCreateDialog = () => {
     setSelectedRun(null);
     setFormData({
-      larp_id: selectedLarpId,
+      larp_id: currentLarpId ?? "",
       name: "",
       slug: "",
       date_from: "",
@@ -134,6 +121,9 @@ export default function RunsPage() {
       footer_text: "",
       mission_briefing: "",
       is_active: false,
+      payment_account: "",
+      payment_amount: "",
+      payment_due_date: "",
     });
     setDialogOpen(true);
   };
@@ -152,13 +142,16 @@ export default function RunsPage() {
       footer_text: run.footer_text || "",
       mission_briefing: run.mission_briefing || "",
       is_active: run.is_active,
+      payment_account: run.payment_account || "",
+      payment_amount: run.payment_amount || "",
+      payment_due_date: run.payment_due_date || "",
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.name || !formData.slug || !formData.larp_id) {
-      toast.error("Vyplňte název, slug a vyberte LARP");
+      toast.error("Vyplňte název a slug");
       return;
     }
 
@@ -176,6 +169,9 @@ export default function RunsPage() {
       footer_text: formData.footer_text || null,
       mission_briefing: formData.mission_briefing || null,
       is_active: formData.is_active,
+      payment_account: formData.payment_account?.trim() || null,
+      payment_amount: formData.payment_amount?.trim() || null,
+      payment_due_date: formData.payment_due_date || null,
     };
 
     if (selectedRun) {
@@ -237,39 +233,14 @@ export default function RunsPage() {
               Jednotlivá uvedení vašich LARPů
             </p>
           </div>
-          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!selectedLarpId}>
+          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Nový běh
           </Button>
         </div>
 
-        {/* LARP filter */}
-        <div className="flex items-center gap-4">
-          <Label className="font-mono">LARP:</Label>
-          <Select value={selectedLarpId} onValueChange={setSelectedLarpId}>
-            <SelectTrigger className="w-64 input-vintage">
-              <SelectValue placeholder="Vyberte LARP" />
-            </SelectTrigger>
-            <SelectContent>
-              {larps.map((larp) => (
-                <SelectItem key={larp.id} value={larp.id}>
-                  {larp.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Content */}
-        {larps.length === 0 ? (
-          <PaperCard>
-            <PaperCardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                Nejprve vytvořte LARP v sekci "LARPy"
-              </p>
-            </PaperCardContent>
-          </PaperCard>
-        ) : loading ? (
+        {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -456,6 +427,39 @@ export default function RunsPage() {
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
               <Label>Aktivní běh</Label>
+            </div>
+
+            <div className="border-t pt-4 mt-4 space-y-3">
+              <h4 className="font-typewriter text-sm font-medium">Platba (pro hráče)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Transparentní účet</Label>
+                  <Input
+                    value={formData.payment_account}
+                    onChange={(e) => setFormData({ ...formData, payment_account: e.target.value })}
+                    placeholder="např. 123456789/0800"
+                    className="input-vintage font-mono"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cena (text)</Label>
+                  <Input
+                    value={formData.payment_amount}
+                    onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
+                    placeholder="např. 500 Kč"
+                    className="input-vintage"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Datum splatnosti</Label>
+                <Input
+                  type="date"
+                  value={formData.payment_due_date}
+                  onChange={(e) => setFormData({ ...formData, payment_due_date: e.target.value })}
+                  className="input-vintage w-48"
+                />
+              </div>
             </div>
           </div>
 

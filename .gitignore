@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Env (klíče, hesla – nepřesouvat na GitHub)
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

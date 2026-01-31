@@ -2,9 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { LarpProvider } from "@/hooks/useLarpContext";
 import { PortalProvider } from "@/hooks/usePortalSession";
+import { RunProvider } from "@/hooks/useRunContext";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -25,9 +27,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+/** Redirect /hrac/:token → /portal/:token (zpětná kompatibilita s původním portálem) */
+function RedirectHracToPortal() {
+  const { token } = useParams<{ token: string }>();
+  return <Navigate to={token ? `/portal/${token}` : "/"} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <LarpProvider>
+      <RunProvider>
       <PortalProvider>
         <TooltipProvider>
           <Toaster />
@@ -38,6 +48,10 @@ const App = () => (
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+
+              {/* Alias: původní URL → nové (zpětná kompatibilita) */}
+              <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
+              <Route path="/hrac/:token" element={<RedirectHracToPortal />} />
 
               {/* Admin */}
               <Route path="/admin" element={<AdminDashboard />} />
@@ -60,6 +74,8 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </PortalProvider>
+      </RunProvider>
+      </LarpProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

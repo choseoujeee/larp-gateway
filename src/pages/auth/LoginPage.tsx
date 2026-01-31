@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn, signInAsDevAdmin, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -105,6 +105,21 @@ export default function LoginPage() {
                   "Přihlásit se"
                 )}
               </Button>
+
+              {/* Tlačítko pro vstup do adminu bez účtu – jen pro testování; v produkci skrýt nebo odstranit */}
+              {import.meta.env.DEV && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-3"
+                  onClick={() => {
+                    signInAsDevAdmin();
+                    navigate("/admin");
+                  }}
+                >
+                  Admin (testování bez přihlášení)
+                </Button>
+              )}
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">

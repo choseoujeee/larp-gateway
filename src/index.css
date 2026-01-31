@@ -112,6 +112,42 @@
     --sidebar-border: 25 15% 15%;
     --sidebar-ring: 42 65% 55%;
   }
+
+  /* Téma: Fantasy – tmavší pozadí, zelené/zlaté akcenty */
+  [data-theme="fantasy"] {
+    --background: 120 15% 12%;
+    --foreground: 45 30% 90%;
+    --card: 120 12% 16%;
+    --card-foreground: 45 30% 90%;
+    --popover: 120 12% 14%;
+    --popover-foreground: 45 30% 90%;
+    --primary: 45 60% 45%;
+    --primary-foreground: 120 15% 10%;
+    --secondary: 120 15% 25%;
+    --secondary-foreground: 45 30% 90%;
+    --muted: 120 10% 22%;
+    --muted-foreground: 45 20% 55%;
+    --accent: 45 65% 50%;
+    --accent-foreground: 120 15% 10%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 45 30% 90%;
+    --border: 120 15% 28%;
+    --input: 120 12% 20%;
+    --ring: 45 60% 45%;
+    --doc-organizacni: 120 40% 40%;
+    --doc-herni: 45 55% 45%;
+    --doc-osobni: 280 35% 45%;
+    --doc-cp: 180 35% 40%;
+    --doc-medailonek: 30 50% 40%;
+    --sidebar-background: 120 18% 8%;
+    --sidebar-foreground: 45 30% 88%;
+    --sidebar-primary: 45 60% 50%;
+    --sidebar-primary-foreground: 120 15% 8%;
+    --sidebar-accent: 120 12% 18%;
+    --sidebar-accent-foreground: 45 30% 88%;
+    --sidebar-border: 120 15% 18%;
+    --sidebar-ring: 45 60% 50%;
+  }
 }
 
 @layer base {
@@ -248,5 +284,19 @@
 
   h1, h2, h3 {
     page-break-after: avoid;
+  }
+
+  /* Když je nastaveno data-print-category, zobrazit jen karty s odpovídajícím data-category */
+  body[data-print-category="organizacni"] .paper-card:not([data-category="organizacni"]) {
+    display: none !important;
+  }
+  body[data-print-category="herni"] .paper-card:not([data-category="herni"]) {
+    display: none !important;
+  }
+  body[data-print-category="osobni"] .paper-card:not([data-category="osobni"]) {
+    display: none !important;
+  }
+  body[data-print-category="cp"] .paper-card:not([data-category="cp"]) {
+    display: none !important;
   }
 }

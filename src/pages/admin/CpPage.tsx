@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Run {
-  id: string;
-  name: string;
-  larp_id: string;
-  larps?: { name: string };
-}
+import { useRunContext } from "@/hooks/useRunContext";
 
 interface CP {
   id: string;
@@ -45,9 +38,8 @@ interface CP {
 }
 
 export default function CpPage() {
-  const [runs, setRuns] = useState<Run[]>([]);
+  const { runs, selectedRunId } = useRunContext();
   const [cps, setCps] = useState<CP[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -61,17 +53,6 @@ export default function CpPage() {
     password: "",
   });
   const [saving, setSaving] = useState(false);
-
-  const fetchRuns = async () => {
-    const { data } = await supabase
-      .from("runs")
-      .select("id, name, larp_id, larps(name)")
-      .order("date_from", { ascending: false });
-    setRuns(data || []);
-    if (data && data.length > 0 && !selectedRunId) {
-      setSelectedRunId(data[0].id);
-    }
-  };
 
   const fetchCps = async () => {
     if (!selectedRunId) return;
@@ -91,10 +72,6 @@ export default function CpPage() {
     setCps(data || []);
     setLoading(false);
   };
-
-  useEffect(() => {
-    fetchRuns();
-  }, []);
 
   useEffect(() => {
     if (selectedRunId) {
@@ -234,21 +211,6 @@ export default function CpPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label className="font-mono">Běh:</Label>
-            <Select value={selectedRunId} onValueChange={setSelectedRunId}>
-              <SelectTrigger className="w-64 input-vintage">
-                <SelectValue placeholder="Vyberte běh" />
-              </SelectTrigger>
-              <SelectContent>
-                {runs.map((run) => (
-                  <SelectItem key={run.id} value={run.id}>
-                    {run.larps?.name} - {run.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <Input
             placeholder="Hledat CP nebo performera..."
             value={searchTerm}

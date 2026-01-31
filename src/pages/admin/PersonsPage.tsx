@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Copy, Loader2, Users, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, Loader2, Users, CheckCircle, Circle } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -25,13 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Run {
-  id: string;
-  name: string;
-  larp_id: string;
-  larps?: { name: string };
-}
+import { useRunContext } from "@/hooks/useRunContext";
 
 interface Person {
   id: string;
@@ -40,12 +33,13 @@ interface Person {
   name: string;
   group_name: string | null;
   access_token: string;
+  /** Kdy hráč uhradil platbu (null = neuhrazeno) */
+  paid_at: string | null;
 }
 
 export default function PersonsPage() {
-  const [runs, setRuns] = useState<Run[]>([]);
+  const { runs, selectedRunId } = useRunContext();
   const [persons, setPersons] = useState<Person[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -58,17 +52,6 @@ export default function PersonsPage() {
     password: "",
   });
   const [saving, setSaving] = useState(false);
-
-  const fetchRuns = async () => {
-    const { data } = await supabase
-      .from("runs")
-      .select("id, name, larp_id, larps(name)")
-      .order("date_from", { ascending: false });
-    setRuns(data || []);
-    if (data && data.length > 0 && !selectedRunId) {
-      setSelectedRunId(data[0].id);
-    }
-  };
 
   const fetchPersons = async () => {
     if (!selectedRunId) return;
@@ -89,10 +72,6 @@ export default function PersonsPage() {
     setPersons(data || []);
     setLoading(false);
   };
-
-  useEffect(() => {
-    fetchRuns();
-  }, []);
 
   useEffect(() => {
     if (selectedRunId) {
@@ -212,6 +191,22 @@ export default function PersonsPage() {
     toast.success("Odkaz zkopírován do schránky");
   };
 
+  /** Přepnutí stavu zaplaceno u osoby (nastaví paid_at na teď nebo null) */
+  const togglePaid = async (person: Person) => {
+    const newPaidAt = person.paid_at ? null : new Date().toISOString();
+    const { error } = await supabase
+      .from("persons")
+      .update({ paid_at: newPaidAt })
+      .eq("id", person.id);
+
+    if (error) {
+      toast.error("Chyba při změně stavu platby");
+      return;
+    }
+    toast.success(newPaidAt ? "Označeno jako zaplaceno" : "Zrušeno označení zaplaceno");
+    fetchPersons();
+  };
+
   const filteredPersons = persons.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -243,21 +238,6 @@ export default function PersonsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label className="font-mono">Běh:</Label>
-            <Select value={selectedRunId} onValueChange={setSelectedRunId}>
-              <SelectTrigger className="w-64 input-vintage">
-                <SelectValue placeholder="Vyberte běh" />
-              </SelectTrigger>
-              <SelectContent>
-                {runs.map((run) => (
-                  <SelectItem key={run.id} value={run.id}>
-                    {run.larps?.name} - {run.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <Input
             placeholder="Hledat postavu..."
             value={searchTerm}
@@ -312,8 +292,26 @@ export default function PersonsPage() {
                             <p className="text-xs text-muted-foreground font-mono">
                               {person.slug}
                             </p>
+                            {person.paid_at != null && (
+                              <span className="inline-flex items-center gap-1 mt-1 text-xs text-green-600 dark:text-green-400">
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                Zaplaceno
+                              </span>
+                            )}
                           </div>
                           <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => togglePaid(person)}
+                              title={person.paid_at ? "Zrušit označení zaplaceno" : "Označit jako zaplaceno"}
+                            >
+                              {person.paid_at ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

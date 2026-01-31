@@ -11,11 +11,16 @@ import {
   Link as LinkIcon, 
   Printer,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { useLarpContext } from "@/hooks/useLarpContext";
+import { useRunContext } from "@/hooks/useRunContext";
+import LarpPickerPage from "@/pages/admin/LarpPickerPage";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -35,6 +40,8 @@ const navigation = [
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { user, loading, signOut } = useAuth();
+  const { currentLarpId, currentLarp, setCurrentLarpId, loading: larpsLoading } = useLarpContext();
+  const { runs, selectedRunId, setSelectedRunId, loading: runsLoading } = useRunContext();
   const location = useLocation();
 
   if (loading) {
@@ -53,23 +60,33 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return <Navigate to="/login" replace />;
   }
 
+  // Po přihlášení nejdřív výběr LARPu (pokud není vybraný)
+  if (!larpsLoading && !currentLarpId) {
+    return <LarpPickerPage />;
+  }
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="no-print w-64 flex-shrink-0 border-r border-sidebar-border bg-sidebar">
         <div className="flex h-full flex-col">
-          {/* Logo */}
+          {/* Logo + aktuální LARP */}
           <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-sidebar-primary">
               <FileText className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
-            <div>
-              <h1 className="font-typewriter text-sm tracking-wider text-sidebar-foreground">
-                LARP PORTÁL
+            <div className="min-w-0 flex-1">
+              <h1 className="font-typewriter text-sm tracking-wider text-sidebar-foreground truncate">
+                {currentLarp?.name ?? "LARP"}
               </h1>
-              <p className="text-[10px] text-sidebar-foreground/60 tracking-widest uppercase">
-                Administrace
-              </p>
+              <button
+                type="button"
+                onClick={() => setCurrentLarpId(null)}
+                className="text-[10px] text-sidebar-foreground/60 tracking-widest uppercase hover:text-sidebar-foreground flex items-center gap-1"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Změnit LARP
+              </button>
             </div>
           </div>
 
@@ -98,10 +115,34 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           {/* User info */}
           <div className="border-t border-sidebar-border p-4">
-            <div className="mb-3 text-xs text-sidebar-foreground/60 truncate">
-              {user.email}
+          {/* Výběr aktuálního běhu */}
+          {runs.length > 0 && (
+            <div className="mb-3">
+              <label className="text-[10px] text-sidebar-foreground/60 tracking-widest uppercase block mb-1.5">
+                Aktuální běh
+              </label>
+              <Select
+                value={selectedRunId}
+                onValueChange={setSelectedRunId}
+                disabled={runsLoading}
+              >
+                <SelectTrigger className="h-8 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground">
+                  <SelectValue placeholder="Vyberte běh" />
+                </SelectTrigger>
+                <SelectContent>
+                  {runs.map((run) => (
+                    <SelectItem key={run.id} value={run.id} className="text-xs">
+                      {run.larps?.name ?? "LARP"} – {run.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button 
+          )}
+          <div className="mb-3 text-xs text-sidebar-foreground/60 truncate">
+            {user.email}
+          </div>
+          <Button
               variant="ghost" 
               size="sm" 
               onClick={signOut}

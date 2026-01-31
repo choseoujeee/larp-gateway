@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -43,10 +44,15 @@ export default function LarpsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLarp, setSelectedLarp] = useState<Larp | null>(null);
+  const THEME_OPTIONS = [
+    { value: "wwii", label: "WWII / historie" },
+    { value: "fantasy", label: "Fantasy" },
+  ];
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
     description: "",
+    theme: "wwii",
   });
   const [saving, setSaving] = useState(false);
 
@@ -80,7 +86,7 @@ export default function LarpsPage() {
 
   const openCreateDialog = () => {
     setSelectedLarp(null);
-    setFormData({ name: "", slug: "", description: "" });
+    setFormData({ name: "", slug: "", description: "", theme: "wwii" });
     setDialogOpen(true);
   };
 
@@ -90,6 +96,7 @@ export default function LarpsPage() {
       name: larp.name,
       slug: larp.slug,
       description: larp.description || "",
+      theme: larp.theme && ["wwii", "fantasy"].includes(larp.theme) ? larp.theme : "wwii",
     });
     setDialogOpen(true);
   };
@@ -108,13 +115,13 @@ export default function LarpsPage() {
     setSaving(true);
 
     if (selectedLarp) {
-      // Update
       const { error } = await supabase
         .from("larps")
         .update({
           name: formData.name,
           slug: formData.slug,
           description: formData.description || null,
+          theme: formData.theme || null,
         })
         .eq("id", selectedLarp.id);
 
@@ -131,6 +138,7 @@ export default function LarpsPage() {
         name: formData.name,
         slug: formData.slug,
         description: formData.description || null,
+        theme: formData.theme || null,
         owner_id: user?.id,
       });
 
@@ -287,6 +295,28 @@ export default function LarpsPage() {
               />
               <p className="text-xs text-muted-foreground">
                 Používá se v URL adresách, pouze malá písmena a pomlčky
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Vizuální téma</Label>
+              <Select
+                value={formData.theme}
+                onValueChange={(v) => setFormData({ ...formData, theme: v })}
+              >
+                <SelectTrigger className="input-vintage">
+                  <SelectValue placeholder="Vyberte téma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {THEME_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Určuje barvy a styl portálu a landingu pro tento LARP
               </p>
             </div>
 
