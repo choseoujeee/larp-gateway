@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Copy, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -25,20 +25,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useRunContext } from "@/hooks/useRunContext";
+import { useLarpContext } from "@/hooks/useLarpContext";
 
 interface CP {
   id: string;
-  run_id: string;
+  larp_id: string;
   slug: string;
   name: string;
   performer: string | null;
   performance_times: string | null;
-  access_token: string;
 }
 
 export default function CpPage() {
-  const { runs, selectedRunId } = useRunContext();
+  const { currentLarpId, currentLarp } = useLarpContext();
   const [cps, setCps] = useState<CP[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -55,12 +54,12 @@ export default function CpPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchCps = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
     
     const { data, error } = await supabase
       .from("persons")
-      .select("*")
-      .eq("run_id", selectedRunId)
+      .select("id, larp_id, slug, name, performer, performance_times")
+      .eq("larp_id", currentLarpId)
       .eq("type", "cp")
       .order("name", { ascending: true });
 
@@ -74,11 +73,11 @@ export default function CpPage() {
   };
 
   useEffect(() => {
-    if (selectedRunId) {
+    if (currentLarpId) {
       setLoading(true);
       fetchCps();
     }
-  }, [selectedRunId]);
+  }, [currentLarpId]);
 
   const generateSlug = (name: string) => {
     return name
@@ -140,19 +139,20 @@ export default function CpPage() {
       }
       toast.success("CP upraveno");
     } else {
+      // Using type assertion until types.ts is regenerated with larp_id
       const { error } = await supabase.from("persons").insert({
-        run_id: selectedRunId,
+        larp_id: currentLarpId,
         type: "cp" as const,
         name: formData.name,
         slug: formData.slug,
         performer: formData.performer || null,
         performance_times: formData.performance_times || null,
         password_hash: formData.password,
-      });
+      } as never);
 
       if (error) {
         if (error.code === "23505") {
-          toast.error("Slug už existuje v tomto běhu");
+          toast.error("Slug už existuje v tomto LARPu");
         } else {
           toast.error("Chyba při vytváření");
         }
@@ -182,12 +182,6 @@ export default function CpPage() {
     fetchCps();
   };
 
-  const copyAccessLink = (cp: CP) => {
-    const url = `${window.location.origin}/portal/${cp.access_token}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Odkaz zkopírován do schránky");
-  };
-
   const filteredCps = cps.filter(
     (cp) =>
       cp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -197,19 +191,19 @@ export default function CpPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-typewriter text-3xl tracking-wide mb-2">Cizí postavy</h1>
-            <p className="text-muted-foreground">CP a jejich přístupy k materiálům</p>
+            <p className="text-muted-foreground">
+              CP a NPC pro LARP {currentLarp?.name}
+            </p>
           </div>
-          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!selectedRunId}>
+          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Nová CP
           </Button>
         </div>
 
-        {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
           <Input
             placeholder="Hledat CP nebo performera..."
@@ -219,12 +213,11 @@ export default function CpPage() {
           />
         </div>
 
-        {/* Content */}
-        {runs.length === 0 ? (
+        {!currentLarpId ? (
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground">
-                Nejprve vytvořte LARP a běh
+                Nejprve vyberte LARP
               </p>
             </PaperCardContent>
           </PaperCard>
@@ -236,7 +229,7 @@ export default function CpPage() {
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-4">
-                Tento běh zatím nemá žádné cizí postavy
+                Tento LARP zatím nemá žádné cizí postavy
               </p>
               <Button onClick={openCreateDialog} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
@@ -270,14 +263,6 @@ export default function CpPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => copyAccessLink(cp)}
-                        title="Kopírovat odkaz"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
                         onClick={() => openEditDialog(cp)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -302,7 +287,6 @@ export default function CpPage() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="paper-card">
           <DialogHeader>
@@ -369,6 +353,9 @@ export default function CpPage() {
                 placeholder={selectedCp ? "••••••••" : "Přístupové heslo"}
                 className="input-vintage"
               />
+              <p className="text-xs text-muted-foreground">
+                Toto heslo se použije při přiřazení k běhu
+              </p>
             </div>
           </div>
 
@@ -384,7 +371,6 @@ export default function CpPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="paper-card">
           <AlertDialogHeader>

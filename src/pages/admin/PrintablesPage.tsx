@@ -23,13 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useRunContext } from "@/hooks/useRunContext";
+import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Printable {
   id: string;
-  run_id: string;
+  larp_id: string;
   title: string;
   url: string | null;
   print_instructions: string | null;
@@ -37,7 +37,7 @@ interface Printable {
 }
 
 export default function PrintablesPage() {
-  const { runs, selectedRunId } = useRunContext();
+  const { currentLarpId, currentLarp } = useLarpContext();
   const [items, setItems] = useState<Printable[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -52,12 +52,12 @@ export default function PrintablesPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchItems = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("printables")
       .select("*")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("sort_order", { ascending: true })
       .order("title");
     if (error) {
@@ -69,8 +69,8 @@ export default function PrintablesPage() {
   };
 
   useEffect(() => {
-    if (selectedRunId) fetchItems();
-  }, [selectedRunId]);
+    if (currentLarpId) fetchItems();
+  }, [currentLarpId]);
 
   const openCreate = () => {
     setSelectedItem(null);
@@ -96,7 +96,7 @@ export default function PrintablesPage() {
     }
     setSaving(true);
     const payload = {
-      run_id: selectedRunId,
+      larp_id: currentLarpId,
       title: formData.title,
       url: formData.url || null,
       print_instructions: formData.print_instructions || null,
@@ -107,10 +107,11 @@ export default function PrintablesPage() {
       if (error) {
         toast.error("Chyba při ukládání");
       } else {
-        toast.success("Tiskovina upravena");
+      toast.success("Tiskovina upravena");
       }
     } else {
-      const { error } = await supabase.from("printables").insert(payload);
+      // Using type assertion until types.ts is regenerated with larp_id
+      const { error } = await supabase.from("printables").insert(payload as never);
       if (error) {
         toast.error("Chyba při vytváření");
       } else {
@@ -140,18 +141,20 @@ export default function PrintablesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-typewriter text-3xl tracking-wide mb-2">Tiskoviny</h1>
-            <p className="text-muted-foreground">Materiály k tisku</p>
+            <p className="text-muted-foreground">
+              Materiály k tisku pro LARP {currentLarp?.name}
+            </p>
           </div>
-          <Button onClick={openCreate} className="btn-vintage" disabled={!selectedRunId}>
+          <Button onClick={openCreate} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Přidat tiskovinu
           </Button>
         </div>
 
-        {runs.length === 0 ? (
+        {!currentLarpId ? (
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Nejprve vytvořte LARP a běh.</p>
+              <p className="text-muted-foreground">Nejprve vyberte LARP.</p>
             </PaperCardContent>
           </PaperCard>
         ) : loading ? (

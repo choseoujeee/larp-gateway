@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           doc_type: Database["public"]["Enums"]["document_type"]
           id: string
+          larp_id: string | null
           run_id: string
           sort_order: number | null
           target_group: string | null
@@ -33,6 +34,7 @@ export type Database = {
           created_at?: string
           doc_type: Database["public"]["Enums"]["document_type"]
           id?: string
+          larp_id?: string | null
           run_id: string
           sort_order?: number | null
           target_group?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           created_at?: string
           doc_type?: Database["public"]["Enums"]["document_type"]
           id?: string
+          larp_id?: string | null
           run_id?: string
           sort_order?: number | null
           target_group?: string | null
@@ -55,6 +58,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_run_id_fkey"
             columns: ["run_id"]
@@ -146,6 +156,7 @@ export type Database = {
           created_at: string
           group_name: string | null
           id: string
+          larp_id: string | null
           name: string
           paid_at: string | null
           password_hash: string
@@ -161,6 +172,7 @@ export type Database = {
           created_at?: string
           group_name?: string | null
           id?: string
+          larp_id?: string | null
           name: string
           paid_at?: string | null
           password_hash: string
@@ -176,6 +188,7 @@ export type Database = {
           created_at?: string
           group_name?: string | null
           id?: string
+          larp_id?: string | null
           name?: string
           paid_at?: string | null
           password_hash?: string
@@ -187,6 +200,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "persons_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "persons_run_id_fkey"
             columns: ["run_id"]
@@ -200,6 +220,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          larp_id: string | null
           print_instructions: string | null
           run_id: string
           sort_order: number | null
@@ -209,6 +230,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          larp_id?: string | null
           print_instructions?: string | null
           run_id: string
           sort_order?: number | null
@@ -218,6 +240,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          larp_id?: string | null
           print_instructions?: string | null
           run_id?: string
           sort_order?: number | null
@@ -225,6 +248,13 @@ export type Database = {
           url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "printables_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "printables_run_id_fkey"
             columns: ["run_id"]
@@ -239,6 +269,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          larp_id: string | null
           link_type: string | null
           run_id: string
           sort_order: number | null
@@ -249,6 +280,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          larp_id?: string | null
           link_type?: string | null
           run_id: string
           sort_order?: number | null
@@ -259,6 +291,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          larp_id?: string | null
           link_type?: string | null
           run_id?: string
           sort_order?: number | null
@@ -267,7 +300,68 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "production_links_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "production_links_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_person_assignments: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          id: string
+          paid_at: string | null
+          password_hash: string
+          person_id: string
+          player_email: string | null
+          player_name: string | null
+          run_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          password_hash: string
+          person_id: string
+          player_email?: string | null
+          player_name?: string | null
+          run_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          password_hash?: string
+          person_id?: string
+          player_email?: string | null
+          player_name?: string | null
+          run_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_person_assignments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_person_assignments_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
@@ -408,14 +502,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_person_assignment_with_password: {
+        Args: {
+          p_password: string
+          p_person_id: string
+          p_player_email?: string
+          p_player_name?: string
+          p_run_id: string
+        }
+        Returns: string
+      }
       create_person_with_password: {
         Args: {
           p_group_name?: string
+          p_larp_id: string
           p_name: string
           p_password: string
           p_performance_times?: string
           p_performer?: string
-          p_run_id: string
           p_slug: string
           p_type: Database["public"]["Enums"]["person_type"]
         }

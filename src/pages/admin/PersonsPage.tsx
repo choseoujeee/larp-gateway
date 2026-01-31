@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Copy, Loader2, Users, CheckCircle, Circle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -24,21 +24,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useRunContext } from "@/hooks/useRunContext";
+import { useLarpContext } from "@/hooks/useLarpContext";
 
 interface Person {
   id: string;
-  run_id: string;
+  larp_id: string;
   slug: string;
   name: string;
   group_name: string | null;
-  access_token: string;
-  /** Kdy hráč uhradil platbu (null = neuhrazeno) - optional pro kompatibilitu */
-  paid_at?: string | null;
 }
 
 export default function PersonsPage() {
-  const { runs, selectedRunId } = useRunContext();
+  const { currentLarpId, currentLarp } = useLarpContext();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,12 +51,12 @@ export default function PersonsPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchPersons = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
     
     const { data, error } = await supabase
       .from("persons")
-      .select("*")
-      .eq("run_id", selectedRunId)
+      .select("id, larp_id, slug, name, group_name")
+      .eq("larp_id", currentLarpId)
       .eq("type", "postava")
       .order("group_name", { ascending: true })
       .order("name", { ascending: true });
@@ -74,11 +71,11 @@ export default function PersonsPage() {
   };
 
   useEffect(() => {
-    if (selectedRunId) {
+    if (currentLarpId) {
       setLoading(true);
       fetchPersons();
     }
-  }, [selectedRunId]);
+  }, [currentLarpId]);
 
   const generateSlug = (name: string) => {
     return name
@@ -126,7 +123,6 @@ export default function PersonsPage() {
         group_name: formData.group_name || null,
       };
 
-      // Update password only if provided
       if (formData.password) {
         updateData.password_hash = formData.password;
       }
@@ -143,19 +139,18 @@ export default function PersonsPage() {
       }
       toast.success("Postava upravena");
     } else {
-      // For new person, use raw insert with crypt function in SQL
+      // Using type assertion until types.ts is regenerated with larp_id
       const { error } = await supabase.from("persons").insert({
-        run_id: selectedRunId,
+        larp_id: currentLarpId,
         type: "postava" as const,
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
-        password_hash: formData.password, // Will be hashed via trigger or we need RPC
-      });
-
+        password_hash: formData.password,
+      } as never);
       if (error) {
         if (error.code === "23505") {
-          toast.error("Slug už existuje v tomto běhu");
+          toast.error("Slug už existuje v tomto LARPu");
         } else {
           toast.error("Chyba při vytváření");
         }
@@ -185,35 +180,12 @@ export default function PersonsPage() {
     fetchPersons();
   };
 
-  const copyAccessLink = (person: Person) => {
-    const url = `${window.location.origin}/portal/${person.access_token}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Odkaz zkopírován do schránky");
-  };
-
-  /** Přepnutí stavu zaplaceno u osoby (nastaví paid_at na teď nebo null) */
-  const togglePaid = async (person: Person) => {
-    const newPaidAt = person.paid_at ? null : new Date().toISOString();
-    const { error } = await supabase
-      .from("persons")
-      .update({ paid_at: newPaidAt } as Record<string, unknown>)
-      .eq("id", person.id);
-
-    if (error) {
-      toast.error("Chyba při změně stavu platby");
-      return;
-    }
-    toast.success(newPaidAt ? "Označeno jako zaplaceno" : "Zrušeno označení zaplaceno");
-    fetchPersons();
-  };
-
   const filteredPersons = persons.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.group_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
-  // Group by group_name
   const groupedPersons = filteredPersons.reduce((acc, person) => {
     const group = person.group_name || "Bez skupiny";
     if (!acc[group]) acc[group] = [];
@@ -224,19 +196,19 @@ export default function PersonsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-typewriter text-3xl tracking-wide mb-2">Postavy</h1>
-            <p className="text-muted-foreground">Hráčské postavy a jejich přístupy</p>
+            <p className="text-muted-foreground">
+              Herní postavy LARPu {currentLarp?.name}
+            </p>
           </div>
-          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!selectedRunId}>
+          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Nová postava
           </Button>
         </div>
 
-        {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
           <Input
             placeholder="Hledat postavu..."
@@ -246,12 +218,11 @@ export default function PersonsPage() {
           />
         </div>
 
-        {/* Content */}
-        {runs.length === 0 ? (
+        {!currentLarpId ? (
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground">
-                Nejprve vytvořte LARP a běh
+                Nejprve vyberte LARP
               </p>
             </PaperCardContent>
           </PaperCard>
@@ -263,7 +234,7 @@ export default function PersonsPage() {
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-4">
-                Tento běh zatím nemá žádné postavy
+                Tento LARP zatím nemá žádné postavy
               </p>
               <Button onClick={openCreateDialog} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
@@ -292,34 +263,8 @@ export default function PersonsPage() {
                             <p className="text-xs text-muted-foreground font-mono">
                               {person.slug}
                             </p>
-                            {person.paid_at != null && (
-                              <span className="inline-flex items-center gap-1 mt-1 text-xs text-green-600 dark:text-green-400">
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                Zaplaceno
-                              </span>
-                            )}
                           </div>
                           <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => togglePaid(person)}
-                              title={person.paid_at ? "Zrušit označení zaplaceno" : "Označit jako zaplaceno"}
-                            >
-                              {person.paid_at ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => copyAccessLink(person)}
-                              title="Kopírovat odkaz"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -350,7 +295,6 @@ export default function PersonsPage() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="paper-card">
           <DialogHeader>
@@ -406,6 +350,9 @@ export default function PersonsPage() {
                 placeholder={selectedPerson ? "••••••••" : "Přístupové heslo"}
                 className="input-vintage"
               />
+              <p className="text-xs text-muted-foreground">
+                Toto heslo se použije při přiřazení k běhu
+              </p>
             </div>
           </div>
 
@@ -421,7 +368,6 @@ export default function PersonsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="paper-card">
           <AlertDialogHeader>

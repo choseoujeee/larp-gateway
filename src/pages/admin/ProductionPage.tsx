@@ -23,13 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useRunContext } from "@/hooks/useRunContext";
+import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ProductionLink {
   id: string;
-  run_id: string;
+  larp_id: string;
   title: string;
   url: string;
   description: string | null;
@@ -38,7 +38,7 @@ interface ProductionLink {
 }
 
 export default function ProductionPage() {
-  const { runs, selectedRunId } = useRunContext();
+  const { currentLarpId, currentLarp } = useLarpContext();
   const [items, setItems] = useState<ProductionLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,12 +54,12 @@ export default function ProductionPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchItems = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("production_links")
       .select("*")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("sort_order", { ascending: true })
       .order("title");
     if (error) {
@@ -71,8 +71,8 @@ export default function ProductionPage() {
   };
 
   useEffect(() => {
-    if (selectedRunId) fetchItems();
-  }, [selectedRunId]);
+    if (currentLarpId) fetchItems();
+  }, [currentLarpId]);
 
   const openCreate = () => {
     setSelectedItem(null);
@@ -99,7 +99,7 @@ export default function ProductionPage() {
     }
     setSaving(true);
     const payload = {
-      run_id: selectedRunId,
+      larp_id: currentLarpId,
       title: formData.title,
       url: formData.url,
       description: formData.description || null,
@@ -111,10 +111,11 @@ export default function ProductionPage() {
       if (error) {
         toast.error("Chyba při ukládání");
       } else {
-        toast.success("Odkaz upraven");
+      toast.success("Odkaz upraven");
       }
     } else {
-      const { error } = await supabase.from("production_links").insert(payload);
+      // Using type assertion until types.ts is regenerated with larp_id
+      const { error } = await supabase.from("production_links").insert(payload as never);
       if (error) {
         toast.error("Chyba při vytváření");
       } else {
@@ -144,18 +145,20 @@ export default function ProductionPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-typewriter text-3xl tracking-wide mb-2">Produkce</h1>
-            <p className="text-muted-foreground">Užitečné odkazy a materiály</p>
+            <p className="text-muted-foreground">
+              Užitečné odkazy a materiály pro LARP {currentLarp?.name}
+            </p>
           </div>
-          <Button onClick={openCreate} className="btn-vintage" disabled={!selectedRunId}>
+          <Button onClick={openCreate} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Přidat odkaz
           </Button>
         </div>
 
-        {runs.length === 0 ? (
+        {!currentLarpId ? (
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Nejprve vytvořte LARP a běh.</p>
+              <p className="text-muted-foreground">Nejprve vyberte LARP.</p>
             </PaperCardContent>
           </PaperCard>
         ) : loading ? (

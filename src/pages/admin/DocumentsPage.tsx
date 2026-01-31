@@ -30,7 +30,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
-import { useRunContext } from "@/hooks/useRunContext";
+import { useLarpContext } from "@/hooks/useLarpContext";
 
 interface Person {
   id: string;
@@ -41,7 +41,7 @@ interface Person {
 
 interface Document {
   id: string;
-  run_id: string;
+  larp_id: string;
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
@@ -52,7 +52,7 @@ interface Document {
 }
 
 export default function DocumentsPage() {
-  const { runs, selectedRunId } = useRunContext();
+  const { currentLarpId, currentLarp } = useLarpContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
@@ -76,12 +76,12 @@ export default function DocumentsPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchDocuments = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
     
     const { data, error } = await supabase
       .from("documents")
       .select("*")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("doc_type")
       .order("sort_order")
       .order("title");
@@ -96,12 +96,12 @@ export default function DocumentsPage() {
   };
 
   const fetchPersons = async () => {
-    if (!selectedRunId) return;
+    if (!currentLarpId) return;
 
     const { data } = await supabase
       .from("persons")
       .select("id, name, group_name, type")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("name");
 
     setPersons(data || []);
@@ -116,12 +116,12 @@ export default function DocumentsPage() {
   };
 
   useEffect(() => {
-    if (selectedRunId) {
+    if (currentLarpId) {
       setLoading(true);
       fetchDocuments();
       fetchPersons();
     }
-  }, [selectedRunId]);
+  }, [currentLarpId]);
 
   const openCreateDialog = () => {
     setSelectedDoc(null);
@@ -166,7 +166,7 @@ export default function DocumentsPage() {
     setSaving(true);
 
     const payload = {
-      run_id: selectedRunId,
+      larp_id: currentLarpId,
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
@@ -192,9 +192,10 @@ export default function DocumentsPage() {
       documentId = selectedDoc.id;
       toast.success("Dokument upraven");
     } else {
+      // Using type assertion until types.ts is regenerated with larp_id
       const { data: inserted, error } = await supabase
         .from("documents")
-        .insert(payload)
+        .insert(payload as never)
         .select("id")
         .single();
 
@@ -292,9 +293,9 @@ export default function DocumentsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-typewriter text-3xl tracking-wide mb-2">Dokumenty</h1>
-            <p className="text-muted-foreground">Herní a organizační texty</p>
+            <p className="text-muted-foreground">Herní a organizační texty pro LARP {currentLarp?.name}</p>
           </div>
-          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!selectedRunId}>
+          <Button onClick={openCreateDialog} className="btn-vintage" disabled={!currentLarpId}>
             <Plus className="mr-2 h-4 w-4" />
             Nový dokument
           </Button>
@@ -343,11 +344,11 @@ export default function DocumentsPage() {
         </div>
 
         {/* Content */}
-        {runs.length === 0 ? (
+        {!currentLarpId ? (
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground">
-                Nejprve vytvořte LARP a běh
+                Nejprve vyberte LARP
               </p>
             </PaperCardContent>
           </PaperCard>
@@ -359,7 +360,7 @@ export default function DocumentsPage() {
           <PaperCard>
             <PaperCardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-4">
-                Tento běh zatím nemá žádné dokumenty
+                Tento LARP zatím nemá žádné dokumenty
               </p>
               <Button onClick={openCreateDialog} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
@@ -650,7 +651,7 @@ export default function DocumentsPage() {
               <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
                 <div className="space-y-2">
                   {persons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">V tomto běhu zatím nejsou žádné osoby.</p>
+                    <p className="text-xs text-muted-foreground">V tomto LARPu zatím nejsou žádné osoby.</p>
                   ) : (
                     persons.map((person) => (
                       <label
