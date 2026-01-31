@@ -84,16 +84,11 @@ export function DocumentListItem({
 
   return (
     <PaperCard>
-      <PaperCardContent className="py-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            {/* Title row */}
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <h4 className="font-typewriter text-base">{doc.title}</h4>
-            </div>
-
-            {/* Tags row */}
-            <div className="flex items-center gap-2 flex-wrap">
+      <PaperCardContent className="py-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-wrap flex-1 min-w-0">
+            {/* Title */}
+            <h4 className="font-typewriter text-base whitespace-nowrap">{doc.title}</h4>
               {/* Target type badge */}
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                 {getTargetLabel()}
@@ -154,11 +149,10 @@ export function DocumentListItem({
                   </Tooltip>
                 </TooltipProvider>
               )}
-            </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-1 ml-4 flex-shrink-0">
+          <div className="flex gap-1 flex-shrink-0">
             <Button variant="ghost" size="icon" onClick={onEdit}>
               <Pencil className="h-4 w-4" />
             </Button>
