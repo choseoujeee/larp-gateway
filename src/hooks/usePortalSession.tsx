@@ -20,6 +20,7 @@ interface PortalSession {
   runLocation: string | null;
   runAddress: string | null;
   missionBriefing: string | null;
+  medailonek: string | null;
 }
 
 /** Řádek vrácený RPC verify_person_by_slug (snake_case z DB) */
@@ -41,6 +42,7 @@ interface VerifyPersonBySlugRow {
   run_location: string | null;
   run_address: string | null;
   mission_briefing: string | null;
+  person_medailonek: string | null;
 }
 
 interface PortalContextType {
@@ -118,6 +120,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         runLocation: row.run_location ?? null,
         runAddress: row.run_address ?? null,
         missionBriefing: row.mission_briefing ?? null,
+        medailonek: row.person_medailonek ?? null,
       };
 
       setSession(newSession);
