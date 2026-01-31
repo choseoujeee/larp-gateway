@@ -457,6 +457,34 @@ export default function PersonsPage() {
     : { "Všechny postavy": [...filteredPersons].sort((a, b) => a.name.localeCompare(b.name, "cs")) };
 
   // Detail view
+  // Helper component for document row
+  const DocumentRow = ({ doc, onClick }: { doc: PersonDocument; onClick: () => void }) => (
+    <div
+      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        <FileText className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">{doc.title}</span>
+        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="px-2 py-0.5 rounded bg-muted">
+          {doc.doc_type === "organizacni" && "Organizační"}
+          {doc.doc_type === "herni" && "Herní"}
+          {doc.doc_type === "postava" && "Postava"}
+          {doc.doc_type === "medailonek" && "Medailonek"}
+          {doc.doc_type === "cp" && "CP"}
+        </span>
+        {doc.priority === 1 && (
+          <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
+            Prioritní
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   if (detailPerson) {
     return (
       <AdminLayout>
@@ -582,39 +610,58 @@ export default function PersonsPage() {
                   Tato postava zatím nemá žádné přístupné dokumenty.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {personDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
-                      onClick={() => openDocumentEditDialog(doc)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{doc.title}</span>
-                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="space-y-4">
+                  {/* Dokumenty pro všechny */}
+                  {(() => {
+                    const docsVsichni = personDocuments.filter(d => d.target_type === "vsichni");
+                    if (docsVsichni.length === 0) return null;
+                    return (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                          Dokumenty všech
+                        </h4>
+                        {docsVsichni.map((doc) => (
+                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-0.5 rounded bg-muted">
-                          {doc.doc_type === "organizacni" && "Organizační"}
-                          {doc.doc_type === "herni" && "Herní"}
-                          {doc.doc_type === "postava" && "Postava"}
-                          {doc.doc_type === "medailonek" && "Medailonek"}
-                          {doc.doc_type === "cp" && "CP"}
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-muted/50">
-                          {doc.target_type === "vsichni" && "Všichni"}
-                          {doc.target_type === "skupina" && "Skupina"}
-                          {doc.target_type === "osoba" && "Osobní"}
-                        </span>
-                        {doc.priority === 1 && (
-                          <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
-                            Prioritní
-                          </span>
-                        )}
+                    );
+                  })()}
+                  
+                  {/* Dokumenty skupiny */}
+                  {(() => {
+                    const docsSkupina = personDocuments.filter(d => d.target_type === "skupina");
+                    if (docsSkupina.length === 0) return null;
+                    return (
+                      <div className="space-y-2">
+                        <div className="border-t border-border pt-4">
+                          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                            Dokumenty skupiny {detailPerson.group_name && `(${detailPerson.group_name})`}
+                          </h4>
+                        </div>
+                        {docsSkupina.map((doc) => (
+                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
+                        ))}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
+                  
+                  {/* Individuální dokumenty */}
+                  {(() => {
+                    const docsOsoba = personDocuments.filter(d => d.target_type === "osoba");
+                    if (docsOsoba.length === 0) return null;
+                    return (
+                      <div className="space-y-2">
+                        <div className="border-t border-border pt-4">
+                          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                            Individuální dokumenty
+                          </h4>
+                        </div>
+                        {docsOsoba.map((doc) => (
+                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </PaperCardContent>
