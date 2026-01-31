@@ -24,7 +24,9 @@ import PrintablesPage from "./pages/admin/PrintablesPage";
 import RunAssignmentsPage from "./pages/admin/RunAssignmentsPage";
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
 import PortalViewPage from "./pages/portal/PortalViewPage";
+import PortalFeedbackPage from "./pages/admin/PortalFeedbackPage";
 import NotFound from "./pages/NotFound";
+import { FeedbackButton } from "./components/FeedbackButton";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +67,7 @@ const App = () => (
               <Route path="/admin/produkce" element={<ProductionPage />} />
               <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
               <Route path="/admin/prirazeni" element={<RunAssignmentsPage />} />
+              <Route path="/admin/portal" element={<PortalFeedbackPage />} />
 
               {/* Portal */}
               <Route path="/portal/:token" element={<PortalAccessPage />} />
@@ -73,6 +76,7 @@ const App = () => (
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <FeedbackButton />
           </BrowserRouter>
         </TooltipProvider>
       </PortalProvider>
