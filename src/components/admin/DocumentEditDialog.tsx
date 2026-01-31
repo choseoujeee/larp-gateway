@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
@@ -97,6 +107,8 @@ export function DocumentEditDialog({
   const [formData, setFormData] = useState<DocumentFormData>(defaultFormData);
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Initialize form when dialog opens
   useEffect(() => {
@@ -198,6 +210,33 @@ export function DocumentEditDialog({
     }
 
     setSaving(false);
+    onOpenChange(false);
+    onSaved();
+  };
+
+  const handleDelete = async () => {
+    if (!document) return;
+    
+    setDeleting(true);
+    
+    // First delete hidden_documents entries
+    await supabase.from("hidden_documents").delete().eq("document_id", document.id);
+    
+    // Then delete the document
+    const { error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", document.id);
+    
+    if (error) {
+      toast.error("Chyba při mazání dokumentu");
+      setDeleting(false);
+      return;
+    }
+    
+    toast.success("Dokument smazán");
+    setDeleting(false);
+    setDeleteDialogOpen(false);
     onOpenChange(false);
     onSaved();
   };
@@ -449,15 +488,53 @@ export function DocumentEditDialog({
         </div>
 
         <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Zrušit
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="btn-vintage">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Uložit
-          </Button>
+          <div className="flex w-full justify-between">
+            {document ? (
+              <Button 
+                variant="destructive" 
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={saving || deleting}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Smazat
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Zrušit
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="btn-vintage">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Uložit
+              </Button>
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Smazat dokument?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Opravdu chcete smazat dokument "{document?.title}"? Tato akce je nevratná.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Zrušit</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Smazat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
