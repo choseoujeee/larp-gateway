@@ -395,19 +395,8 @@ export default function DocumentsPage() {
           </Button>
         </div>
 
-        {/* Filters */}
+        {/* Filters row */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Hledat podle názvu…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-48 pl-8 input-vintage"
-            />
-          </div>
-
           {/* View mode */}
           <Select value={viewMode} onValueChange={(v: "type" | "blocks") => setViewMode(v)}>
             <SelectTrigger className="w-44 input-vintage">
@@ -474,17 +463,26 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        {/* Block view search (legacy, now combined with main search) */}
-        {viewMode === "blocks" && (
-          <div className="flex items-center gap-2">
+        {/* Search row */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Hledat podle názvu…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-64 pl-8 input-vintage"
+            />
+          </div>
+          {viewMode === "blocks" && (
             <Input
               placeholder="Hledat v obsahu dokumentů…"
               value={blockSearch}
               onChange={(e) => setBlockSearch(e.target.value)}
               className="w-64 input-vintage"
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Content */}
         {!currentLarpId ? (
