@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Clock } from "lucide-react";
+import { DocBadge } from "@/components/ui/doc-badge";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
@@ -540,33 +548,64 @@ export default function PersonsPage() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {personDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
-                      onClick={() => openDocumentEditDialog(doc)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{doc.title}</span>
-                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {personDocuments.map((doc) => {
+                    const priorityLabels: Record<number, { label: string; variant: "default" | "secondary" | "outline" }> = {
+                      1: { label: "Prioritní", variant: "default" },
+                      2: { label: "Normální", variant: "secondary" },
+                      3: { label: "Volitelné", variant: "outline" },
+                    };
+                    const priorityInfo = priorityLabels[doc.priority] || priorityLabels[2];
+                    
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between py-1 px-3 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
+                        onClick={() => openDocumentEditDialog(doc)}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                          <h4 className="font-typewriter text-sm font-bold">{doc.title}</h4>
+                          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          
+                          {/* Target type */}
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                            {doc.target_type === "vsichni" && "Všichni"}
+                            {doc.target_type === "skupina" && "Skupina"}
+                            {doc.target_type === "osoba" && "Osobní"}
+                          </span>
+                          
+                          {/* Doc type badge */}
+                          <DocBadge type={doc.doc_type} />
+                          
+                          {/* Priority badge */}
+                          <Badge variant={priorityInfo.variant} className="text-xs">
+                            {priorityInfo.label}
+                          </Badge>
+                          
+                          {/* Sort order */}
+                          <span className="text-xs text-muted-foreground font-mono">
+                            #{doc.sort_order}
+                          </span>
+
+                          {/* Delayed visibility indicator */}
+                          {doc.visibility_mode === "delayed" && doc.visible_days_before && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded cursor-help">
+                                    <Clock className="h-3 w-3" />
+                                    {doc.visible_days_before}d
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Zobrazí se {doc.visible_days_before} dní před začátkem běhu</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-0.5 rounded bg-muted">
-                          {doc.doc_type === "organizacni" && "Organizační"}
-                          {doc.doc_type === "herni" && "Herní"}
-                          {doc.doc_type === "postava" && "Postava"}
-                          {doc.doc_type === "medailonek" && "Medailonek"}
-                          {doc.doc_type === "cp" && "CP"}
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-muted/50">
-                          {doc.target_type === "vsichni" && "Všichni"}
-                          {doc.target_type === "skupina" && "Skupina"}
-                          {doc.target_type === "osoba" && "Osobní"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </PaperCardContent>
