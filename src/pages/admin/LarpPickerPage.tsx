@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function LarpPickerPage() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
   const { larps, currentLarpId, setCurrentLarpId, loading, fetchLarps } = useLarpContext();
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -45,6 +45,11 @@ export default function LarpPickerPage() {
       toast.error("Slug nemůže být prázdný");
       return;
     }
+    // Vyžadujeme platnou session pro vytvoření LARPu
+    if (!session?.user?.id) {
+      toast.error("Pro vytvoření LARPu se musíte přihlásit");
+      return;
+    }
     setSaving(true);
     const { data, error } = await supabase
       .from("larps")
@@ -52,7 +57,7 @@ export default function LarpPickerPage() {
         name: createName.trim(),
         slug,
         theme: createTheme,
-        owner_id: user?.id,
+        owner_id: session.user.id,
       })
       .select("id")
       .single();

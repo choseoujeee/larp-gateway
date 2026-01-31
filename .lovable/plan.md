@@ -1,43 +1,15 @@
 
 # Oprava vytváření LARPů a End-to-End testy
 
-## Identifikovaný problém
+## ✅ IMPLEMENTOVÁNO
 
-Při vytváření LARPu dochází k chybě:
-```
-invalid input syntax for type uuid: "dev-admin"
-```
+### Krok 1: Odstranit dev admin mode ✅
+- [x] Smazán `DEV_ADMIN_USER` a `signInAsDevAdmin()` z `useAuth.tsx`
+- [x] Odstraněno tlačítko "Admin (testování bez přihlášení)" z `LoginPage.tsx`
 
-### Příčina
-1. Funkce `signInAsDevAdmin()` v `useAuth.tsx` nastavuje fake user s ID `"dev-admin"`
-2. Sloupec `owner_id` v tabulce `larps` je typu **UUID** (NOT NULL)
-3. Když se posílá `owner_id: user?.id` do Supabase, posílá se neplatný textový řetězec místo UUID
-4. RLS politika `WITH CHECK (auth.uid() = owner_id)` navíc vyžaduje skutečnou Supabase session
-
-### Důsledek
-Dev admin mode nemůže fungovat s RLS politikami, protože:
-- `auth.uid()` vrací `null` (není Supabase session)
-- `owner_id` musí být validní UUID
-
----
-
-## Řešení
-
-### Krok 1: Odstranit dev admin mode
-- Smazat `signInAsDevAdmin()` z `useAuth.tsx`
-- Odstranit tlačítko "Admin (testování bez přihlášení)" z `LoginPage.tsx`
-- Místo toho vytvořit testovacího uživatele v Supabase
-
-### Krok 2: Vytvořit testovací data pomocí seed scriptu
-Vytvořit script `scripts/seed-test-data.mjs`, který:
-- Využije Supabase Admin API (service role key) pro vytvoření testovacího uživatele
-- Vytvoří testovací LARP s validním `owner_id`
-- Vytvoří testovací běh, postavy a CP
-
-### Krok 3: Upravit INSERT logiku v LarpsPage a LarpPickerPage
-Pokud `user?.id` není k dispozici nebo session neexistuje:
-- Zobrazit hlášku "Pro vytvoření LARPu se musíte přihlásit"
-- Přesměrovat na login
+### Krok 2: Přidat session validaci ✅
+- [x] `LarpsPage.tsx` - kontrola `session?.user?.id` před INSERT
+- [x] `LarpPickerPage.tsx` - kontrola `session?.user?.id` před INSERT
 
 ---
 
@@ -100,61 +72,8 @@ Očekávaný výsledek:
 
 ---
 
-## Implementační kroky
+## Další krok: Testování
 
-### A. Opravy kódu (okamžité)
-| Soubor | Změna |
-|--------|-------|
-| `src/hooks/useAuth.tsx` | Odstranit `DEV_ADMIN_USER` a `signInAsDevAdmin` |
-| `src/pages/auth/LoginPage.tsx` | Odstranit dev admin tlačítko |
-| `src/pages/admin/LarpsPage.tsx` | Přidat kontrolu `session` před INSERT |
-| `src/pages/admin/LarpPickerPage.tsx` | Přidat kontrolu `session` před INSERT |
-
-### B. Testovací infrastruktura
-| Soubor | Popis |
-|--------|-------|
-| `scripts/seed-test-data.mjs` | Script pro vytvoření testovacích dat |
-| `src/test/integration/larp-crud.test.tsx` | Test vytváření/editace LARP |
-| `src/test/integration/portal-access.test.tsx` | Test portálu hráče a CP |
-
-### C. Dokumentace výsledků
-| Soubor | Popis |
-|--------|-------|
-| `docs/VYSLEDKY-TESTU.md` | Aktualizovat s novými výsledky |
-
----
-
-## Technické detaily
-
-### RLS politiky zůstávají beze změny
-Stávající politiky jsou korektní:
-```sql
--- INSERT vyžaduje auth.uid() = owner_id
-CREATE POLICY "Vlastník vytváří LARPy" ON larps
-FOR INSERT TO authenticated WITH CHECK (auth.uid() = owner_id);
-```
-
-### Validace před INSERT
-```typescript
-// Před INSERT do larps
-if (!session?.user?.id) {
-  toast.error("Pro vytvoření LARPu se musíte přihlásit");
-  navigate("/login");
-  return;
-}
-```
-
-### Testovací uživatel
-Pro testování bude nutné mít reálný Supabase účet. Možnosti:
+Pro testování je nutné mít reálný Supabase účet. Možnosti:
 1. Registrace přes /register s verifikací e-mailu
 2. Seed script s Admin API (vyžaduje service role key)
-3. Ruční vytvoření v Lovable Cloud UI
-
----
-
-## Očekávané výsledky po implementaci
-
-- Vytváření LARPů bude fungovat pro přihlášené organizátory
-- Dev admin mode bude odstraněn (bezpečnostní riziko)
-- Automatizované testy ověří všechny uživatelské scénáře
-- Dokumentace výsledků testů bude aktualizována

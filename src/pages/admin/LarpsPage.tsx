@@ -38,7 +38,7 @@ interface Larp {
 }
 
 export default function LarpsPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [larps, setLarps] = useState<Larp[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -109,6 +109,12 @@ export default function LarpsPage() {
   const handleSave = async () => {
     if (!formData.name || !formData.slug) {
       toast.error("Vyplňte název a slug");
+      return;
+    }
+
+    // Pro vytváření nového LARPu vyžadujeme platnou session
+    if (!selectedLarp && !session?.user?.id) {
+      toast.error("Pro vytvoření LARPu se musíte přihlásit");
       return;
     }
 
