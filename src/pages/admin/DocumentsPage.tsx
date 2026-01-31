@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Pencil, Trash2, Loader2, Search, X } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,9 @@ export default function DocumentsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterPerson, setFilterPerson] = useState<string>("all");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"type" | "blocks">("type");
   const [blockSearch, setBlockSearch] = useState("");
   const [formData, setFormData] = useState({
@@ -278,9 +281,38 @@ export default function DocumentsPage() {
     fetchDocuments();
   };
 
-  const filteredDocs = filterType === "all" 
-    ? documents 
-    : documents.filter((d) => d.doc_type === filterType);
+  // Unified filtering logic
+  const filteredDocs = useMemo(() => {
+    return documents.filter((doc) => {
+      // Filter by document type
+      if (filterType !== "all" && doc.doc_type !== filterType) return false;
+      
+      // Filter by person
+      if (filterPerson !== "all") {
+        // Match only documents targeting this specific person
+        if (doc.target_type !== "osoba" || doc.target_person_id !== filterPerson) return false;
+      }
+      
+      // Filter by group
+      if (filterGroup !== "all") {
+        if (filterGroup === "__vsichni__") {
+          // Show only documents for "všichni"
+          if (doc.target_type !== "vsichni") return false;
+        } else {
+          // Show documents for this specific group
+          if (doc.target_type !== "skupina" || doc.target_group !== filterGroup) return false;
+        }
+      }
+      
+      // Search by title
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        if (!doc.title.toLowerCase().includes(q)) return false;
+      }
+      
+      return true;
+    });
+  }, [documents, filterType, filterPerson, filterGroup, searchQuery]);
 
   // Group by doc_type
   const groupedDocs = filteredDocs.reduce((acc, doc) => {
@@ -288,6 +320,16 @@ export default function DocumentsPage() {
     acc[doc.doc_type].push(doc);
     return acc;
   }, {} as Record<string, Document[]>);
+
+  // Check if any filter is active
+  const hasActiveFilters = filterType !== "all" || filterPerson !== "all" || filterGroup !== "all" || searchQuery.trim() !== "";
+
+  const clearAllFilters = () => {
+    setFilterType("all");
+    setFilterPerson("all");
+    setFilterGroup("all");
+    setSearchQuery("");
+  };
 
   const getTargetLabel = (doc: Document) => {
     if (doc.target_type === "vsichni") return "Všichni";
@@ -354,46 +396,95 @@ export default function DocumentsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label className="font-mono">Zobrazení:</Label>
-            <Select value={viewMode} onValueChange={(v: "type" | "blocks") => setViewMode(v)}>
-              <SelectTrigger className="w-48 input-vintage">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="type">Podle typu</SelectItem>
-                <SelectItem value="blocks">Společné / Skupiny / Osoby</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {viewMode === "type" && (
-            <div className="flex items-center gap-2">
-              <Label className="font-mono">Typ:</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-48 input-vintage">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Všechny typy</SelectItem>
-                  {Object.entries(DOCUMENT_TYPES).map(([key, { label }]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {viewMode === "blocks" && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Hledat v dokumentech…"
+              placeholder="Hledat podle názvu…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-48 pl-8 input-vintage"
+            />
+          </div>
+
+          {/* View mode */}
+          <Select value={viewMode} onValueChange={(v: "type" | "blocks") => setViewMode(v)}>
+            <SelectTrigger className="w-44 input-vintage">
+              <SelectValue placeholder="Zobrazení" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="type">Podle typu</SelectItem>
+              <SelectItem value="blocks">Podle cíle</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Document type filter */}
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-36 input-vintage">
+              <SelectValue placeholder="Typ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny typy</SelectItem>
+              {Object.entries(DOCUMENT_TYPES).map(([key, { label }]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Group filter */}
+          <Select value={filterGroup} onValueChange={setFilterGroup}>
+            <SelectTrigger className="w-40 input-vintage">
+              <SelectValue placeholder="Skupina" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny cíle</SelectItem>
+              <SelectItem value="__vsichni__">Pro všechny</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group} value={group}>
+                  {group}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Person filter */}
+          <Select value={filterPerson} onValueChange={setFilterPerson}>
+            <SelectTrigger className="w-44 input-vintage">
+              <SelectValue placeholder="Osoba" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny osoby</SelectItem>
+              {persons.map((person) => (
+                <SelectItem key={person.id} value={person.id}>
+                  {person.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Clear filters button */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground">
+              <X className="mr-1 h-4 w-4" />
+              Zrušit filtry
+            </Button>
+          )}
+        </div>
+
+        {/* Block view search (legacy, now combined with main search) */}
+        {viewMode === "blocks" && (
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Hledat v obsahu dokumentů…"
               value={blockSearch}
               onChange={(e) => setBlockSearch(e.target.value)}
               className="w-64 input-vintage"
             />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Content */}
         {!currentLarpId ? (
