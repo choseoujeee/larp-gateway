@@ -423,6 +423,7 @@ interface DocumentItemProps {
 
 function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
   const isPriority = document.priority === 1;
+  const isOptional = document.priority === 3;
   
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -431,10 +432,13 @@ function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
           <ChevronRight 
             className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
           />
+          <span className="font-medium text-foreground">{document.title}</span>
           {isPriority && (
             <span className="text-xs font-bold text-accent uppercase tracking-wider">[PRIORITNÍ]</span>
           )}
-          <span className="font-medium text-foreground">{document.title}</span>
+          {isOptional && (
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">[VOLITELNÉ]</span>
+          )}
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
