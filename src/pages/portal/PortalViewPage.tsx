@@ -180,7 +180,7 @@ export default function PortalViewPage() {
                 )}
                 {medailonekDoc?.content && (
                   <div 
-                    className="prose prose-sm max-w-none text-muted-foreground mt-4 text-left"
+                    className="prose prose-sm max-w-none text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(medailonekDoc.content) }}
                   />
                 )}
@@ -231,7 +231,7 @@ export default function PortalViewPage() {
                 </div>
                 {session.missionBriefing && (
                   <div 
-                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border"
+                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
                 )}
@@ -447,7 +447,7 @@ function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
         <div className="ml-6 pl-3 border-l-2 border-border py-3">
           {document.content && (
             <div
-              className="prose prose-sm max-w-none text-muted-foreground"
+              className="prose prose-sm max-w-none text-muted-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(document.content) }}
             />
           )}
