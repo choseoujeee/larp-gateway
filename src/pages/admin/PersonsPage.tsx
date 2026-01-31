@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Medal, Check, X } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
@@ -93,7 +93,7 @@ export default function PersonsPage() {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGroup, setFilterGroup] = useState<string>("all");
-  const [filterMedailonek, setFilterMedailonek] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"byGroup" | "alphabetical">("byGroup");
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -443,21 +443,18 @@ export default function PersonsPage() {
       (filterGroup === "none" && !p.group_name) ||
       p.group_name === filterGroup;
     
-    // Medailonek filter
-    const matchesMedailonek =
-      filterMedailonek === "all" ||
-      (filterMedailonek === "filled" && p.medailonek?.trim()) ||
-      (filterMedailonek === "empty" && !p.medailonek?.trim());
-    
-    return matchesSearch && matchesGroup && matchesMedailonek;
+    return matchesSearch && matchesGroup;
   });
 
-  const groupedPersons = filteredPersons.reduce((acc, person) => {
-    const group = person.group_name || "Bez skupiny";
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(person);
-    return acc;
-  }, {} as Record<string, Person[]>);
+  // Group by group name or show alphabetically
+  const groupedPersons = viewMode === "byGroup"
+    ? filteredPersons.reduce((acc, person) => {
+        const group = person.group_name || "Bez skupiny";
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(person);
+        return acc;
+      }, {} as Record<string, Person[]>)
+    : { "Všechny postavy": [...filteredPersons].sort((a, b) => a.name.localeCompare(b.name, "cs")) };
 
   // Detail view
   if (detailPerson) {
@@ -778,31 +775,32 @@ export default function PersonsPage() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <Select value={filterGroup} onValueChange={setFilterGroup}>
+          <Select value={viewMode} onValueChange={(v) => setViewMode(v as "byGroup" | "alphabetical")}>
             <SelectTrigger className="w-48 input-vintage">
-              <SelectValue placeholder="Všechny skupiny" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Všechny skupiny</SelectItem>
-              <SelectItem value="none">Bez skupiny</SelectItem>
-              {groups.map((group) => (
-                <SelectItem key={group} value={group}>
-                  {group}
-                </SelectItem>
-              ))}
+              <SelectItem value="byGroup">Podle skupiny</SelectItem>
+              <SelectItem value="alphabetical">Všechny postavy</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={filterMedailonek} onValueChange={setFilterMedailonek}>
-            <SelectTrigger className="w-48 input-vintage">
-              <SelectValue placeholder="Stav medailonku" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Všechny stavy</SelectItem>
-              <SelectItem value="filled">Má medailonek</SelectItem>
-              <SelectItem value="empty">Bez medailonku</SelectItem>
-            </SelectContent>
-          </Select>
+          {viewMode === "byGroup" && (
+            <Select value={filterGroup} onValueChange={setFilterGroup}>
+              <SelectTrigger className="w-48 input-vintage">
+                <SelectValue placeholder="Všechny skupiny" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Všechny skupiny</SelectItem>
+                <SelectItem value="none">Bez skupiny</SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group} value={group}>
+                    {group}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Input
             placeholder="Hledat postavu..."
@@ -870,19 +868,32 @@ export default function PersonsPage() {
                                 nepřiřazeno ({selectedRun.name})
                               </p>
                             ) : null}
-                            {personDocCounts[person.id] && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                {personDocCounts[person.id].organizacni > 0 && (
-                                  <span title="Organizační">📋 {personDocCounts[person.id].organizacni}</span>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              {personDocCounts[person.id] && (
+                                <>
+                                  {personDocCounts[person.id].organizacni > 0 && (
+                                    <span title="Organizační">📋 {personDocCounts[person.id].organizacni}</span>
+                                  )}
+                                  {personDocCounts[person.id].herni > 0 && (
+                                    <span title="Herní">🎮 {personDocCounts[person.id].herni}</span>
+                                  )}
+                                  {personDocCounts[person.id].postava > 0 && (
+                                    <span title="Postava">👤 {personDocCounts[person.id].postava}</span>
+                                  )}
+                                </>
+                              )}
+                              <span 
+                                title={person.medailonek?.trim() ? "Medailonek vyplněn" : "Medailonek chybí"}
+                                className="flex items-center gap-0.5"
+                              >
+                                <Medal className="h-3 w-3" />
+                                {person.medailonek?.trim() ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <X className="h-3 w-3 text-destructive" />
                                 )}
-                                {personDocCounts[person.id].herni > 0 && (
-                                  <span title="Herní">🎮 {personDocCounts[person.id].herni}</span>
-                                )}
-                                {personDocCounts[person.id].postava > 0 && (
-                                  <span title="Postava">👤 {personDocCounts[person.id].postava}</span>
-                                )}
-                              </div>
-                            )}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex gap-1">
                             <Button
