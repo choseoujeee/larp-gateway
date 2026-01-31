@@ -84,11 +84,11 @@ export function DocumentListItem({
 
   return (
     <PaperCard>
-      <PaperCardContent className="py-1.5 px-3">
+      <PaperCardContent className="py-1 px-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
             {/* Title */}
-            <h4 className="font-typewriter text-sm">{doc.title}</h4>
+            <h4 className="font-typewriter text-sm font-bold">{doc.title}</h4>
               {/* Target type badge */}
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                 {getTargetLabel()}
