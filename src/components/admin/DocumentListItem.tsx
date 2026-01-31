@@ -1,5 +1,4 @@
 import { Pencil, Trash2, EyeOff, Clock } from "lucide-react";
-import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { DocBadge } from "@/components/ui/doc-badge";
 import { Badge } from "@/components/ui/badge";
@@ -83,90 +82,87 @@ export function DocumentListItem({
   const priorityInfo = PRIORITY_LABELS[doc.priority] || PRIORITY_LABELS[2];
 
   return (
-    <PaperCard>
-      <PaperCardContent className="py-1 px-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-            {/* Title */}
-            <h4 className="font-typewriter text-sm font-bold">{doc.title}</h4>
-              {/* Target type badge */}
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                {getTargetLabel()}
-              </span>
+    <div className="flex items-center justify-between py-2 px-3 rounded-r-md border border-l-0 border-border bg-muted/20 hover:bg-muted/40 transition-colors group">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Title */}
+        <span className="font-medium truncate">{doc.title}</span>
+      </div>
 
-              {/* Doc type badge */}
-              {showDocType && <DocBadge type={doc.doc_type} />}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Hidden indicator with tooltip */}
+        {hiddenFromPersons.length > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center text-muted-foreground cursor-help">
+                  <EyeOff className="h-3.5 w-3.5" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="font-medium mb-1">Skryto před:</p>
+                <ul className="text-sm">
+                  {hiddenFromPersons.map((name, i) => (
+                    <li key={i}>• {name}</li>
+                  ))}
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
-              {/* Priority badge */}
-              <Badge variant={priorityInfo.variant} className="text-xs">
-                {priorityInfo.label}
-              </Badge>
+        {/* Delayed visibility indicator */}
+        {doc.visibility_mode === "delayed" && doc.visible_days_before && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 cursor-help">
+                  <Clock className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Zobrazí se {doc.visible_days_before} dní před začátkem běhu</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
-              {/* Sort order */}
-              <span className="text-xs text-muted-foreground font-mono">
-                #{doc.sort_order}
-              </span>
+        {/* Target type badge - only if not "vsichni" */}
+        {doc.target_type !== "vsichni" && (
+          <span className="text-xs text-muted-foreground">
+            {getTargetLabel()}
+          </span>
+        )}
 
-              {/* Run badge */}
-              <span className="text-xs bg-accent/50 text-accent-foreground px-2 py-0.5 rounded">
-                {getRunLabel()}
-              </span>
+        {/* Doc type badge */}
+        {showDocType && <DocBadge type={doc.doc_type} />}
 
-              {/* Delayed visibility indicator */}
-              {doc.visibility_mode === "delayed" && doc.visible_days_before && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded cursor-help">
-                        <Clock className="h-3 w-3" />
-                        {doc.visible_days_before}d
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Zobrazí se {doc.visible_days_before} dní před začátkem běhu</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+        {/* Priority badge - only if not normal */}
+        {doc.priority === 1 && (
+          <Badge variant="default" className="text-xs">
+            Prioritní
+          </Badge>
+        )}
+        {doc.priority === 3 && (
+          <Badge variant="outline" className="text-xs">
+            Volitelné
+          </Badge>
+        )}
 
-              {/* Hidden indicator with tooltip */}
-              {hiddenFromPersons.length > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex items-center text-muted-foreground cursor-help">
-                        <EyeOff className="h-4 w-4" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="font-medium mb-1">Skryto před:</p>
-                      <ul className="text-sm">
-                        {hiddenFromPersons.map((name, i) => (
-                          <li key={i}>• {name}</li>
-                        ))}
-                      </ul>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-1 flex-shrink-0">
-            <Button variant="ghost" size="icon" onClick={onEdit}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+        {/* Actions - visible on hover */}
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
         </div>
-      </PaperCardContent>
-    </PaperCard>
+      </div>
+    </div>
   );
 }
