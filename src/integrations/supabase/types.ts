@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      cp_performers: {
+        Row: {
+          cp_id: string
+          created_at: string
+          id: string
+          performer_email: string | null
+          performer_name: string
+          performer_phone: string | null
+          run_id: string
+        }
+        Insert: {
+          cp_id: string
+          created_at?: string
+          id?: string
+          performer_email?: string | null
+          performer_name: string
+          performer_phone?: string | null
+          run_id: string
+        }
+        Update: {
+          cp_id?: string
+          created_at?: string
+          id?: string
+          performer_email?: string | null
+          performer_name?: string
+          performer_phone?: string | null
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cp_performers_cp_id_fkey"
+            columns: ["cp_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cp_performers_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cp_scenes: {
+        Row: {
+          cp_id: string
+          created_at: string
+          day_number: number
+          description: string | null
+          duration_minutes: number
+          id: string
+          location: string | null
+          props: string | null
+          run_id: string
+          schedule_event_id: string | null
+          sort_order: number | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          cp_id: string
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          location?: string | null
+          props?: string | null
+          run_id: string
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          cp_id?: string
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          location?: string | null
+          props?: string | null
+          run_id?: string
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cp_scenes_cp_id_fkey"
+            columns: ["cp_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cp_scenes_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cp_scenes_schedule_event_id_fkey"
+            columns: ["schedule_event_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: string | null
@@ -165,11 +280,13 @@ export type Database = {
       persons: {
         Row: {
           access_token: string
+          act_info: string | null
           created_at: string
           group_name: string | null
           id: string
           larp_id: string | null
           medailonek: string | null
+          mission_briefing: string | null
           name: string
           paid_at: string | null
           password_hash: string
@@ -182,11 +299,13 @@ export type Database = {
         }
         Insert: {
           access_token?: string
+          act_info?: string | null
           created_at?: string
           group_name?: string | null
           id?: string
           larp_id?: string | null
           medailonek?: string | null
+          mission_briefing?: string | null
           name: string
           paid_at?: string | null
           password_hash: string
@@ -199,11 +318,13 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          act_info?: string | null
           created_at?: string
           group_name?: string | null
           id?: string
           larp_id?: string | null
           medailonek?: string | null
+          mission_briefing?: string | null
           name?: string
           paid_at?: string | null
           password_hash?: string
@@ -499,6 +620,7 @@ export type Database = {
       schedule_events: {
         Row: {
           cp_id: string | null
+          cp_scene_id: string | null
           created_at: string
           day_number: number
           description: string | null
@@ -513,6 +635,7 @@ export type Database = {
         }
         Insert: {
           cp_id?: string | null
+          cp_scene_id?: string | null
           created_at?: string
           day_number?: number
           description?: string | null
@@ -527,6 +650,7 @@ export type Database = {
         }
         Update: {
           cp_id?: string | null
+          cp_scene_id?: string | null
           created_at?: string
           day_number?: number
           description?: string | null
@@ -545,6 +669,13 @@ export type Database = {
             columns: ["cp_id"]
             isOneToOne: false
             referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_events_cp_scene_id_fkey"
+            columns: ["cp_scene_id"]
+            isOneToOne: false
+            referencedRelation: "cp_scenes"
             referencedColumns: ["id"]
           },
           {

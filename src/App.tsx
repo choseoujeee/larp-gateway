@@ -18,6 +18,7 @@ import LarpsPage from "./pages/admin/LarpsPage";
 import RunsPage from "./pages/admin/RunsPage";
 import PersonsPage from "./pages/admin/PersonsPage";
 import CpPage from "./pages/admin/CpPage";
+import CpDetailPage from "./pages/admin/CpDetailPage";
 import DocumentsPage from "./pages/admin/DocumentsPage";
 import SchedulePage from "./pages/admin/SchedulePage";
 import ProductionPage from "./pages/admin/ProductionPage";
@@ -68,7 +69,7 @@ const App = () => (
                   <Route path="/admin/osoby" element={<PersonsPage />} />
                   <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
                   <Route path="/admin/cp" element={<CpPage />} />
-                  <Route path="/admin/cp/:slug" element={<CpPage />} />
+                  <Route path="/admin/cp/:slug" element={<CpDetailPage />} />
                   <Route path="/admin/dokumenty" element={<DocumentsPage />} />
                   <Route path="/admin/harmonogram" element={<SchedulePage />} />
                   <Route path="/admin/produkce" element={<ProductionPage />} />

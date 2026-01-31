@@ -7,6 +7,8 @@ export interface RunOption {
   id: string;
   name: string;
   larp_id: string;
+  date_from?: string | null;
+  date_to?: string | null;
   larps?: { name: string; theme: string | null };
 }
 
@@ -38,7 +40,7 @@ export function RunProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data } = await supabase
       .from("runs")
-      .select("id, name, larp_id, larps(name, theme)")
+      .select("id, name, larp_id, date_from, date_to, larps(name, theme)")
       .eq("larp_id", currentLarpId)
       .order("date_from", { ascending: false });
     setRuns(data || []);
