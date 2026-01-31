@@ -147,6 +147,7 @@ export type Database = {
           group_name: string | null
           id: string
           name: string
+          paid_at: string | null
           password_hash: string
           performance_times: string | null
           performer: string | null
@@ -161,6 +162,7 @@ export type Database = {
           group_name?: string | null
           id?: string
           name: string
+          paid_at?: string | null
           password_hash: string
           performance_times?: string | null
           performer?: string | null
@@ -175,6 +177,7 @@ export type Database = {
           group_name?: string | null
           id?: string
           name?: string
+          paid_at?: string | null
           password_hash?: string
           performance_times?: string | null
           performer?: string | null
@@ -286,6 +289,9 @@ export type Database = {
           location: string | null
           mission_briefing: string | null
           name: string
+          payment_account: string | null
+          payment_amount: string | null
+          payment_due_date: string | null
           slug: string
           updated_at: string
         }
@@ -302,6 +308,9 @@ export type Database = {
           location?: string | null
           mission_briefing?: string | null
           name: string
+          payment_account?: string | null
+          payment_amount?: string | null
+          payment_due_date?: string | null
           slug: string
           updated_at?: string
         }
@@ -318,6 +327,9 @@ export type Database = {
           location?: string | null
           mission_briefing?: string | null
           name?: string
+          payment_account?: string | null
+          payment_amount?: string | null
+          payment_due_date?: string | null
           slug?: string
           updated_at?: string
         }
