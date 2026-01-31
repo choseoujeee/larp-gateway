@@ -43,6 +43,7 @@ interface Person {
 interface Document {
   id: string;
   larp_id: string;
+  run_id: string | null;
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
@@ -54,7 +55,7 @@ interface Document {
 
 export default function DocumentsPage() {
   const { currentLarpId, currentLarp } = useLarpContext();
-  const { selectedRunId } = useRunContext();
+  const { selectedRunId, runs } = useRunContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
@@ -73,6 +74,7 @@ export default function DocumentsPage() {
     target_group: "",
     target_person_id: "",
     sort_order: 0,
+    run_id: "" as string, // "" = všechny běhy, jinak konkrétní run_id
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -135,6 +137,7 @@ export default function DocumentsPage() {
       target_group: "",
       target_person_id: "",
       sort_order: 0,
+      run_id: "", // výchozí = pro všechny běhy
     });
     setHiddenFromPersonIds([]);
     setDialogOpen(true);
@@ -150,6 +153,7 @@ export default function DocumentsPage() {
       target_group: doc.target_group || "",
       target_person_id: doc.target_person_id || "",
       sort_order: doc.sort_order,
+      run_id: doc.run_id || "",
     });
     const { data: hiddenRows } = await supabase
       .from("hidden_documents")
@@ -165,16 +169,11 @@ export default function DocumentsPage() {
       return;
     }
 
-    if (!selectedRunId) {
-      toast.error("Není vybrán žádný běh");
-      return;
-    }
-
     setSaving(true);
 
     const payload = {
       larp_id: currentLarpId,
-      run_id: selectedRunId,
+      run_id: formData.run_id || null, // prázdný string = pro všechny běhy (null)
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
@@ -644,14 +643,36 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Pořadí</Label>
-              <Input
-                type="number"
-                value={formData.sort_order}
-                onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                className="input-vintage w-24"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Pořadí</Label>
+                <Input
+                  type="number"
+                  value={formData.sort_order}
+                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                  className="input-vintage w-24"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Pro běh</Label>
+                <Select
+                  value={formData.run_id}
+                  onValueChange={(v) => setFormData({ ...formData, run_id: v })}
+                >
+                  <SelectTrigger className="input-vintage">
+                    <SelectValue placeholder="Všechny běhy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Všechny běhy</SelectItem>
+                    {runs.map((run) => (
+                      <SelectItem key={run.id} value={run.id}>
+                        {run.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
