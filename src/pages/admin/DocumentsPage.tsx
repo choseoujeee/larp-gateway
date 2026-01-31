@@ -704,38 +704,40 @@ export default function DocumentsPage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Skrýt před (dokument se těmto osobám nezobrazí)</Label>
-              <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
-                <div className="space-y-2">
-                  {persons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">V tomto LARPu zatím nejsou žádné osoby.</p>
-                  ) : (
-                    persons.map((person) => (
-                      <label
-                        key={person.id}
-                        className="flex items-center gap-2 cursor-pointer text-sm"
-                      >
-                        <Checkbox
-                          checked={hiddenFromPersonIds.includes(person.id)}
-                          onCheckedChange={(checked) => {
-                            setHiddenFromPersonIds((prev) =>
-                              checked
-                                ? [...prev, person.id]
-                                : prev.filter((id) => id !== person.id)
-                            );
-                          }}
-                        />
-                        <span>
-                          {person.name}
-                          {person.group_name ? ` (${person.group_name})` : ""}
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+            {formData.target_type !== "osoba" && (
+              <div className="space-y-2">
+                <Label>Skrýt před (dokument se těmto osobám nezobrazí)</Label>
+                <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                  <div className="space-y-2">
+                    {persons.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">V tomto LARPu zatím nejsou žádné osoby.</p>
+                    ) : (
+                      persons.map((person) => (
+                        <label
+                          key={person.id}
+                          className="flex items-center gap-2 cursor-pointer text-sm"
+                        >
+                          <Checkbox
+                            checked={hiddenFromPersonIds.includes(person.id)}
+                            onCheckedChange={(checked) => {
+                              setHiddenFromPersonIds((prev) =>
+                                checked
+                                  ? [...prev, person.id]
+                                  : prev.filter((id) => id !== person.id)
+                              );
+                            }}
+                          />
+                          <span>
+                            {person.name}
+                            {person.group_name ? ` (${person.group_name})` : ""}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Obsah (WYSIWYG)</Label>
