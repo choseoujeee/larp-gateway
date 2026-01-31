@@ -506,8 +506,14 @@ export default function PersonsPage() {
                           acc[doc.doc_type] = (acc[doc.doc_type] || 0) + 1;
                           return acc;
                         }, {} as Record<string, number>);
+                        const priorityCount = personDocuments.filter(d => d.priority === 1).length;
                         return (
                           <>
+                            {priorityCount > 0 && (
+                              <span title="Prioritní dokumenty" className="font-semibold text-accent">
+                                🔥 {priorityCount}
+                              </span>
+                            )}
                             {counts.organizacni && <span title="Organizační">📋 {counts.organizacni}</span>}
                             {counts.herni && <span title="Herní">🎮 {counts.herni}</span>}
                             {counts.postava && <span title="Postava">👤 {counts.postava}</span>}
