@@ -302,6 +302,17 @@
   }
 }
 
+/* Blockquote - citátový blok pro WYSIWYG */
+.prose blockquote,
+.ProseMirror blockquote {
+  @apply my-4 py-3 px-4;
+  background-color: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-left: 3px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  font-style: italic;
+}
+
 /* Print styles */
 @media print {
   body {
