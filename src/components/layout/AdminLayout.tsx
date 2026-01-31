@@ -10,7 +10,6 @@ import {
   Clock, 
   Link as LinkIcon, 
   Printer,
-  UserPlus,
   LogOut,
   ChevronRight,
   ArrowLeft,
@@ -32,7 +31,6 @@ const dashboardItem = { name: "Přehled", href: "/admin", icon: LayoutDashboard 
 // Sekce 1: Organizace běhů (dynamická data per běh)
 const runOrganizationNavigation = [
   { name: "Běhy", href: "/admin/behy", icon: Calendar },
-  { name: "Přiřazení hráčů", href: "/admin/prirazeni", icon: UserPlus },
   { name: "Harmonogram", href: "/admin/harmonogram", icon: Clock },
 ];
 
