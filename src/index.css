@@ -113,8 +113,45 @@
     --sidebar-ring: 42 65% 55%;
   }
 
-  /* Téma: Fantasy – tmavší pozadí, zelené/zlaté akcenty */
+  /* Téma: Fantasy – světlá varianta (výchozí) */
   [data-theme="fantasy"] {
+    --background: 45 25% 92%;
+    --foreground: 120 20% 15%;
+    --card: 45 20% 88%;
+    --card-foreground: 120 20% 15%;
+    --popover: 45 20% 90%;
+    --popover-foreground: 120 20% 15%;
+    --primary: 120 35% 30%;
+    --primary-foreground: 45 30% 95%;
+    --secondary: 45 30% 80%;
+    --secondary-foreground: 120 20% 15%;
+    --muted: 45 15% 85%;
+    --muted-foreground: 120 15% 45%;
+    --accent: 45 65% 50%;
+    --accent-foreground: 120 20% 10%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 45 30% 95%;
+    --border: 120 15% 70%;
+    --input: 45 20% 85%;
+    --ring: 120 35% 30%;
+    --doc-organizacni: 120 40% 35%;
+    --doc-herni: 45 55% 40%;
+    --doc-osobni: 280 35% 40%;
+    --doc-cp: 180 35% 35%;
+    --doc-medailonek: 30 50% 35%;
+    --sidebar-background: 120 25% 22%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 45 60% 50%;
+    --sidebar-primary-foreground: 120 25% 15%;
+    --sidebar-accent: 120 20% 28%;
+    --sidebar-accent-foreground: 45 30% 90%;
+    --sidebar-border: 120 20% 28%;
+    --sidebar-ring: 45 60% 50%;
+  }
+
+  /* Téma: Fantasy – tmavá varianta */
+  .dark[data-theme="fantasy"],
+  [data-theme="fantasy"].dark {
     --background: 120 15% 12%;
     --foreground: 45 30% 90%;
     --card: 120 12% 16%;
