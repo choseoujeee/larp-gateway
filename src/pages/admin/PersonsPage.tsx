@@ -570,6 +570,11 @@ export default function PersonsPage() {
                           {doc.target_type === "skupina" && "Skupina"}
                           {doc.target_type === "osoba" && "Osobní"}
                         </span>
+                        {doc.priority === 1 && (
+                          <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
+                            Prioritní
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
