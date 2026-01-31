@@ -21,6 +21,7 @@ export type Database = {
           doc_type: Database["public"]["Enums"]["document_type"]
           id: string
           larp_id: string | null
+          priority: number
           run_id: string | null
           sort_order: number | null
           target_group: string | null
@@ -35,6 +36,7 @@ export type Database = {
           doc_type: Database["public"]["Enums"]["document_type"]
           id?: string
           larp_id?: string | null
+          priority?: number
           run_id?: string | null
           sort_order?: number | null
           target_group?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           doc_type?: Database["public"]["Enums"]["document_type"]
           id?: string
           larp_id?: string | null
+          priority?: number
           run_id?: string | null
           sort_order?: number | null
           target_group?: string | null
@@ -575,6 +578,7 @@ export type Database = {
           content: string
           doc_type: Database["public"]["Enums"]["document_type"]
           id: string
+          priority: number
           sort_order: number
           target_type: Database["public"]["Enums"]["document_target"]
           title: string

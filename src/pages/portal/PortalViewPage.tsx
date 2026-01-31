@@ -19,6 +19,7 @@ interface Document {
   doc_type: keyof typeof DOCUMENT_TYPES;
   target_type: string;
   sort_order: number;
+  priority: number; // 1 = prioritní, 2 = normální, 3 = volitelné
 }
 
 export default function PortalViewPage() {
@@ -427,6 +428,8 @@ interface DocumentItemProps {
 }
 
 function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
+  const isPriority = document.priority === 1;
+  
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
@@ -434,6 +437,9 @@ function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
           <ChevronRight 
             className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
           />
+          {isPriority && (
+            <span className="text-xs font-bold text-accent uppercase tracking-wider">[PRIORITNÍ]</span>
+          )}
           <span className="font-medium text-foreground">{document.title}</span>
         </button>
       </CollapsibleTrigger>
