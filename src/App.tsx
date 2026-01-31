@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { LarpProvider } from "@/hooks/useLarpContext";
@@ -37,56 +38,57 @@ function RedirectHracToPortal() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <LarpProvider>
-      <RunProvider>
-      <PortalProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+  <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <LarpProvider>
+          <RunProvider>
+            <PortalProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                <Routes>
+                  {/* Public */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
 
-              {/* Alias: původní URL → nové (zpětná kompatibilita) */}
-              <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
-              <Route path="/hrac/:token" element={<RedirectHracToPortal />} />
+                  {/* Alias: původní URL → nové (zpětná kompatibilita) */}
+                  <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
+                  <Route path="/hrac/:token" element={<RedirectHracToPortal />} />
 
-              {/* Admin */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/larpy" element={<LarpsPage />} />
-              <Route path="/admin/behy" element={<RunsPage />} />
-              <Route path="/admin/behy/:slug" element={<RunsPage />} />
-              <Route path="/admin/osoby" element={<PersonsPage />} />
-              <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
-              <Route path="/admin/cp" element={<CpPage />} />
-              <Route path="/admin/cp/:slug" element={<CpPage />} />
-              <Route path="/admin/dokumenty" element={<DocumentsPage />} />
-              <Route path="/admin/harmonogram" element={<SchedulePage />} />
-              <Route path="/admin/produkce" element={<ProductionPage />} />
-              <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
-              <Route path="/admin/portal" element={<PortalFeedbackPage />} />
-              <Route path="/admin/portal" element={<PortalFeedbackPage />} />
+                  {/* Admin */}
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/larpy" element={<LarpsPage />} />
+                  <Route path="/admin/behy" element={<RunsPage />} />
+                  <Route path="/admin/behy/:slug" element={<RunsPage />} />
+                  <Route path="/admin/osoby" element={<PersonsPage />} />
+                  <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
+                  <Route path="/admin/cp" element={<CpPage />} />
+                  <Route path="/admin/cp/:slug" element={<CpPage />} />
+                  <Route path="/admin/dokumenty" element={<DocumentsPage />} />
+                  <Route path="/admin/harmonogram" element={<SchedulePage />} />
+                  <Route path="/admin/produkce" element={<ProductionPage />} />
+                  <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
+                  <Route path="/admin/portal" element={<PortalFeedbackPage />} />
 
-              {/* Portal */}
-              <Route path="/portal/:token" element={<PortalAccessPage />} />
-              <Route path="/portal/:token/view" element={<PortalViewPage />} />
+                  {/* Portal */}
+                  <Route path="/portal/:token" element={<PortalAccessPage />} />
+                  <Route path="/portal/:token/view" element={<PortalViewPage />} />
 
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <FeedbackButton />
-          </BrowserRouter>
-        </TooltipProvider>
-      </PortalProvider>
-      </RunProvider>
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <FeedbackButton />
+              </BrowserRouter>
+            </TooltipProvider>
+          </PortalProvider>
+        </RunProvider>
       </LarpProvider>
     </AuthProvider>
   </QueryClientProvider>
+</ThemeProvider>
 );
 
 export default App;

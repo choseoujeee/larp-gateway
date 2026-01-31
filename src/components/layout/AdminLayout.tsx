@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLarpContext } from "@/hooks/useLarpContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import LarpPickerPage from "@/pages/admin/LarpPickerPage";
 
 interface AdminLayoutProps {
@@ -207,8 +208,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           {/* User info */}
           <div className="border-t border-sidebar-border p-4">
-            <div className="mb-3 text-xs text-sidebar-foreground/60 truncate">
-              {user.email}
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs text-sidebar-foreground/60 truncate">
+                {user.email}
+              </span>
+              <ThemeToggle />
             </div>
             <Button
               variant="ghost" 
