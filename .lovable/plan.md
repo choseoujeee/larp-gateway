@@ -1,134 +1,155 @@
 
 
-# Plan: Feedback System for LARP Portal
+# Plan: Redesign hracsky portal podle originalu
 
-## Overview
+## Prehled
+Portal pro hrace bude prepracovan tak, aby odpovidal puvodni vzorove verzi z obrazku. Struktura bude:
+1. Hlavicka s nazvem LARPu a mottem
+2. Karta s medailonkem postavy (jmeno, skupina, popis)
+3. Mission Briefing sekce s informacemi o behu
+4. Dokumenty - sbalitelne kategorie s jednotlivymi dokumenty uvnitr
+5. Export sekce dole
 
-This plan adds a feedback collection system with two main components:
-1. **Admin section "Portal"** - A new page under "Sprava" in the sidebar to view and manage feedback notes
-2. **Global feedback button** - A sticky button in the bottom-right corner of every page that opens a small modal to submit feedback
+## Zmeny v databazi
 
-## Architecture
+### 1. Pridat pole `motto` do tabulky `larps`
+- Nove pole pro "motto" LARPu (napr. "Tento pribeh bude o nem, ale bude i o tobe.")
+- Typ: `text`, nullable
 
-### 1. Database Changes
+### 2. Upravit RPC funkci `verify_person_by_slug`
+- Pridat vraceni `larp_motto` a informaci o aktivnim behu (date_from, date_to, location, address, mission_briefing, run_name)
+- Funkce bude zjistovat aktivni beh pro dany LARP a vratit jeho udaje
 
-Create a new `portal_feedback` table to store feedback notes:
+### 3. Upravit RPC funkci `get_person_documents`
+- Vratit take `is_priority` pole (pokud bude potreba - zatim ne)
+
+## Zmeny v kodu
+
+### 1. Aktualizace `usePortalSession.tsx`
+- Rozsirit `PortalSession` interface o nova pole:
+  - `larpMotto: string | null`
+  - `runName: string | null`
+  - `runDateFrom: string | null`
+  - `runDateTo: string | null`
+  - `runLocation: string | null`
+  - `runAddress: string | null`
+  - `missionBriefing: string | null`
+- Aktualizovat mapovani z RPC odpovedi
+
+### 2. Kompletni prepracovani `PortalViewPage.tsx`
+Nova struktura stranky:
 
 ```text
-portal_feedback
-├── id (uuid, primary key)
-├── larp_id (uuid, nullable, references larps.id)
-├── user_id (uuid, nullable, references auth.users)
-├── source_page (text) - e.g., "harmonogram", "dokumenty", "portal-view"
-├── content (text, required) - the feedback message
-├── status (text) - "new", "read", "resolved"
-├── created_at (timestamp)
-└── resolved_at (timestamp, nullable)
++------------------------------------------+
+|          KRYPTA 1942                     |   <- font-typewriter, velky
+|   Tento pribeh bude o nem...             |   <- motto, italika
++------------------------------------------+
+
++------------------------------------------+
+|    paper-card: Karta postavy             |
+|    +---------------------------------+   |
+|    |      Josef Bublik               |   |   <- jmeno postavy
+|    |      [BIOSCOP]                  |   |   <- badge skupiny
+|    |                                 |   |
+|    |   Popis medailonku...           |   |   <- obsah z dokumentu typu "medailonek"
+|    +---------------------------------+   |
++------------------------------------------+
+
++------------------------------------------+
+|    paper-card: MISSION BRIEFING          |
+|    Operation: KRYPTA 1942                |
+|    Run: Jarni beh 2026                   |
+|    Date: 15. - 17. 5. 2026               |
+|    Location: Hrad Bouzov                 |
+|    Address: Bouzov 8...                  |
++------------------------------------------+
+
+DOCUMENTS:
++------------------------------------------+
+|  paper-card: ORGANIZACNI (6)             |   <- collapsible kategorie
+|    > [PRIORITY] Harmonogram              |   <- jednotlive dokumenty - collapsible
+|    > [PRIORITY] Platba                   |
+|    > Kostymy                             |
+|    v Zbrane ve hre                       |   <- otevreny dokument
+|      | Obsah dokumentu...               |
+|      | [SBALIT DOKUMENT]                |   <- tlacitko
+|    > Prakticke                           |
++------------------------------------------+
+
++------------------------------------------+
+|  paper-card: HERNI (5)                   |
+|    > Dokument 1                          |
+|    > Dokument 2                          |
++------------------------------------------+
+
++------------------------------------------+
+|  paper-card: OSOBNI (6)                  |   <- postava + medailonek dokumenty
++------------------------------------------+
+
+EXPORT DO PDF:
++------------------------------------------+
+|  [Download All] [Download Org] ...       |
++------------------------------------------+
 ```
 
-**RLS Policies:**
-- Owners can view feedback for their LARPs
-- Anyone can INSERT feedback (for portal users without auth)
-- Owners can UPDATE/DELETE their LARP's feedback
+### 3. Interakce a chovani
+- Kategorie jsou ve vychozim stavu sbalene
+- Kliknutim na kategorii se rozbali seznam dokumentu
+- Kliknutim na nazev dokumentu se rozbali jeho obsah
+- Pod rozbalennym dokumentem je tlacitko "SBALIT DOKUMENT"
+- Tlacitko "Sbalit vse" dole sbali vsechny dokumenty
 
-### 2. New Files to Create
+### 4. Komponenty
+- Pouziti `Collapsible` z Radix UI pro vnorene sbalovani dokumentu
+- `Accordion` pro kategorie
+- `PaperCard` pro vizualni styl
+- Nove CSS styly pro vzhled jako v originalu (typografie, barvy)
 
-| File | Purpose |
-|------|---------|
-| `src/pages/admin/PortalFeedbackPage.tsx` | Admin page listing all feedback with filters |
-| `src/components/FeedbackButton.tsx` | Global sticky button + modal component |
-
-### 3. File Modifications
-
-| File | Changes |
-|------|---------|
-| `src/components/layout/AdminLayout.tsx` | Add "Portal" link under "Sprava" section |
-| `src/App.tsx` | Add route `/admin/portal` and wrap all routes with FeedbackButton |
+### 5. Aktualizace LarpsPage.tsx
+- Pridat pole pro motto do dialogu pro vytvareni/upravu LARPu
 
 ---
 
-## Implementation Details
+## Technicke detaily
 
-### Phase 1: Database Setup
+### Migrace SQL
+```sql
+-- Pridat motto pole do larps
+ALTER TABLE public.larps ADD COLUMN IF NOT EXISTS motto text;
 
-Create `portal_feedback` table with columns:
-- `id` - UUID primary key
-- `larp_id` - Optional FK to larps (null for general feedback)
-- `user_id` - Optional FK to auth.users (null for anonymous portal users)
-- `source_page` - String identifying the page (e.g., "harmonogram", "cp", "portal-view")
-- `content` - The feedback text (max 2000 chars)
-- `status` - Enum: 'new' | 'read' | 'resolved'
-- `created_at`, `resolved_at` - Timestamps
-
-RLS policies will allow:
-- Authenticated users to insert feedback linked to their LARP
-- Portal users (unauthenticated) to insert feedback without larp_id
-- LARP owners to view/manage feedback for their LARPs
-
-### Phase 2: FeedbackButton Component
-
-A global component that:
-- Renders a small floating button (bottom-right, `fixed`, `z-50`)
-- Shows only a simple icon/text ("Zpetna vazba")
-- On click, opens a compact Dialog/Popover with:
-  - Textarea for feedback (max 2000 chars)
-  - Submit button
-  - Auto-detects current page from `useLocation().pathname`
-- Formats submitted feedback as: `site: {page} - note: {content}`
-- Uses toast to confirm submission
-- Works on all pages (admin, portal, landing)
-
-### Phase 3: Admin Feedback Page
-
-New page at `/admin/portal` showing:
-- List of all feedback for current LARP
-- Columns: Date, Source Page, Content preview, Status
-- Filter by status (new/read/resolved)
-- Click to expand full content
-- Mark as read/resolved actions
-- Delete action
-
-### Phase 4: Navigation Update
-
-Add to AdminLayout under "Sprava" section:
-```typescript
-const larpManagement = [
-  { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
-  { name: "Portal", href: "/admin/portal", icon: MessageSquare },
-];
+-- Aktualizovat verify_person_by_slug pro vraceni motto a run info
+CREATE OR REPLACE FUNCTION public.verify_person_by_slug(p_slug text, p_password text)
+RETURNS TABLE(
+    person_id uuid,
+    person_name text,
+    person_type person_type,
+    larp_id uuid,
+    larp_name text,
+    larp_theme text,
+    larp_motto text,
+    group_name text,
+    performer text,
+    performance_times text,
+    run_name text,
+    run_date_from date,
+    run_date_to date,
+    run_location text,
+    run_address text,
+    mission_briefing text
+)
+...
 ```
 
-### Phase 5: Global Integration
+### Struktura komponenty PortalViewPage
+1. Header s nazvem LARPu a mottem (bez sticky header)
+2. Karta postavy - jmeno, skupina badge, obsah medailonku
+3. Mission Briefing karta (pokud existuji run data)
+4. Dokumenty sekce - vnorene Accordion + Collapsible
+5. Export sekce s tlacitky pro tisk/PDF
 
-In `App.tsx`, wrap the content with FeedbackButton so it appears on every page:
-- The button will be inside the BrowserRouter but outside Routes
-- Uses `useLocation()` to detect current page
-- Uses `useLarpContext()` for LARP context in admin pages
-- Uses `usePortalSession()` for portal context
-
----
-
-## Technical Notes
-
-### Page Detection Logic
-
-The FeedbackButton will extract page name from pathname:
-- `/admin/harmonogram` -> "harmonogram"
-- `/admin/dokumenty` -> "dokumenty"
-- `/portal/:token/view` -> "portal-view"
-- `/` -> "landing"
-
-### RLS for Mixed Authentication
-
-Since portal users are not authenticated via Supabase Auth, the INSERT policy will use `true` (public insert) but with validation:
-- Content length limit enforced
-- Rate limiting via database trigger (optional future enhancement)
-
-### Visual Design
-
-The button will follow the existing design system:
-- Uses `Button` component with `variant="outline"`
-- Small size, icon + short text
-- Modal uses existing `Dialog` components
-- Matches "paper-card" aesthetic used elsewhere
+### Stylove zmeny
+- Typewriter font pro nadpisy
+- Paper-card vizual
+- Badge pro skupinu (hnedy/olivovy styl)
+- Tlacitko "SBALIT DOKUMENT" ve stylu btn-vintage
 
