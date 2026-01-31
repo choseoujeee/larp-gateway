@@ -162,7 +162,7 @@ export type Database = {
           password_hash: string
           performance_times: string | null
           performer: string | null
-          run_id: string
+          run_id: string | null
           slug: string
           type: Database["public"]["Enums"]["person_type"]
           updated_at: string
@@ -178,7 +178,7 @@ export type Database = {
           password_hash: string
           performance_times?: string | null
           performer?: string | null
-          run_id: string
+          run_id?: string | null
           slug: string
           type: Database["public"]["Enums"]["person_type"]
           updated_at?: string
@@ -194,7 +194,7 @@ export type Database = {
           password_hash?: string
           performance_times?: string | null
           performer?: string | null
-          run_id?: string
+          run_id?: string | null
           slug?: string
           type?: Database["public"]["Enums"]["person_type"]
           updated_at?: string
