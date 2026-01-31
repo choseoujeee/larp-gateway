@@ -1,16 +1,23 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, Printer, LogOut, Loader2, FoldVertical } from "lucide-react";
+import { ChevronRight, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { supabase } from "@/integrations/supabase/client";
 import { DOCUMENT_TYPES } from "@/lib/constants";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Document {
   id: string;
@@ -32,6 +39,8 @@ export default function PortalViewPage() {
   // Track open categories and open documents separately
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   const [openDocuments, setOpenDocuments] = useState<Set<string>>(new Set());
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   useEffect(() => {
     if (!sessionLoading && !session) {
@@ -225,9 +234,27 @@ export default function PortalViewPage() {
                 </div>
                 {session.missionBriefing && (
                   <div 
-                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
+                )}
+                
+                {/* Payment info button */}
+                {session.personType === "postava" && session.runPaymentAccount && (
+                  <div className="mt-4 pt-4 border-t border-border no-print">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowQrCode(false);
+                        setPaymentDialogOpen(true);
+                      }}
+                      className="btn-vintage"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Informace o platbě
+                    </Button>
+                  </div>
                 )}
               </PaperCardContent>
             </PaperCard>
@@ -355,10 +382,117 @@ export default function PortalViewPage() {
 
       {/* Footer */}
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border">
-        <p>Kliknutím na název dokumentu rozbalíte jeho obsah.</p>
+        {session.runFooterText ? (
+          <p className="whitespace-pre-line">{session.runFooterText}</p>
+        ) : (
+          <p>Kliknutím na název dokumentu rozbalíte jeho obsah.</p>
+        )}
       </footer>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="paper-card max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-typewriter tracking-wider uppercase flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Informace o platbě
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {session.runPaymentAccount && (
+              <div className="flex">
+                <span className="font-semibold w-28 text-foreground">Účet:</span>
+                <span className="text-muted-foreground font-mono">{session.runPaymentAccount}</span>
+              </div>
+            )}
+            {session.runPaymentAmount && (
+              <div className="flex">
+                <span className="font-semibold w-28 text-foreground">Částka:</span>
+                <span className="text-muted-foreground">{session.runPaymentAmount}</span>
+              </div>
+            )}
+            {session.runPaymentDueDate && (
+              <div className="flex">
+                <span className="font-semibold w-28 text-foreground">Splatnost:</span>
+                <span className="text-muted-foreground">
+                  {format(new Date(session.runPaymentDueDate), "d. MMMM yyyy", { locale: cs })}
+                </span>
+              </div>
+            )}
+            
+            <div className="border-t border-border pt-4 mt-4">
+              {session.personPaidAt ? (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">Máš zaplaceno</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <Clock className="h-5 w-5" />
+                  <span className="font-medium">Ještě neevidujeme tvou platbu</span>
+                </div>
+              )}
+            </div>
+            
+            {!showQrCode && session.runPaymentAccount && session.runPaymentAmount && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQrCode(true)}
+                  className="btn-vintage w-full"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Vygenerovat QR kód
+                </Button>
+              </div>
+            )}
+            
+            {showQrCode && session.runPaymentAccount && (
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <QRCodeSVG
+                  value={generateQrPaymentString(
+                    session.runPaymentAccount,
+                    session.runPaymentAmount || "",
+                    session.personName
+                  )}
+                  size={180}
+                  level="M"
+                  includeMargin
+                />
+                <p className="text-xs text-muted-foreground">Naskenuj v bankovní aplikaci</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+/** Generate SPAYD QR payment string */
+function generateQrPaymentString(account: string, amount: string, message: string): string {
+  // Parse amount - extract numeric value
+  const numericAmount = amount.replace(/[^\d.,]/g, "").replace(",", ".");
+  
+  // SPAYD format for Czech payment QR codes
+  const parts = [
+    "SPD*1.0",
+    `ACC:CZ${account.replace(/[^0-9]/g, "")}`,
+  ];
+  
+  if (numericAmount) {
+    parts.push(`AM:${numericAmount}`);
+    parts.push("CC:CZK");
+  }
+  
+  if (message) {
+    // Truncate and sanitize message
+    const sanitizedMsg = message.substring(0, 60).replace(/[*]/g, "");
+    parts.push(`MSG:${sanitizedMsg}`);
+  }
+  
+  return parts.join("*");
 }
 
 // Separate component for document category

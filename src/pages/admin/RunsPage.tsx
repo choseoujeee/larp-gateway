@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Calendar, ArrowLeft, Users, Copy, CheckCircle, Circle, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Calendar, ArrowLeft, Users, Copy, CheckCircle, Circle, Mail, Phone } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ interface Assignment {
   person_id: string;
   player_name: string | null;
   player_email: string | null;
+  player_phone: string | null;
   paid_at: string | null;
   access_token: string;
   persons?: { name: string; type: string; group_name: string | null; slug: string };
@@ -104,6 +105,7 @@ export default function RunsPage() {
     person_id: "",
     player_name: "",
     player_email: "",
+    player_phone: "",
     password: "",
   });
   const [assignSaving, setAssignSaving] = useState(false);
@@ -333,7 +335,7 @@ export default function RunsPage() {
   // Assignment functions
   const openAssignDialog = () => {
     setSelectedAssignment(null);
-    setAssignFormData({ person_id: "", player_name: "", player_email: "", password: "" });
+    setAssignFormData({ person_id: "", player_name: "", player_email: "", player_phone: "", password: "" });
     setAssignDialogOpen(true);
   };
 
@@ -344,6 +346,7 @@ export default function RunsPage() {
       person_id: assignment.person_id,
       player_name: assignment.player_name || "",
       player_email: assignment.player_email || "",
+      player_phone: assignment.player_phone || "",
       password: "",
     });
     setAssignDialogOpen(true);
@@ -367,6 +370,7 @@ export default function RunsPage() {
         person_id: assignFormData.person_id,
         player_name: assignFormData.player_name || null,
         player_email: assignFormData.player_email || null,
+        player_phone: assignFormData.player_phone || null,
       };
 
       if (assignFormData.password) {
@@ -495,7 +499,7 @@ export default function RunsPage() {
             <TableRow>
               <TableHead>Postava</TableHead>
               <TableHead>Hráč</TableHead>
-              <TableHead className="w-12 text-center">Email</TableHead>
+              <TableHead className="w-20 text-center">Kontakt</TableHead>
               <TableHead className="w-20 text-center">Zaplaceno</TableHead>
               <TableHead className="w-32 text-right">Akce</TableHead>
             </TableRow>
@@ -521,25 +525,43 @@ export default function RunsPage() {
                   )}
                 </TableCell>
                 <TableCell className="text-center">
-                  {assignment.player_email ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{assignment.player_email}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
+                  <div className="flex justify-center gap-1">
+                    {assignment.player_phone ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`tel:${assignment.player_phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <Phone className="h-4 w-4" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{assignment.player_phone}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    {assignment.player_email ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`mailto:${assignment.player_email}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{assignment.player_email}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    {!assignment.player_phone && !assignment.player_email && (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-center">
                   <Button
@@ -762,15 +784,27 @@ export default function RunsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Email hráče</Label>
-                <Input
-                  type="email"
-                  value={assignFormData.player_email}
-                  onChange={(e) => setAssignFormData({ ...assignFormData, player_email: e.target.value })}
-                  placeholder="email@example.com"
-                  className="input-vintage"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Telefon hráče</Label>
+                  <Input
+                    type="tel"
+                    value={assignFormData.player_phone}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, player_phone: e.target.value })}
+                    placeholder="+420 123 456 789"
+                    className="input-vintage"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email hráče</Label>
+                  <Input
+                    type="email"
+                    value={assignFormData.player_email}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, player_email: e.target.value })}
+                    placeholder="email@example.com"
+                    className="input-vintage"
+                  />
+                </div>
               </div>
 
               {!selectedAssignment && (

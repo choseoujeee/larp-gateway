@@ -21,6 +21,12 @@ interface PortalSession {
   runAddress: string | null;
   missionBriefing: string | null;
   medailonek: string | null;
+  runFooterText: string | null;
+  runContact: string | null;
+  runPaymentAccount: string | null;
+  runPaymentAmount: string | null;
+  runPaymentDueDate: string | null;
+  personPaidAt: string | null;
 }
 
 /** Řádek vrácený RPC verify_person_by_slug (snake_case z DB) */
@@ -43,6 +49,12 @@ interface VerifyPersonBySlugRow {
   run_address: string | null;
   mission_briefing: string | null;
   person_medailonek: string | null;
+  run_footer_text: string | null;
+  run_contact: string | null;
+  run_payment_account: string | null;
+  run_payment_amount: string | null;
+  run_payment_due_date: string | null;
+  person_paid_at: string | null;
 }
 
 interface PortalContextType {
@@ -121,6 +133,12 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         runAddress: row.run_address ?? null,
         missionBriefing: row.mission_briefing ?? null,
         medailonek: row.person_medailonek ?? null,
+        runFooterText: row.run_footer_text ?? null,
+        runContact: row.run_contact ?? null,
+        runPaymentAccount: row.run_payment_account ?? null,
+        runPaymentAmount: row.run_payment_amount ?? null,
+        runPaymentDueDate: row.run_payment_due_date ?? null,
+        personPaidAt: row.person_paid_at ?? null,
       };
 
       setSession(newSession);

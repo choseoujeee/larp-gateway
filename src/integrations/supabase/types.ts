@@ -381,6 +381,7 @@ export type Database = {
           person_id: string
           player_email: string | null
           player_name: string | null
+          player_phone: string | null
           run_id: string
           updated_at: string | null
         }
@@ -393,6 +394,7 @@ export type Database = {
           person_id: string
           player_email?: string | null
           player_name?: string | null
+          player_phone?: string | null
           run_id: string
           updated_at?: string | null
         }
@@ -405,6 +407,7 @@ export type Database = {
           person_id?: string
           player_email?: string | null
           player_name?: string | null
+          player_phone?: string | null
           run_id?: string
           updated_at?: string | null
         }
@@ -645,13 +648,19 @@ export type Database = {
           person_id: string
           person_medailonek: string
           person_name: string
+          person_paid_at: string
           person_type: Database["public"]["Enums"]["person_type"]
           run_address: string
+          run_contact: string
           run_date_from: string
           run_date_to: string
+          run_footer_text: string
           run_id: string
           run_location: string
           run_name: string
+          run_payment_account: string
+          run_payment_amount: string
+          run_payment_due_date: string
         }[]
       }
     }
