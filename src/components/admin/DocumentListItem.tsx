@@ -1,4 +1,4 @@
-import { Pencil, Trash2, EyeOff } from "lucide-react";
+import { Pencil, Trash2, EyeOff, Clock } from "lucide-react";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { DocBadge } from "@/components/ui/doc-badge";
@@ -35,6 +35,8 @@ interface Document {
   target_person_id: string | null;
   sort_order: number;
   priority: number;
+  visibility_mode: string;
+  visible_days_before: number | null;
 }
 
 interface DocumentListItemProps {
@@ -114,6 +116,23 @@ export function DocumentListItem({
               <span className="text-xs bg-accent/50 text-accent-foreground px-2 py-0.5 rounded">
                 {getRunLabel()}
               </span>
+
+              {/* Delayed visibility indicator */}
+              {doc.visibility_mode === "delayed" && doc.visible_days_before && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded cursor-help">
+                        <Clock className="h-3 w-3" />
+                        {doc.visible_days_before}d
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Zobrazí se {doc.visible_days_before} dní před začátkem běhu</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
 
               {/* Hidden indicator with tooltip */}
               {hiddenFromPersons.length > 0 && (

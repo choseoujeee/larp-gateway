@@ -29,6 +29,8 @@ export type Database = {
           target_type: Database["public"]["Enums"]["document_target"]
           title: string
           updated_at: string
+          visibility_mode: string
+          visible_days_before: number | null
         }
         Insert: {
           content?: string | null
@@ -44,6 +46,8 @@ export type Database = {
           target_type?: Database["public"]["Enums"]["document_target"]
           title: string
           updated_at?: string
+          visibility_mode?: string
+          visible_days_before?: number | null
         }
         Update: {
           content?: string | null
@@ -59,6 +63,8 @@ export type Database = {
           target_type?: Database["public"]["Enums"]["document_target"]
           title?: string
           updated_at?: string
+          visibility_mode?: string
+          visible_days_before?: number | null
         }
         Relationships: [
           {

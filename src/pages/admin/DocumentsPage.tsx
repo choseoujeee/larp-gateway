@@ -58,6 +58,8 @@ interface Document {
   target_person_id: string | null;
   sort_order: number;
   priority: number; // 1 = prioritní, 2 = normální, 3 = volitelné
+  visibility_mode: string;
+  visible_days_before: number | null;
 }
 
 export default function DocumentsPage() {
@@ -84,6 +86,8 @@ export default function DocumentsPage() {
     sort_order: 0,
     priority: 2, // default = normální
     run_id: "__all__" as string, // "__all__" = všechny běhy, jinak konkrétní run_id
+    visibility_mode: "immediate" as string,
+    visible_days_before: 7,
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -161,6 +165,8 @@ export default function DocumentsPage() {
       sort_order: 0,
       priority: 2,
       run_id: "__all__", // výchozí = pro všechny běhy
+      visibility_mode: "immediate",
+      visible_days_before: 7,
     });
     setHiddenFromPersonIds([]);
     setDialogOpen(true);
@@ -178,6 +184,8 @@ export default function DocumentsPage() {
       sort_order: doc.sort_order,
       priority: doc.priority ?? 2,
       run_id: doc.run_id || "__all__",
+      visibility_mode: doc.visibility_mode || "immediate",
+      visible_days_before: doc.visible_days_before ?? 7,
     });
     const { data: hiddenRows } = await supabase
       .from("hidden_documents")
@@ -206,6 +214,8 @@ export default function DocumentsPage() {
       target_person_id: formData.target_type === "osoba" ? formData.target_person_id : null,
       sort_order: formData.sort_order,
       priority: formData.priority,
+      visibility_mode: formData.visibility_mode,
+      visible_days_before: formData.visibility_mode === "delayed" ? formData.visible_days_before : null,
     };
 
     let documentId: string;
@@ -645,6 +655,53 @@ export default function DocumentsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Režim zobrazení na portálu */}
+            <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
+              <Label className="font-medium">Zobrazení na portálu hráče</Label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="visibility_mode"
+                    value="immediate"
+                    checked={formData.visibility_mode === "immediate"}
+                    onChange={() => setFormData({ ...formData, visibility_mode: "immediate" })}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Zobrazit ihned</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="visibility_mode"
+                    value="delayed"
+                    checked={formData.visibility_mode === "delayed"}
+                    onChange={() => setFormData({ ...formData, visibility_mode: "delayed" })}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Zobrazit až</span>
+                </label>
+                {formData.visibility_mode === "delayed" && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={formData.visible_days_before}
+                      onChange={(e) => setFormData({ ...formData, visible_days_before: parseInt(e.target.value) || 7 })}
+                      className="input-vintage w-20"
+                    />
+                    <span className="text-sm text-muted-foreground">dní před začátkem běhu</span>
+                  </div>
+                )}
+              </div>
+              {formData.visibility_mode === "delayed" && (
+                <p className="text-xs text-muted-foreground">
+                  Dokument se na portálu zobrazí až {formData.visible_days_before} dní před datem začátku aktivního běhu.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
