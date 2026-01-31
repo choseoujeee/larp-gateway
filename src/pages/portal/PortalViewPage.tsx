@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode } from "lucide-react";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
@@ -313,6 +313,7 @@ export default function PortalViewPage() {
               {groupedDocs.organizacni.length > 0 && (
                 <DocumentCategory
                   title="Organizační"
+                  categoryKey="organizacni"
                   count={groupedDocs.organizacni.length}
                   documents={groupedDocs.organizacni}
                   isOpen={openCategories.has("organizacni")}
@@ -326,6 +327,7 @@ export default function PortalViewPage() {
               {groupedDocs.herni.length > 0 && (
                 <DocumentCategory
                   title="Herní"
+                  categoryKey="herni"
                   count={groupedDocs.herni.length}
                   documents={groupedDocs.herni}
                   isOpen={openCategories.has("herni")}
@@ -339,6 +341,7 @@ export default function PortalViewPage() {
               {groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length > 0 && (
                 <DocumentCategory
                   title="Osobní"
+                  categoryKey="osobni"
                   count={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length}
                   documents={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek")}
                   isOpen={openCategories.has("osobni")}
@@ -352,6 +355,7 @@ export default function PortalViewPage() {
               {session.personType === "cp" && groupedDocs.cp.length > 0 && (
                 <DocumentCategory
                   title="CP materiály"
+                  categoryKey="cp"
                   count={groupedDocs.cp.length}
                   documents={groupedDocs.cp}
                   isOpen={openCategories.has("cp")}
@@ -532,9 +536,18 @@ function generateQrPaymentString(account: string, amount: string, playerName: st
   return parts.join("*");
 }
 
-// Separate component for document category
+// Category icons mapping
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  organizacni: FileText,
+  herni: Gamepad2,
+  osobni: User,
+  cp: Users,
+};
+
+// Separate component for document category - compact version matching original design
 interface DocumentCategoryProps {
   title: string;
+  categoryKey: string;
   count: number;
   documents: Document[];
   isOpen: boolean;
@@ -545,6 +558,7 @@ interface DocumentCategoryProps {
 
 function DocumentCategory({
   title,
+  categoryKey,
   count,
   documents,
   isOpen,
@@ -552,30 +566,34 @@ function DocumentCategory({
   openDocuments,
   onToggleDocument,
 }: DocumentCategoryProps) {
+  const Icon = categoryIcons[categoryKey] || FileText;
+  
   return (
-    <PaperCard>
+    <PaperCard className="overflow-hidden">
       <Collapsible open={isOpen} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <button className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <ChevronRight 
-                className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} 
-              />
-              <span className="font-typewriter text-lg tracking-wide uppercase">
-                {title}
-              </span>
-              <span className="text-sm text-muted-foreground">({count})</span>
-            </div>
+          <button className="w-full px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
+            <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            )}
+            <span className="font-typewriter text-sm tracking-wider uppercase">
+              {title}
+            </span>
+            <span className="text-sm text-muted-foreground">({count})</span>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="px-6 pb-4 space-y-1">
-            {documents.map((doc) => (
+          <div className="divide-y divide-border/50">
+            {documents.map((doc, index) => (
               <DocumentItem
                 key={doc.id}
                 document={doc}
                 isOpen={openDocuments.has(doc.id)}
                 onToggle={() => onToggleDocument(doc.id)}
+                isEven={index % 2 === 0}
               />
             ))}
           </div>
@@ -585,35 +603,40 @@ function DocumentCategory({
   );
 }
 
-// Separate component for individual document
+// Separate component for individual document - compact row style
 interface DocumentItemProps {
   document: Document;
   isOpen: boolean;
   onToggle: () => void;
+  isEven?: boolean;
 }
 
-function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
+function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps) {
   const isPriority = document.priority === 1;
   const isOptional = document.priority === 3;
   
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
-        <button className="w-full text-left py-2 px-3 rounded hover:bg-muted/50 transition-colors flex items-center gap-2">
+        <button 
+          className={`w-full text-left py-2 px-4 flex items-center gap-2 hover:bg-muted/50 transition-colors ${
+            isEven ? "bg-muted/20" : ""
+          }`}
+        >
           <ChevronRight 
-            className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
+            className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
           />
-          <span className="font-medium text-foreground">{document.title}</span>
           {isPriority && (
-            <span className="text-xs font-bold text-accent uppercase tracking-wider">[PRIORITNÍ]</span>
+            <span className="text-xs font-bold text-accent uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
           )}
+          <span className="text-sm text-foreground">{document.title}</span>
           {isOptional && (
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">[VOLITELNÉ]</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
           )}
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-6 pl-3 border-l-2 border-border py-3">
+        <div className="px-4 py-4 bg-background border-t border-border">
           {document.content && (
             <div
               className="prose prose-sm max-w-none text-muted-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
@@ -629,7 +652,7 @@ function DocumentItem({ document, isOpen, onToggle }: DocumentItemProps) {
             }}
             className="mt-4 text-xs uppercase tracking-wider no-print"
           >
-            Sbalit dokument
+            Sbalit
           </Button>
         </div>
       </CollapsibleContent>
