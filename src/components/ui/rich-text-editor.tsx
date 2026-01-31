@@ -260,10 +260,10 @@ export function RichTextEditor({
       Indent,
     ],
     content: value || "",
-    editorProps: {
+  editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0",
+          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_li]:mb-1",
       },
     },
     onUpdate: ({ editor }) => {
