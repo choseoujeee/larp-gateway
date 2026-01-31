@@ -41,9 +41,9 @@ interface Run {
   footer_text: string | null;
   mission_briefing: string | null;
   is_active: boolean;
-  payment_account: string | null;
-  payment_amount: string | null;
-  payment_due_date: string | null;
+  payment_account?: string | null;
+  payment_amount?: string | null;
+  payment_due_date?: string | null;
   larps?: { name: string };
 }
 

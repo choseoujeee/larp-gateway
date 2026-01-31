@@ -33,8 +33,8 @@ interface Person {
   name: string;
   group_name: string | null;
   access_token: string;
-  /** Kdy hráč uhradil platbu (null = neuhrazeno) */
-  paid_at: string | null;
+  /** Kdy hráč uhradil platbu (null = neuhrazeno) - optional pro kompatibilitu */
+  paid_at?: string | null;
 }
 
 export default function PersonsPage() {
@@ -196,7 +196,7 @@ export default function PersonsPage() {
     const newPaidAt = person.paid_at ? null : new Date().toISOString();
     const { error } = await supabase
       .from("persons")
-      .update({ paid_at: newPaidAt })
+      .update({ paid_at: newPaidAt } as Record<string, unknown>)
       .eq("id", person.id);
 
     if (error) {
