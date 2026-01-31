@@ -242,11 +242,29 @@ function detectPerformerConflicts(runId: string): Conflict[] {
 
 ---
 
-## Časová náročnost
+## Stav implementace
 
-Toto je rozsáhlá feature, doporučuji implementovat po fázích:
-- **Fáze 1-2:** Základ (scény, detail CP) - primární
-- **Fáze 3:** Propojení s harmonogramem - sekundární  
-- **Fáze 4:** Portál CP - finální
+### ✅ Fáze 1: Databáze (DOKONČENO)
+- Vytvořena tabulka `cp_scenes` pro scény CP
+- Vytvořena tabulka `cp_performers` pro přiřazení performerů k běhu
+- Přidány sloupce `mission_briefing` a `act_info` do tabulky `persons`
+- Přidán sloupec `cp_scene_id` do `schedule_events` pro obousměrnou vazbu
+- Nastaveny RLS policies
 
-Chceš začít s Fází 1 a 2, nebo rovnou kompletní implementaci?
+### ✅ Fáze 2: Admin rozhraní (DOKONČENO)
+- Vytvořena komponenta `CpCard.tsx` s vylepšenými dlaždicemi
+- Vytvořena komponenta `CpSceneList.tsx` pro seznam scén
+- Vytvořena komponenta `CpSceneDialog.tsx` pro editaci scén
+- Vytvořena stránka `CpDetailPage.tsx` s plným detailem CP (medailonek, mission briefing, act info, scény, dokumenty)
+- Přepracována stránka `CpPage.tsx` s kompaktními kartami a filtry
+
+### 🔲 Fáze 3: Propojení s harmonogramem (TODO)
+- Upravit `SchedulePage.tsx` - lepší UX pro `vystoupeni_cp`
+- Implementovat obousměrnou synchronizaci
+- Přidat detekci kolizí performerů
+
+### 🔲 Fáze 4: Portál (TODO)
+- Vytvořit stránku pro všechny CP
+- Rozšířit `PortalViewPage.tsx` o sekci scén
+- Přidat zobrazení mission briefingu a act info pro CP
+- Přidat dlaždice hráčských postav do CP portálu

@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, ArrowLeft, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Loader2, Filter } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
+import { CpCard } from "@/components/admin/CpCard";
 
 interface CP {
   id: string;
@@ -38,24 +39,35 @@ interface CP {
   performance_times: string | null;
 }
 
-interface Assignment {
-  person_id: string;
-  player_name: string | null;
+interface CpPerformer {
+  cp_id: string;
+  performer_name: string;
+}
+
+interface CpScene {
+  cp_id: string;
+}
+
+interface Document {
+  target_type: string;
+  target_group: string | null;
+  target_person_id: string | null;
 }
 
 export default function CpPage() {
   const navigate = useNavigate();
-  const { slug } = useParams<{ slug: string }>();
   const { currentLarpId, currentLarp } = useLarpContext();
-  const { selectedRunId, runs } = useRunContext();
-  const selectedRun = runs.find((r) => r.id === selectedRunId);
+  const { selectedRunId } = useRunContext();
   const [cps, setCps] = useState<CP[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [performers, setPerformers] = useState<CpPerformer[]>([]);
+  const [scenes, setScenes] = useState<CpScene[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCp, setSelectedCp] = useState<CP | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyUnassigned, setShowOnlyUnassigned] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -64,7 +76,6 @@ export default function CpPage() {
     password: "",
   });
   const [saving, setSaving] = useState(false);
-  const [detailCp, setDetailCp] = useState<CP | null>(null);
 
   const fetchCps = async () => {
     if (!currentLarpId) return;
@@ -85,44 +96,62 @@ export default function CpPage() {
     setLoading(false);
   };
 
-  const fetchAssignments = async () => {
+  const fetchPerformers = async () => {
     if (!selectedRunId) {
-      setAssignments([]);
+      setPerformers([]);
       return;
     }
     const { data } = await supabase
-      .from("run_person_assignments")
-      .select("person_id, player_name")
+      .from("cp_performers")
+      .select("cp_id, performer_name")
       .eq("run_id", selectedRunId);
-    setAssignments((data as Assignment[]) || []);
+    setPerformers((data as CpPerformer[]) || []);
+  };
+
+  const fetchScenes = async () => {
+    if (!selectedRunId) {
+      setScenes([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("cp_scenes")
+      .select("cp_id")
+      .eq("run_id", selectedRunId);
+    setScenes((data as CpScene[]) || []);
+  };
+
+  const fetchDocuments = async () => {
+    if (!currentLarpId) return;
+    const { data } = await supabase
+      .from("documents")
+      .select("target_type, target_group, target_person_id")
+      .eq("larp_id", currentLarpId);
+    setDocuments((data as Document[]) || []);
   };
 
   useEffect(() => {
     if (currentLarpId) {
       setLoading(true);
-      fetchCps();
+      Promise.all([fetchCps(), fetchDocuments()]).finally(() => setLoading(false));
     }
   }, [currentLarpId]);
 
   useEffect(() => {
-    fetchAssignments();
+    fetchPerformers();
+    fetchScenes();
   }, [selectedRunId]);
 
-  // Handle detail view from URL param
-  useEffect(() => {
-    if (slug && cps.length > 0) {
-      const cp = cps.find((c) => c.slug === slug);
-      if (cp) {
-        setDetailCp(cp);
-      } else {
-        navigate("/admin/cp", { replace: true });
-      }
-    } else if (!slug) {
-      setDetailCp(null);
-    }
-  }, [slug, cps, navigate]);
-
-  const getAssignment = (personId: string) => assignments.find((a) => a.person_id === personId);
+  const getPerformer = (cpId: string) => performers.find((p) => p.cp_id === cpId);
+  
+  const getScenesCount = (cpId: string) => scenes.filter((s) => s.cp_id === cpId).length;
+  
+  const getDocumentsCount = (cpId: string) => {
+    return documents.filter((d) => 
+      d.target_type === "vsichni" || 
+      (d.target_type === "skupina" && d.target_group === "CP") ||
+      (d.target_type === "osoba" && d.target_person_id === cpId)
+    ).length;
+  };
 
   const generateSlug = (name: string) => {
     return name
@@ -224,9 +253,6 @@ export default function CpPage() {
 
     toast.success("CP smazáno");
     setDeleteDialogOpen(false);
-    if (detailCp?.id === selectedCp.id) {
-      navigate("/admin/cp", { replace: true });
-    }
     fetchCps();
   };
 
@@ -234,171 +260,17 @@ export default function CpPage() {
     navigate(`/admin/cp/${cp.slug}`);
   };
 
-  const filteredCps = cps.filter(
-    (cp) =>
+  const filteredCps = cps.filter((cp) => {
+    const matchesSearch =
       cp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (cp.performer?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+      (cp.performer?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (getPerformer(cp.id)?.performer_name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    
+    const matchesUnassigned = !showOnlyUnassigned || !getPerformer(cp.id);
+    
+    return matchesSearch && matchesUnassigned;
+  });
 
-  // Detail view
-  if (detailCp) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/admin/cp")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="font-typewriter text-3xl tracking-wide">{detailCp.name}</h1>
-              {detailCp.performer && (
-                <p className="text-muted-foreground">Hraje: {detailCp.performer}</p>
-              )}
-            </div>
-          </div>
-
-          <PaperCard>
-            <PaperCardContent className="py-6">
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-muted-foreground">Slug</Label>
-                  <p className="font-mono">{detailCp.slug}</p>
-                </div>
-                {detailCp.performer && (
-                  <div>
-                    <Label className="text-muted-foreground">Performer</Label>
-                    <p>{detailCp.performer}</p>
-                  </div>
-                )}
-                {detailCp.performance_times && (
-                  <div>
-                    <Label className="text-muted-foreground">Časy vystoupení</Label>
-                    <p>{detailCp.performance_times}</p>
-                  </div>
-                )}
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => openEditDialog(detailCp)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Upravit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setSelectedCp(detailCp);
-                      setDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Smazat
-                  </Button>
-                </div>
-              </div>
-            </PaperCardContent>
-          </PaperCard>
-
-          {/* TODO: Show related documents, schedule events etc. */}
-        </div>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="paper-card">
-            <DialogHeader>
-              <DialogTitle className="font-typewriter">Upravit CP</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Jméno CP / role</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setFormData({
-                      ...formData,
-                      name,
-                      slug: selectedCp ? formData.slug : generateSlug(name),
-                    });
-                  }}
-                  placeholder="Tajemný cizinec"
-                  className="input-vintage"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Slug</Label>
-                <Input
-                  value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  placeholder="tajemny-cizinec"
-                  className="input-vintage font-mono"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Performer (kdo hraje)</Label>
-                <Input
-                  value={formData.performer}
-                  onChange={(e) => setFormData({ ...formData, performer: e.target.value })}
-                  placeholder="Jméno herce/herečky"
-                  className="input-vintage"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Časy vystoupení</Label>
-                <Textarea
-                  value={formData.performance_times}
-                  onChange={(e) => setFormData({ ...formData, performance_times: e.target.value })}
-                  placeholder="Sobota 14:00 - 16:00, Neděle 10:00 - 11:00"
-                  rows={2}
-                  className="input-vintage"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Zrušit
-              </Button>
-              <Button onClick={handleSave} disabled={saving} className="btn-vintage">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Uložit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent className="paper-card">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="font-typewriter">Smazat CP?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Opravdu chcete smazat CP <strong>{selectedCp?.name}</strong>?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Smazat
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </AdminLayout>
-    );
-  }
-
-  // List view
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -422,6 +294,19 @@ export default function CpPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64 input-vintage"
           />
+          {selectedRunId && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="unassigned"
+                checked={showOnlyUnassigned}
+                onCheckedChange={(checked) => setShowOnlyUnassigned(checked === true)}
+              />
+              <Label htmlFor="unassigned" className="text-sm cursor-pointer flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5" />
+                Jen nepřiřazené
+              </Label>
+            </div>
+          )}
         </div>
 
         {!currentLarpId ? (
@@ -451,64 +336,24 @@ export default function CpPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredCps.map((cp) => {
-              const assignment = getAssignment(cp.id);
+              const performer = getPerformer(cp.id);
               return (
-              <PaperCard
-                key={cp.id}
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleCardClick(cp)}
-              >
-                <PaperCardContent className="py-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-typewriter">{cp.name}</h4>
-                      {assignment?.player_name ? (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <User className="h-3 w-3" />
-                          {assignment.player_name}
-                        </p>
-                      ) : cp.performer ? (
-                        <p className="text-sm text-muted-foreground">
-                          Hraje: {cp.performer}
-                        </p>
-                      ) : selectedRun ? (
-                        <p className="text-xs text-muted-foreground italic mt-1">
-                          nepřiřazeno ({selectedRun.name})
-                        </p>
-                      ) : null}
-                      {cp.performance_times && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {cp.performance_times}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground font-mono mt-2">
-                        {cp.slug}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => openEditDialog(cp, e)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCp(cp);
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </PaperCardContent>
-              </PaperCard>
+                <CpCard
+                  key={cp.id}
+                  name={cp.name}
+                  slug={cp.slug}
+                  performerName={performer?.performer_name || cp.performer}
+                  performanceTimes={cp.performance_times}
+                  scenesCount={getScenesCount(cp.id)}
+                  documentsCount={getDocumentsCount(cp.id)}
+                  onClick={() => handleCardClick(cp)}
+                  onEdit={(e) => openEditDialog(cp, e)}
+                  onDelete={(e) => {
+                    e.stopPropagation();
+                    setSelectedCp(cp);
+                    setDeleteDialogOpen(true);
+                  }}
+                />
               );
             })}
           </div>
@@ -552,39 +397,40 @@ export default function CpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Performer (kdo hraje)</Label>
+              <Label>Performer (kdo hraje - globálně)</Label>
               <Input
                 value={formData.performer}
                 onChange={(e) => setFormData({ ...formData, performer: e.target.value })}
                 placeholder="Jméno herce/herečky"
                 className="input-vintage"
               />
+              <p className="text-xs text-muted-foreground">
+                Pro přiřazení k běhu použij detail CP
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label>Časy vystoupení</Label>
-              <Textarea
+              <Input
                 value={formData.performance_times}
                 onChange={(e) => setFormData({ ...formData, performance_times: e.target.value })}
-                placeholder="Sobota 14:00 - 16:00, Neděle 10:00 - 11:00"
-                rows={2}
+                placeholder="Sobota 14:00, 16:30, Neděle 10:00"
                 className="input-vintage"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>{selectedCp ? "Nové heslo (prázdné = beze změny)" : "Heslo"}</Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder={selectedCp ? "••••••••" : "Přístupové heslo"}
-                className="input-vintage"
-              />
-              <p className="text-xs text-muted-foreground">
-                Toto heslo se použije při přiřazení k běhu
-              </p>
-            </div>
+            {!selectedCp && (
+              <div className="space-y-2">
+                <Label>Heslo</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Přístupové heslo"
+                  className="input-vintage"
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
