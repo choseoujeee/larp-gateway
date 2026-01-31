@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
 import { useLarpContext } from "@/hooks/useLarpContext";
+import { useRunContext } from "@/hooks/useRunContext";
 
 interface Person {
   id: string;
@@ -53,6 +54,7 @@ interface Document {
 
 export default function DocumentsPage() {
   const { currentLarpId, currentLarp } = useLarpContext();
+  const { selectedRunId } = useRunContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
@@ -163,10 +165,16 @@ export default function DocumentsPage() {
       return;
     }
 
+    if (!selectedRunId) {
+      toast.error("Není vybrán žádný běh");
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
       larp_id: currentLarpId,
+      run_id: selectedRunId,
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
