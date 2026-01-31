@@ -1,149 +1,74 @@
 
 
-# LARP Portál – Plán implementace
+# Synchronizace databáze s UI rozhraním
 
-## 🎯 Co budujeme
-Komplexní standalone aplikace pro organizátory LARPů, jejich hráče a CP (cizí postavy). Organizátoři zakládají hry, píší dokumenty a spravují postavy, spravují organizační (lokace, termíny - larpy se opakují a každý má několik uvedení s různámi hráči, ale stejnými dokumenty) a herní informace. Hráči a CP dostávají unikátní link + heslo a vidí jen své materiály.
-
----
-
-## 🏗️ Fáze 1: Základy a backend
-
-### 1.1 Databáze a struktura
-- **Tabulky:** larpy, běhy, osoby (postavy + CP), dokumenty, příjemci dokumentů, skryté dokumenty, harmonogram, tiskoviny, produkce
-- **Vztahy:** LARP → běhy → všechny ostatní entity
-- **Bezpečnost:** RLS politiky pro organizátory, RPC funkce pro přístup hráčů/CP
-
-### 1.2 Autentizace organizátorů
-- Přihlášení/registrace přes Supabase Auth (login + heslo) - žádné maily, přístupy vytvoří admin
-- Ochrana admin sekcí – pouze přihlášení organizátoři
-- Vlastník LARPu = ten kdo ho vytvořil
-
-### 1.3 Systém přístupu pro hráče/CP
-- Generování unikátních access tokenů
-- Ověření hesla přes RPC funkci
-- Session ukládání do localStorage
-- Hráči vidí jen dokumenty pro své postavy (dokumenty všech, jeho skupiny, jeho osoby)
-- CP vidí vše - všechny hráčské dokumenty, všechny CP, harmonogram atd)
+## Situace
+Máš funkční UI postavené v Cursoru, které očekává sloupce a data, která v databázi zatím neexistují. Je potřeba rozšířit databázové schéma a aktualizovat RPC funkce.
 
 ---
 
-## 🎨 Fáze 2: Vizuální stránka
+## Co je třeba přidat
 
-### 2.1 Historické téma (WWII styl)
-- Odstíny hnědé, krémová, papírový dojem
-- Typewriter fonty
-- Barevné kódy pro typy dokumentů (organizační, herní, osobní)
-- "Classified documents" vizuální styl
-- NEPOUŽÍVAT MODERNÍ EMOTIKONY!!!! Místo toho je možné použít emotikony nebarevné, jen design black/white simple (dokument, postava, maska, amplion, ...)
+### 1. Nové sloupce v tabulce `runs`
+| Sloupec | Typ | Popis |
+|---------|-----|-------|
+| `payment_account` | text | Číslo transparentního účtu |
+| `payment_amount` | text | Cena (text, např. "500 Kč") |
+| `payment_due_date` | date | Datum splatnosti platby |
 
-### 2.2 Responzivní design
-- Mobile-first přístup pro portály hráčů/CP
-- Desktop optimalizace pro admin rozhraní
+### 2. Nový sloupec v tabulce `persons`
+| Sloupec | Typ | Popis |
+|---------|-----|-------|
+| `paid_at` | timestamptz | Kdy hráč zaplatil (null = neuhrazeno) |
 
----
-
-## 👔 Fáze 3: Admin rozhraní
-
-### 3.1 Dashboard
-- Přehled statistik (počet postav, CP, dokumentů, událostí)
-- Mission Briefing aktuálního běhu
-- Navigační kachlíky do jednotlivých sekcí
-- Výběr LARPu a běhu
-
-### 3.2 Správa LARPů a běhů
-- Vytvoření/úprava/smazání LARPu
-- Konfigurace běhu (datum, místo, adresa, kontakt, zápatí)
-- Výběr vizuálního tématu
-
-### 3.3 Správa postav
-- Seznam postav s filtry (skupina, fulltext)
-- CRUD postavy (slug, jméno, skupina, heslo)
-- Generování a kopírování přístupového linku
-- Indikace: má/nemá medailonek, počet dokumentů
-
-### 3.4 Správa CP (cizích postav)
-- Seznam CP s filtry (performer, fulltext)
-- CRUD CP (slug, jméno, performer, časy vystoupení, heslo)
-- Generování přístupového linku
-
-### 3.5 Správa dokumentů
-- **WYSIWYG editor** (TipTap) pro psaní obsahu
-- Typy: organizační, herní, postava, medailonek, cp
-- Cílení: všichni / skupina / konkrétní osoba
-- Skrytí před vybranými osobami
-- Přehled: společné / po skupinách / po postavách
-
-### 3.6 Harmonogram
-- CRUD událostí (den, čas, délka, typ, akce, místo)
-- Vazba na CP pro propojení s portálem
-- Timeline zobrazení po dnech a časech
-- **Live běh** – reálný čas, zvýraznění aktuálního bloku
-- Filtry podle postav/CP
-
-### 3.7 Produkce a tiskoviny
-- Seznam odkazů s popisem a typem
-- Instrukce k tisku u tiskovin
-- (Upload souborů doplníme později)
+### 3. Aktualizace RPC funkce `verify_person_access`
+Současná verze vrací pouze základní údaje. UI ale potřebuje:
+- `group_name` (skupina postavy)
+- `performer`, `performance_times` (pro CP)
+- `run_contact`, `run_footer_text` (zápatí portálu)
+- `larp_theme` (téma pro styling)
+- `run_payment_account`, `run_payment_amount`, `run_payment_due_date` (platba)
+- `person_paid_at` (stav platby)
 
 ---
 
-## 🎭 Fáze 4: Portály pro hráče a CP
+## Technický plán
 
-### 4.1 Portál hráče
-- Přístup přes unikátní link
-- Formulář pro zadání hesla (žádné emaily, jen url+heslo)
-- Po ověření: Mission Briefing, medailonek, dokumenty v sekcích
-- Sekce: ORGANIZAČNÍ, HERNÍ, OSOBNÍ
-- Tlačítka pro tisk/PDF (vše / organizační / herní / osobní)
-- Tlačítko odhlášení
+### Krok 1: Databázová migrace
 
-### 4.2 Portál CP
-- Stejný princip přístupu (link + heslo)
-- Mission Briefing, Act Info (performer, časy)
-- Dokument "charakter"
-- Společné CP dokumenty + dokumenty pro tuto CP
-- Tisk/PDF celé stránky
+```text
+-- Přidat sloupce do tabulky runs
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS payment_account text;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS payment_amount text;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS payment_due_date date;
 
----
+-- Přidat sloupec do tabulky persons
+ALTER TABLE persons ADD COLUMN IF NOT EXISTS paid_at timestamptz;
+```
 
-## 🖨️ Fáze 5: Tisk a export
+### Krok 2: Aktualizace RPC verify_person_access
+Přepsat funkci tak, aby vracela všechna potřebná data pro portál hráče/CP včetně platebních údajů a kontaktů.
 
-### 5.1 Tiskové funkce
-- Print dialog prohlížeče s optimalizovaným CSS
-- Možnost tisku různých kategorií dokumentů
-- Pro organizátora: náhled "jako hráč/CP"
-- všechny dokumenty půjde stáhnout jako pdf (tisk -> uložit jako pdf)
+### Krok 3: Přidat RPC pro hashování hesel (create_person_with_password)
+Aktuálně se heslo ukládá jako plain text. Je potřeba vytvořit RPC funkci, která heslo zahashuje pomocí pgcrypto.
+
+### Krok 4: Trigger pro automatický hash hesla
+Vytvořit trigger, který při INSERT/UPDATE do `persons` automaticky zahashuje `password_hash`, pokud přichází jako plain text.
 
 ---
 
-## 🔒 Bezpečnostní prvky
-- Hesla ukládána pouze jako hash (bcrypt)
-- RLS politiky pro oddělení dat organizátorů
-- Validace duplicitních slugů v rámci běhu
-- Session management pro portály
+## Výsledek
+Po této migraci bude celé UI plně funkční:
+- Správa plateb v admin rozhraní (běhy, postavy)
+- QR kód pro platbu na portálu hráče
+- Indikace zaplaceno/nezaplaceno
+- Bezpečné hashování hesel
+- Kompletní data v portálu (kontakt, zápatí, téma)
 
 ---
 
-## 📋 Výsledné obrazovky
-1. **Landing page** – úvodní stránka s WWII tématem
-2. **Přihlášení organizátora** – e-mail + heslo
-3. **Admin Dashboard** – přehled + navigace
-4. **Admin: LARPy** – seznam a správa LARPů
-5. **Admin: Běhy** – konfigurace běhu
-6. **Admin: Postavy** – seznam + CRUD + linky
-7. **Admin: CP** – seznam + CRUD + linky  
-8. **Admin: Dokumenty** – editor + přehledy
-9. **Admin: Harmonogram** – timeline + live běh
-10. **Admin: Produkce** – odkazy a materiály
-11. **Admin: Tiskoviny** – instrukce k tisku
-12. **Portál hráče** – přístup + dokumenty + tisk
-13. **Portál CP** – přístup + dokumenty + tisk
-
-CP vidí vše jako admin, jen nemůže editovat. Tzn. admin rozhraní bude přistupné všem od url+heslo, ale jen ti, kteří ještě budou přihlášení loginem a heslem budou mít možnost editace.
-
----
-
-## 🇨🇿 Jazyk
-Celé UI kompletně v češtině (tlačítka, texty, chybové hlášky, navigace).
+## Poznámky
+- Všechny změny jsou zpětně kompatibilní (nové sloupce jsou nullable)
+- Existující data zůstanou nedotčena
+- RLS politiky není třeba měnit (sloupce patří do existujících tabulek)
 
