@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        typewriter: ['"Special Elite"', 'cursive'],
+        mono: ['"Courier Prime"', '"Courier New"', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,6 +61,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Document type colors
+        doc: {
+          organizacni: "hsl(var(--doc-organizacni))",
+          herni: "hsl(var(--doc-herni))",
+          osobni: "hsl(var(--doc-osobni))",
+          cp: "hsl(var(--doc-cp))",
+          medailonek: "hsl(var(--doc-medailonek))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,25 +77,37 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "typewriter": {
+          from: { width: "0" },
+          to: { width: "100%" },
+        },
+        "blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "stamp": {
+          "0%": { transform: "scale(3) rotate(-15deg)", opacity: "0" },
+          "50%": { transform: "scale(1.1) rotate(-3deg)", opacity: "0.8" },
+          "100%": { transform: "scale(1) rotate(-3deg)", opacity: "1" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "typewriter": "typewriter 2s steps(40) forwards",
+        "blink": "blink 1s infinite",
+        "stamp": "stamp 0.4s ease-out forwards",
+      },
+      boxShadow: {
+        "paper": "0 2px 4px rgba(101, 67, 33, 0.15), 0 4px 8px rgba(101, 67, 33, 0.1)",
+        "stamp": "2px 2px 0 rgba(101, 67, 33, 0.3)",
       },
     },
   },

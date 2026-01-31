@@ -1,96 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* =================================
+   LARP PORTÁL - WWII DESIGN SYSTEM
+   ================================= */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Základní barvy - papír a inkoust */
+    --background: 43 25% 94%;
+    --foreground: 25 20% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Karty - mírně tmavší papír */
+    --card: 40 22% 88%;
+    --card-foreground: 25 20% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Popovery */
+    --popover: 40 22% 90%;
+    --popover-foreground: 25 20% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primární - vojenská hnědá */
+    --primary: 25 45% 25%;
+    --primary-foreground: 43 25% 94%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Sekundární - světlejší hnědá */
+    --secondary: 35 25% 75%;
+    --secondary-foreground: 25 20% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - vybledlý papír */
+    --muted: 40 15% 85%;
+    --muted-foreground: 25 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - zlatá/okrová */
+    --accent: 42 65% 45%;
+    --accent-foreground: 43 25% 94%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - červená pečeť */
+    --destructive: 0 65% 40%;
+    --destructive-foreground: 43 25% 94%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Okraje a vstupy */
+    --border: 30 20% 70%;
+    --input: 40 20% 85%;
+    --ring: 25 45% 25%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Barevné kódy dokumentů */
+    --doc-organizacni: 35 70% 50%;
+    --doc-herni: 200 60% 35%;
+    --doc-osobni: 140 50% 35%;
+    --doc-cp: 280 40% 40%;
+    --doc-medailonek: 25 45% 35%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Speciální efekty */
+    --paper-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+    
+    /* Stíny - vintage look */
+    --shadow-paper: 0 2px 4px rgba(101, 67, 33, 0.15), 0 4px 8px rgba(101, 67, 33, 0.1);
+    --shadow-stamp: 2px 2px 0 rgba(101, 67, 33, 0.3);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 30 25% 18%;
+    --sidebar-foreground: 43 25% 90%;
+    --sidebar-primary: 42 65% 50%;
+    --sidebar-primary-foreground: 30 25% 15%;
+    --sidebar-accent: 30 20% 25%;
+    --sidebar-accent-foreground: 43 25% 90%;
+    --sidebar-border: 30 20% 25%;
+    --sidebar-ring: 42 65% 50%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 25 20% 10%;
+    --foreground: 40 20% 85%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 25 18% 15%;
+    --card-foreground: 40 20% 85%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 25 18% 12%;
+    --popover-foreground: 40 20% 85%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 42 65% 50%;
+    --primary-foreground: 25 20% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 30 20% 25%;
+    --secondary-foreground: 40 20% 85%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 25 15% 20%;
+    --muted-foreground: 40 15% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 42 65% 45%;
+    --accent-foreground: 25 20% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 40 20% 90%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 30 15% 25%;
+    --input: 25 15% 20%;
+    --ring: 42 65% 50%;
+
+    --sidebar-background: 25 20% 8%;
+    --sidebar-foreground: 40 20% 85%;
+    --sidebar-primary: 42 65% 55%;
+    --sidebar-primary-foreground: 25 20% 10%;
+    --sidebar-accent: 25 15% 15%;
+    --sidebar-accent-foreground: 40 20% 85%;
+    --sidebar-border: 25 15% 15%;
+    --sidebar-ring: 42 65% 55%;
   }
 }
 
@@ -101,5 +121,132 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+  }
+
+  /* Typewriter headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Special Elite', cursive;
+    letter-spacing: 0.05em;
+  }
+}
+
+@layer components {
+  /* Papírová karta */
+  .paper-card {
+    @apply bg-card rounded-sm;
+    box-shadow: var(--shadow-paper);
+    background-image: var(--paper-texture);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Classified stamp efekt */
+  .stamp {
+    @apply inline-block px-3 py-1 font-bold uppercase tracking-wider;
+    font-family: 'Special Elite', cursive;
+    border: 3px solid currentColor;
+    transform: rotate(-3deg);
+    box-shadow: var(--shadow-stamp);
+  }
+
+  .stamp-red {
+    @apply text-destructive border-destructive;
+  }
+
+  .stamp-primary {
+    @apply text-primary border-primary;
+  }
+
+  /* Barevné štítky pro typy dokumentů */
+  .doc-badge-organizacni {
+    background-color: hsl(var(--doc-organizacni));
+    @apply text-white;
+  }
+
+  .doc-badge-herni {
+    background-color: hsl(var(--doc-herni));
+    @apply text-white;
+  }
+
+  .doc-badge-osobni {
+    background-color: hsl(var(--doc-osobni));
+    @apply text-white;
+  }
+
+  .doc-badge-cp {
+    background-color: hsl(var(--doc-cp));
+    @apply text-white;
+  }
+
+  .doc-badge-medailonek {
+    background-color: hsl(var(--doc-medailonek));
+    @apply text-white;
+  }
+
+  /* Typewriter text effect */
+  .typewriter {
+    font-family: 'Special Elite', cursive;
+  }
+
+  /* Vintage button */
+  .btn-vintage {
+    @apply px-4 py-2 font-bold uppercase tracking-wide;
+    font-family: 'Special Elite', cursive;
+    background: linear-gradient(to bottom, hsl(var(--primary)) 0%, hsl(25 45% 20%) 100%);
+    @apply text-primary-foreground rounded-sm;
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid hsl(25 45% 18%);
+    transition: all 0.2s ease;
+  }
+
+  .btn-vintage:hover {
+    background: linear-gradient(to bottom, hsl(25 45% 30%) 0%, hsl(var(--primary)) 100%);
+    transform: translateY(-1px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.15),
+      0 4px 8px rgba(0,0,0,0.25);
+  }
+
+  /* Přeškrtnutý text - tajný dokument */
+  .redacted {
+    background-color: hsl(var(--foreground));
+    color: transparent;
+    user-select: none;
+  }
+
+  /* Vintage input */
+  .input-vintage {
+    @apply bg-input border-2 border-border rounded-sm px-3 py-2;
+    font-family: 'Courier Prime', monospace;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .input-vintage:focus {
+    @apply border-primary outline-none;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 0 0 2px hsl(var(--primary) / 0.2);
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .paper-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    page-break-after: avoid;
   }
 }
