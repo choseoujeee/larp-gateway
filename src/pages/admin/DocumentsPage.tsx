@@ -498,14 +498,14 @@ export default function DocumentsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="paper-card max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="paper-card max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="font-typewriter">
               {selectedDoc ? "Upravit dokument" : "Nový dokument"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
             <div className="space-y-2">
               <Label>Název</Label>
               <Input
@@ -693,7 +693,7 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Zrušit
             </Button>
