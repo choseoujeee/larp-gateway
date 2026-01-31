@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLarpContext } from "@/hooks/useLarpContext";
+import { useRunContext } from "@/hooks/useRunContext";
 
 interface Person {
   id: string;
@@ -35,11 +36,20 @@ interface Person {
   group_name: string | null;
 }
 
+interface Assignment {
+  person_id: string;
+  player_name: string | null;
+  player_email: string | null;
+}
+
 export default function PersonsPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { currentLarpId, currentLarp } = useLarpContext();
+  const { selectedRunId, runs } = useRunContext();
+  const selectedRun = runs.find((r) => r.id === selectedRunId);
   const [persons, setPersons] = useState<Person[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -74,12 +84,28 @@ export default function PersonsPage() {
     setLoading(false);
   };
 
+  const fetchAssignments = async () => {
+    if (!selectedRunId) {
+      setAssignments([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("run_person_assignments")
+      .select("person_id, player_name, player_email")
+      .eq("run_id", selectedRunId);
+    setAssignments((data as Assignment[]) || []);
+  };
+
   useEffect(() => {
     if (currentLarpId) {
       setLoading(true);
       fetchPersons();
     }
   }, [currentLarpId]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [selectedRunId]);
 
   // Handle detail view from URL param
   useEffect(() => {
@@ -94,6 +120,8 @@ export default function PersonsPage() {
       setDetailPerson(null);
     }
   }, [slug, persons, navigate]);
+
+  const getAssignment = (personId: string) => assignments.find((a) => a.person_id === personId);
 
   const generateSlug = (name: string) => {
     return name
@@ -432,7 +460,9 @@ export default function PersonsPage() {
                   </span>
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {groupPersons.map((person) => (
+                  {groupPersons.map((person) => {
+                    const assignment = getAssignment(person.id);
+                    return (
                     <PaperCard
                       key={person.id}
                       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -442,7 +472,17 @@ export default function PersonsPage() {
                         <div className="flex items-start justify-between">
                           <div>
                             <h4 className="font-typewriter">{person.name}</h4>
-                            <p className="text-xs text-muted-foreground font-mono">
+                            {assignment?.player_name ? (
+                              <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                <User className="h-3 w-3" />
+                                {assignment.player_name}
+                              </p>
+                            ) : selectedRun ? (
+                              <p className="text-xs text-muted-foreground italic mt-1">
+                                nepřiřazeno ({selectedRun.name})
+                              </p>
+                            ) : null}
+                            <p className="text-xs text-muted-foreground font-mono mt-1">
                               {person.slug}
                             </p>
                           </div>
@@ -470,7 +510,8 @@ export default function PersonsPage() {
                         </div>
                       </PaperCardContent>
                     </PaperCard>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

@@ -21,7 +21,7 @@ import DocumentsPage from "./pages/admin/DocumentsPage";
 import SchedulePage from "./pages/admin/SchedulePage";
 import ProductionPage from "./pages/admin/ProductionPage";
 import PrintablesPage from "./pages/admin/PrintablesPage";
-import RunAssignmentsPage from "./pages/admin/RunAssignmentsPage";
+
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
 import PortalViewPage from "./pages/portal/PortalViewPage";
 import PortalFeedbackPage from "./pages/admin/PortalFeedbackPage";
@@ -60,6 +60,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/larpy" element={<LarpsPage />} />
               <Route path="/admin/behy" element={<RunsPage />} />
+              <Route path="/admin/behy/:slug" element={<RunsPage />} />
               <Route path="/admin/osoby" element={<PersonsPage />} />
               <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
               <Route path="/admin/cp" element={<CpPage />} />
@@ -68,7 +69,7 @@ const App = () => (
               <Route path="/admin/harmonogram" element={<SchedulePage />} />
               <Route path="/admin/produkce" element={<ProductionPage />} />
               <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
-              <Route path="/admin/prirazeni" element={<RunAssignmentsPage />} />
+              <Route path="/admin/portal" element={<PortalFeedbackPage />} />
               <Route path="/admin/portal" element={<PortalFeedbackPage />} />
 
               {/* Portal */}
