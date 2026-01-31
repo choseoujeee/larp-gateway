@@ -28,6 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
+import { DocumentEditDialog } from "@/components/admin/DocumentEditDialog";
+import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
 
 interface Person {
   id: string;
@@ -41,8 +43,24 @@ interface Person {
 interface PersonDocument {
   id: string;
   title: string;
-  doc_type: string;
-  target_type: string;
+  content: string | null;
+  doc_type: keyof typeof DOCUMENT_TYPES;
+  target_type: keyof typeof TARGET_TYPES;
+  target_group: string | null;
+  target_person_id: string | null;
+  sort_order: number;
+  priority: number;
+  run_id: string | null;
+  visibility_mode: string;
+  visible_days_before: number | null;
+  larp_id: string;
+}
+
+interface AllPerson {
+  id: string;
+  name: string;
+  group_name: string | null;
+  type: string;
 }
 
 interface Assignment {
@@ -58,6 +76,8 @@ export default function PersonsPage() {
   const { selectedRunId, runs } = useRunContext();
   const selectedRun = runs.find((r) => r.id === selectedRunId);
   const [persons, setPersons] = useState<Person[]>([]);
+  const [allPersons, setAllPersons] = useState<AllPerson[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,6 +96,11 @@ export default function PersonsPage() {
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [personDocuments, setPersonDocuments] = useState<PersonDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  
+  // Document editing state
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<PersonDocument | null>(null);
+  const [newDocumentDefaults, setNewDocumentDefaults] = useState<{ target_type: "osoba"; target_person_id: string } | undefined>(undefined);
 
   const fetchPersons = async () => {
     if (!currentLarpId) return;
@@ -97,6 +122,26 @@ export default function PersonsPage() {
     setLoading(false);
   };
 
+  const fetchAllPersonsAndGroups = async () => {
+    if (!currentLarpId) return;
+
+    const { data } = await supabase
+      .from("persons")
+      .select("id, name, group_name, type")
+      .eq("larp_id", currentLarpId)
+      .order("name");
+
+    setAllPersons(data || []);
+    
+    // Extract unique groups
+    const uniqueGroups = [...new Set(
+      (data || [])
+        .map((p) => p.group_name)
+        .filter((g): g is string => g !== null)
+    )];
+    setGroups(uniqueGroups);
+  };
+
   const fetchAssignments = async () => {
     if (!selectedRunId) {
       setAssignments([]);
@@ -113,15 +158,10 @@ export default function PersonsPage() {
     if (!currentLarpId) return;
     setLoadingDocuments(true);
     
-    // Fetch documents that this person can see:
-    // 1. target_type = 'vsichni' (for all)
-    // 2. target_type = 'skupina' AND target_group = person's group
-    // 3. target_type = 'osoba' AND target_person_id = person's id
-    // Also exclude hidden documents
-    
+    // Fetch ALL document fields so we can edit them
     let query = supabase
       .from("documents")
-      .select("id, title, doc_type, target_type")
+      .select("*")
       .eq("larp_id", currentLarpId)
       .order("doc_type")
       .order("sort_order")
@@ -148,7 +188,7 @@ export default function PersonsPage() {
       
       const hiddenIds = new Set((hiddenDocs || []).map(h => h.document_id));
       const visibleDocs = (docs || []).filter(d => !hiddenIds.has(d.id));
-      setPersonDocuments(visibleDocs);
+      setPersonDocuments(visibleDocs as PersonDocument[]);
     }
     setLoadingDocuments(false);
   };
@@ -157,6 +197,7 @@ export default function PersonsPage() {
     if (currentLarpId) {
       setLoading(true);
       fetchPersons();
+      fetchAllPersonsAndGroups();
     }
   }, [currentLarpId]);
 
@@ -179,6 +220,28 @@ export default function PersonsPage() {
       setPersonDocuments([]);
     }
   }, [slug, persons, navigate, currentLarpId]);
+
+  const handleDocumentSaved = () => {
+    if (detailPerson) {
+      fetchPersonDocuments(detailPerson.id, detailPerson.group_name);
+    }
+  };
+
+  const openDocumentEditDialog = (doc: PersonDocument) => {
+    setEditingDocument(doc);
+    setNewDocumentDefaults(undefined);
+    setDocumentDialogOpen(true);
+  };
+
+  const openNewIndividualDocumentDialog = () => {
+    if (!detailPerson) return;
+    setEditingDocument(null);
+    setNewDocumentDefaults({
+      target_type: "osoba",
+      target_person_id: detailPerson.id,
+    });
+    setDocumentDialogOpen(true);
+  };
 
   const getAssignment = (personId: string) => assignments.find((a) => a.person_id === personId);
 
@@ -411,9 +474,20 @@ export default function PersonsPage() {
           {/* Documents visible to this person */}
           <PaperCard>
             <PaperCardContent className="py-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <h2 className="font-typewriter text-xl">Viditelné dokumenty</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <h2 className="font-typewriter text-xl">Viditelné dokumenty</h2>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openNewIndividualDocumentDialog}
+                  className="btn-vintage"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nový individuální dokument
+                </Button>
               </div>
               
               {loadingDocuments ? (
@@ -429,12 +503,13 @@ export default function PersonsPage() {
                   {personDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/dokumenty`)}
+                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
+                      onClick={() => openDocumentEditDialog(doc)}
                     >
                       <div className="flex items-center gap-3">
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{doc.title}</span>
+                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="px-2 py-0.5 rounded bg-muted">
@@ -457,6 +532,21 @@ export default function PersonsPage() {
             </PaperCardContent>
           </PaperCard>
         </div>
+
+        {/* Document Edit Dialog */}
+        {currentLarpId && (
+          <DocumentEditDialog
+            open={documentDialogOpen}
+            onOpenChange={setDocumentDialogOpen}
+            document={editingDocument}
+            larpId={currentLarpId}
+            persons={allPersons}
+            groups={groups}
+            runs={runs}
+            onSaved={handleDocumentSaved}
+            defaultValues={newDocumentDefaults}
+          />
+        )}
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="paper-card">
