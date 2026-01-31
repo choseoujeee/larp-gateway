@@ -400,6 +400,7 @@ export default function PersonsPage() {
     return (
       <AdminLayout>
         <div className="space-y-6">
+          {/* Header with name, slug, group as tags */}
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -408,68 +409,64 @@ export default function PersonsPage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="font-typewriter text-3xl tracking-wide">{detailPerson.name}</h1>
-              {detailPerson.group_name && (
-                <p className="text-muted-foreground">{detailPerson.group_name}</p>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-muted text-xs font-mono text-muted-foreground">
+                  {detailPerson.slug}
+                </span>
+                {detailPerson.group_name && (
+                  <span className="px-2 py-0.5 rounded bg-muted text-xs text-muted-foreground">
+                    {detailPerson.group_name}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <PaperCard>
-            <PaperCardContent className="py-6">
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-muted-foreground">Slug</Label>
-                  <p className="font-mono">{detailPerson.slug}</p>
-                </div>
-                {detailPerson.group_name && (
-                  <div>
-                    <Label className="text-muted-foreground">Skupina</Label>
-                    <p>{detailPerson.group_name}</p>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => openEditDialog(detailPerson)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Upravit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className={detailPerson.medailonek?.trim() 
-                      ? "border-green-600/50 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-500/50 dark:text-green-400 dark:hover:bg-green-950 dark:hover:text-green-300" 
-                      : "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    }
-                    onClick={() => openMedailonekDialog(detailPerson)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Medailonek
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setSelectedPerson(detailPerson);
-                      setDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Smazat
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(`/hrac/${detailPerson.slug}`, "_blank")}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Zobrazit portál postavy
-                  </Button>
-                </div>
-              </div>
-            </PaperCardContent>
-          </PaperCard>
+          {/* Compact action bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openEditDialog(detailPerson)}
+            >
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Upravit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className={detailPerson.medailonek?.trim() 
+                ? "border-green-600/50 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-500/50 dark:text-green-400 dark:hover:bg-green-950 dark:hover:text-green-300" 
+                : "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              }
+              onClick={() => openMedailonekDialog(detailPerson)}
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Medailonek
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => {
+                setSelectedPerson(detailPerson);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Smazat
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`/hrac/${detailPerson.slug}`, "_blank")}
+            >
+              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+              Portál
+            </Button>
+          </div>
 
           {/* Documents visible to this person */}
           <PaperCard>
