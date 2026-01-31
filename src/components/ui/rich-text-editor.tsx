@@ -296,7 +296,7 @@ export function RichTextEditor({
   editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0",
+          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_blockquote]:my-4 [&_blockquote]:py-3 [&_blockquote]:px-4 [&_blockquote]:bg-muted/50 [&_blockquote]:border [&_blockquote]:border-border [&_blockquote]:border-l-[3px] [&_blockquote]:border-l-primary [&_blockquote]:rounded [&_blockquote]:italic",
       },
     },
     onUpdate: ({ editor }) => {
