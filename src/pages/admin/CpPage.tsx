@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Plus, Pencil, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ interface CP {
 }
 
 export default function CpPage() {
+  const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
   const { currentLarpId, currentLarp } = useLarpContext();
   const [cps, setCps] = useState<CP[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,7 @@ export default function CpPage() {
     password: "",
   });
   const [saving, setSaving] = useState(false);
+  const [detailCp, setDetailCp] = useState<CP | null>(null);
 
   const fetchCps = async () => {
     if (!currentLarpId) return;
@@ -79,6 +83,20 @@ export default function CpPage() {
     }
   }, [currentLarpId]);
 
+  // Handle detail view from URL param
+  useEffect(() => {
+    if (slug && cps.length > 0) {
+      const cp = cps.find((c) => c.slug === slug);
+      if (cp) {
+        setDetailCp(cp);
+      } else {
+        navigate("/admin/cp", { replace: true });
+      }
+    } else if (!slug) {
+      setDetailCp(null);
+    }
+  }, [slug, cps, navigate]);
+
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
@@ -94,7 +112,8 @@ export default function CpPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (cp: CP) => {
+  const openEditDialog = (cp: CP, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSelectedCp(cp);
     setFormData({
       name: cp.name,
@@ -139,7 +158,6 @@ export default function CpPage() {
       }
       toast.success("CP upraveno");
     } else {
-      // Using type assertion until types.ts is regenerated with larp_id
       const { error } = await supabase.from("persons").insert({
         larp_id: currentLarpId,
         type: "cp" as const,
@@ -179,7 +197,14 @@ export default function CpPage() {
 
     toast.success("CP smazáno");
     setDeleteDialogOpen(false);
+    if (detailCp?.id === selectedCp.id) {
+      navigate("/admin/cp", { replace: true });
+    }
     fetchCps();
+  };
+
+  const handleCardClick = (cp: CP) => {
+    navigate(`/admin/cp/${cp.slug}`);
   };
 
   const filteredCps = cps.filter(
@@ -188,6 +213,165 @@ export default function CpPage() {
       (cp.performer?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
+  // Detail view
+  if (detailCp) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/admin/cp")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="font-typewriter text-3xl tracking-wide">{detailCp.name}</h1>
+              {detailCp.performer && (
+                <p className="text-muted-foreground">Hraje: {detailCp.performer}</p>
+              )}
+            </div>
+          </div>
+
+          <PaperCard>
+            <PaperCardContent className="py-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-muted-foreground">Slug</Label>
+                  <p className="font-mono">{detailCp.slug}</p>
+                </div>
+                {detailCp.performer && (
+                  <div>
+                    <Label className="text-muted-foreground">Performer</Label>
+                    <p>{detailCp.performer}</p>
+                  </div>
+                )}
+                {detailCp.performance_times && (
+                  <div>
+                    <Label className="text-muted-foreground">Časy vystoupení</Label>
+                    <p>{detailCp.performance_times}</p>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => openEditDialog(detailCp)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Upravit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setSelectedCp(detailCp);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Smazat
+                  </Button>
+                </div>
+              </div>
+            </PaperCardContent>
+          </PaperCard>
+
+          {/* TODO: Show related documents, schedule events etc. */}
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="paper-card">
+            <DialogHeader>
+              <DialogTitle className="font-typewriter">Upravit CP</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Jméno CP / role</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setFormData({
+                      ...formData,
+                      name,
+                      slug: selectedCp ? formData.slug : generateSlug(name),
+                    });
+                  }}
+                  placeholder="Tajemný cizinec"
+                  className="input-vintage"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Slug</Label>
+                <Input
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder="tajemny-cizinec"
+                  className="input-vintage font-mono"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Performer (kdo hraje)</Label>
+                <Input
+                  value={formData.performer}
+                  onChange={(e) => setFormData({ ...formData, performer: e.target.value })}
+                  placeholder="Jméno herce/herečky"
+                  className="input-vintage"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Časy vystoupení</Label>
+                <Textarea
+                  value={formData.performance_times}
+                  onChange={(e) => setFormData({ ...formData, performance_times: e.target.value })}
+                  placeholder="Sobota 14:00 - 16:00, Neděle 10:00 - 11:00"
+                  rows={2}
+                  className="input-vintage"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Zrušit
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="btn-vintage">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Uložit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className="paper-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-typewriter">Smazat CP?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Opravdu chcete smazat CP <strong>{selectedCp?.name}</strong>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Smazat
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </AdminLayout>
+    );
+  }
+
+  // List view
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -240,7 +424,11 @@ export default function CpPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredCps.map((cp) => (
-              <PaperCard key={cp.id}>
+              <PaperCard
+                key={cp.id}
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleCardClick(cp)}
+              >
                 <PaperCardContent className="py-4">
                   <div className="flex items-start justify-between">
                     <div>
@@ -263,14 +451,15 @@ export default function CpPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openEditDialog(cp)}
+                        onClick={(e) => openEditDialog(cp, e)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedCp(cp);
                           setDeleteDialogOpen(true);
                         }}

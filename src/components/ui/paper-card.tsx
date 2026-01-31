@@ -1,16 +1,18 @@
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, MouseEventHandler } from "react";
 
-interface PaperCardProps {
+export interface PaperCardProps {
   children: ReactNode;
   className?: string;
   as?: "div" | "article" | "section";
+  onClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 export function PaperCard({ 
   children, 
   className, 
-  as: Component = "div" 
+  as: Component = "div",
+  onClick 
 }: PaperCardProps) {
   return (
     <Component
@@ -18,6 +20,7 @@ export function PaperCard({
         "paper-card p-6",
         className
       )}
+      onClick={onClick}
     >
       {children}
     </Component>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Loader2, Users } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ interface Person {
 }
 
 export default function PersonsPage() {
+  const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
   const { currentLarpId, currentLarp } = useLarpContext();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,7 @@ export default function PersonsPage() {
     password: "",
   });
   const [saving, setSaving] = useState(false);
+  const [detailPerson, setDetailPerson] = useState<Person | null>(null);
 
   const fetchPersons = async () => {
     if (!currentLarpId) return;
@@ -77,6 +81,20 @@ export default function PersonsPage() {
     }
   }, [currentLarpId]);
 
+  // Handle detail view from URL param
+  useEffect(() => {
+    if (slug && persons.length > 0) {
+      const person = persons.find((p) => p.slug === slug);
+      if (person) {
+        setDetailPerson(person);
+      } else {
+        navigate("/admin/osoby", { replace: true });
+      }
+    } else if (!slug) {
+      setDetailPerson(null);
+    }
+  }, [slug, persons, navigate]);
+
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
@@ -92,7 +110,8 @@ export default function PersonsPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (person: Person) => {
+  const openEditDialog = (person: Person, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSelectedPerson(person);
     setFormData({
       name: person.name,
@@ -139,7 +158,6 @@ export default function PersonsPage() {
       }
       toast.success("Postava upravena");
     } else {
-      // Using type assertion until types.ts is regenerated with larp_id
       const { error } = await supabase.from("persons").insert({
         larp_id: currentLarpId,
         type: "postava" as const,
@@ -177,7 +195,14 @@ export default function PersonsPage() {
 
     toast.success("Postava smazána");
     setDeleteDialogOpen(false);
+    if (detailPerson?.id === selectedPerson.id) {
+      navigate("/admin/osoby", { replace: true });
+    }
     fetchPersons();
+  };
+
+  const handleCardClick = (person: Person) => {
+    navigate(`/admin/osoby/${person.slug}`);
   };
 
   const filteredPersons = persons.filter(
@@ -193,6 +218,159 @@ export default function PersonsPage() {
     return acc;
   }, {} as Record<string, Person[]>);
 
+  // Detail view
+  if (detailPerson) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/admin/osoby")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="font-typewriter text-3xl tracking-wide">{detailPerson.name}</h1>
+              {detailPerson.group_name && (
+                <p className="text-muted-foreground">{detailPerson.group_name}</p>
+              )}
+            </div>
+          </div>
+
+          <PaperCard>
+            <PaperCardContent className="py-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-muted-foreground">Slug</Label>
+                  <p className="font-mono">{detailPerson.slug}</p>
+                </div>
+                {detailPerson.group_name && (
+                  <div>
+                    <Label className="text-muted-foreground">Skupina</Label>
+                    <p>{detailPerson.group_name}</p>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => openEditDialog(detailPerson)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Upravit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setSelectedPerson(detailPerson);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Smazat
+                  </Button>
+                </div>
+              </div>
+            </PaperCardContent>
+          </PaperCard>
+
+          {/* TODO: Show related documents, assignments etc. */}
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="paper-card">
+            <DialogHeader>
+              <DialogTitle className="font-typewriter">Upravit postavu</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Jméno postavy</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setFormData({
+                      ...formData,
+                      name,
+                      slug: selectedPerson ? formData.slug : generateSlug(name),
+                    });
+                  }}
+                  placeholder="Jan Novák"
+                  className="input-vintage"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Slug</Label>
+                <Input
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder="jan-novak"
+                  className="input-vintage font-mono"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Skupina</Label>
+                <Input
+                  value={formData.group_name}
+                  onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                  placeholder="např. Odboj, Gestapo..."
+                  className="input-vintage"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Nové heslo (prázdné = beze změny)</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="input-vintage"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Zrušit
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="btn-vintage">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Uložit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className="paper-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-typewriter">Smazat postavu?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Opravdu chcete smazat postavu <strong>{selectedPerson?.name}</strong>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Smazat
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </AdminLayout>
+    );
+  }
+
+  // List view
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -255,7 +433,11 @@ export default function PersonsPage() {
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {groupPersons.map((person) => (
-                    <PaperCard key={person.id}>
+                    <PaperCard
+                      key={person.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleCardClick(person)}
+                    >
                       <PaperCardContent className="py-4">
                         <div className="flex items-start justify-between">
                           <div>
@@ -268,14 +450,15 @@ export default function PersonsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openEditDialog(person)}
+                              onClick={(e) => openEditDialog(person, e)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedPerson(person);
                                 setDeleteDialogOpen(true);
                               }}
