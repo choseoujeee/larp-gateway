@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink } from "lucide-react";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface Person {
   slug: string;
   name: string;
   group_name: string | null;
+  medailonek: string | null;
 }
 
 interface PersonDocument {
@@ -67,6 +69,7 @@ export default function PersonsPage() {
     slug: "",
     group_name: "",
     password: "",
+    medailonek: "",
   });
   const [saving, setSaving] = useState(false);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
@@ -78,7 +81,7 @@ export default function PersonsPage() {
     
     const { data, error } = await supabase
       .from("persons")
-      .select("id, larp_id, slug, name, group_name")
+      .select("id, larp_id, slug, name, group_name, medailonek")
       .eq("larp_id", currentLarpId)
       .eq("type", "postava")
       .order("group_name", { ascending: true })
@@ -189,7 +192,7 @@ export default function PersonsPage() {
 
   const openCreateDialog = () => {
     setSelectedPerson(null);
-    setFormData({ name: "", slug: "", group_name: "", password: "" });
+    setFormData({ name: "", slug: "", group_name: "", password: "", medailonek: "" });
     setDialogOpen(true);
   };
 
@@ -201,6 +204,7 @@ export default function PersonsPage() {
       slug: person.slug,
       group_name: person.group_name || "",
       password: "",
+      medailonek: person.medailonek || "",
     });
     setDialogOpen(true);
   };
@@ -223,6 +227,7 @@ export default function PersonsPage() {
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
+        medailonek: formData.medailonek || null,
       };
 
       if (formData.password) {
@@ -247,6 +252,7 @@ export default function PersonsPage() {
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
+        medailonek: formData.medailonek || null,
         password_hash: formData.password,
       } as never);
       if (error) {
@@ -671,6 +677,16 @@ export default function PersonsPage() {
                 onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
                 placeholder="např. Odboj, Gestapo..."
                 className="input-vintage"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Medailonek</Label>
+              <RichTextEditor
+                value={formData.medailonek}
+                onChange={(val) => setFormData({ ...formData, medailonek: val })}
+                placeholder="Popis postavy, její příběh, charakteristika..."
+                minHeight="150px"
               />
             </div>
 

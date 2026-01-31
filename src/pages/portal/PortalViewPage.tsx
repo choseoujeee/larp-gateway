@@ -58,19 +58,13 @@ export default function PortalViewPage() {
     }
   }, [session]);
 
-  // Group documents by type
+  // Group documents by type - exclude medailonek since it's now on person
   const groupedDocs = useMemo(() => ({
     organizacni: documents.filter((d) => d.doc_type === "organizacni"),
     herni: documents.filter((d) => d.doc_type === "herni"),
-    osobni: documents.filter((d) => ["postava", "medailonek"].includes(d.doc_type)),
+    osobni: documents.filter((d) => d.doc_type === "postava"),
     cp: documents.filter((d) => d.doc_type === "cp"),
   }), [documents]);
-
-  // Get medailonek document for character card
-  const medailonekDoc = useMemo(() => 
-    documents.find((d) => d.doc_type === "medailonek"),
-    [documents]
-  );
 
   const toggleCategory = (category: string) => {
     setOpenCategories(prev => {
@@ -178,10 +172,10 @@ export default function PortalViewPage() {
                     {session.groupName}
                   </Badge>
                 )}
-                {medailonekDoc?.content && (
+                {session.medailonek && (
                   <div 
                     className="prose prose-sm max-w-none text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(medailonekDoc.content) }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.medailonek) }}
                   />
                 )}
               </div>

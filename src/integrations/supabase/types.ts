@@ -163,6 +163,7 @@ export type Database = {
           group_name: string | null
           id: string
           larp_id: string | null
+          medailonek: string | null
           name: string
           paid_at: string | null
           password_hash: string
@@ -179,6 +180,7 @@ export type Database = {
           group_name?: string | null
           id?: string
           larp_id?: string | null
+          medailonek?: string | null
           name: string
           paid_at?: string | null
           password_hash: string
@@ -195,6 +197,7 @@ export type Database = {
           group_name?: string | null
           id?: string
           larp_id?: string | null
+          medailonek?: string | null
           name?: string
           paid_at?: string | null
           password_hash?: string
@@ -634,6 +637,7 @@ export type Database = {
           performance_times: string
           performer: string
           person_id: string
+          person_medailonek: string
           person_name: string
           person_type: Database["public"]["Enums"]["person_type"]
           run_address: string
