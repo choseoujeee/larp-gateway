@@ -1,6 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Medal, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Medal, Check, X, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
@@ -37,6 +54,7 @@ import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
 import { DocumentEditDialog } from "@/components/admin/DocumentEditDialog";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
+import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
 
 interface Person {
   id: string;
@@ -172,10 +190,7 @@ export default function PersonsPage() {
     let query = supabase
       .from("documents")
       .select("*")
-      .eq("larp_id", currentLarpId)
-      .order("doc_type")
-      .order("sort_order")
-      .order("title");
+      .eq("larp_id", currentLarpId);
     
     // Build OR condition for visibility
     const orConditions = ["target_type.eq.vsichni"];
@@ -198,7 +213,8 @@ export default function PersonsPage() {
       
       const hiddenIds = new Set((hiddenDocs || []).map(h => h.document_id));
       const visibleDocs = (docs || []).filter(d => !hiddenIds.has(d.id));
-      setPersonDocuments(visibleDocs as PersonDocument[]);
+      // Sort by priority then sort_order
+      setPersonDocuments(sortDocuments(visibleDocs as PersonDocument[]));
     }
     setLoadingDocuments(false);
   };
@@ -446,6 +462,132 @@ export default function PersonsPage() {
     return matchesSearch && matchesGroup;
   });
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback(async (event: DragEndEvent, sectionDocs: PersonDocument[], sectionKey: string) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = sectionDocs.findIndex((d) => d.id === active.id);
+    const newIndex = sectionDocs.findIndex((d) => d.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    const newOrder = arrayMove(sectionDocs, oldIndex, newIndex);
+    
+    // Optimistic UI update
+    setPersonDocuments((prev) => {
+      const docIds = new Set(newOrder.map((d) => d.id));
+      const otherDocs = prev.filter((d) => !docIds.has(d.id));
+      const reorderedDocs = newOrder.map((doc, idx) => ({
+        ...doc,
+        sort_order: idx,
+      }));
+      return sortDocuments([...otherDocs, ...reorderedDocs]);
+    });
+    
+    // Persist to database
+    await updateDocumentOrder(newOrder);
+  }, []);
+
+  // Sortable document row component
+  const SortableDocumentRow = ({ doc, onClick }: { doc: PersonDocument; onClick: () => void }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: doc.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 10 : undefined,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex items-stretch"
+      >
+        {/* Drag handle */}
+        <button
+          type="button"
+          className="flex-shrink-0 flex items-center justify-center w-8 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-l-md border border-r-0 border-border bg-muted/20 transition-colors"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        
+        {/* Document content */}
+        <div
+          className="flex-1 flex items-center justify-between p-2 rounded-r-md border border-l-0 border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group min-w-0"
+          onClick={onClick}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium truncate">{doc.title}</span>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+            <span className="px-2 py-0.5 rounded bg-muted">
+              {doc.doc_type === "organizacni" && "Organizační"}
+              {doc.doc_type === "herni" && "Herní"}
+              {doc.doc_type === "postava" && "Postava"}
+              {doc.doc_type === "medailonek" && "Medailonek"}
+              {doc.doc_type === "cp" && "CP"}
+            </span>
+            {doc.priority === 1 && (
+              <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
+                Prioritní
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Sortable section wrapper
+  const SortableDocumentSection = ({ 
+    docs, 
+    sectionKey 
+  }: { 
+    docs: PersonDocument[];
+    sectionKey: string;
+  }) => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(event) => handleDragEnd(event, docs, sectionKey)}
+    >
+      <SortableContext items={docs.map((d) => d.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-1">
+          {docs.map((doc) => (
+            <SortableDocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+
   // Group by group name or show alphabetically
   const groupedPersons = viewMode === "byGroup"
     ? filteredPersons.reduce((acc, person) => {
@@ -456,33 +598,18 @@ export default function PersonsPage() {
       }, {} as Record<string, Person[]>)
     : { "Všechny postavy": [...filteredPersons].sort((a, b) => a.name.localeCompare(b.name, "cs")) };
 
-  // Detail view
-  // Helper component for document row
-  const DocumentRow = ({ doc, onClick }: { doc: PersonDocument; onClick: () => void }) => (
-    <div
-      className="flex items-center justify-between p-2 rounded border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group"
-      onClick={onClick}
-    >
-      <div className="flex items-center gap-3">
-        <FileText className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{doc.title}</span>
-        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="px-2 py-0.5 rounded bg-muted">
-          {doc.doc_type === "organizacni" && "Organizační"}
-          {doc.doc_type === "herni" && "Herní"}
-          {doc.doc_type === "postava" && "Postava"}
-          {doc.doc_type === "medailonek" && "Medailonek"}
-          {doc.doc_type === "cp" && "CP"}
-        </span>
-        {doc.priority === 1 && (
-          <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
-            Prioritní
-          </span>
-        )}
-      </div>
-    </div>
+  // Memoized document sections for detail view
+  const docsVsichni = useMemo(() => 
+    sortDocuments(personDocuments.filter(d => d.target_type === "vsichni")),
+    [personDocuments]
+  );
+  const docsSkupina = useMemo(() => 
+    sortDocuments(personDocuments.filter(d => d.target_type === "skupina")),
+    [personDocuments]
+  );
+  const docsOsoba = useMemo(() => 
+    sortDocuments(personDocuments.filter(d => d.target_type === "osoba")),
+    [personDocuments]
   );
 
   if (detailPerson) {
@@ -612,56 +739,38 @@ export default function PersonsPage() {
               ) : (
                 <div className="space-y-4">
                   {/* Dokumenty pro všechny */}
-                  {(() => {
-                    const docsVsichni = personDocuments.filter(d => d.target_type === "vsichni");
-                    if (docsVsichni.length === 0) return null;
-                    return (
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                          Dokumenty všech
-                        </h4>
-                        {docsVsichni.map((doc) => (
-                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
-                        ))}
-                      </div>
-                    );
-                  })()}
+                  {docsVsichni.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Dokumenty všech ({docsVsichni.length})
+                      </h4>
+                      <SortableDocumentSection docs={docsVsichni} sectionKey="vsichni" />
+                    </div>
+                  )}
                   
                   {/* Dokumenty skupiny */}
-                  {(() => {
-                    const docsSkupina = personDocuments.filter(d => d.target_type === "skupina");
-                    if (docsSkupina.length === 0) return null;
-                    return (
-                      <div className="space-y-2">
-                        <div className="border-t border-border pt-4">
-                          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                            Dokumenty skupiny {detailPerson.group_name && `(${detailPerson.group_name})`}
-                          </h4>
-                        </div>
-                        {docsSkupina.map((doc) => (
-                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
-                        ))}
+                  {docsSkupina.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="border-t border-border pt-4">
+                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                          Dokumenty skupiny {detailPerson.group_name && `(${detailPerson.group_name})`} ({docsSkupina.length})
+                        </h4>
                       </div>
-                    );
-                  })()}
+                      <SortableDocumentSection docs={docsSkupina} sectionKey="skupina" />
+                    </div>
+                  )}
                   
                   {/* Individuální dokumenty */}
-                  {(() => {
-                    const docsOsoba = personDocuments.filter(d => d.target_type === "osoba");
-                    if (docsOsoba.length === 0) return null;
-                    return (
-                      <div className="space-y-2">
-                        <div className="border-t border-border pt-4">
-                          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                            Individuální dokumenty
-                          </h4>
-                        </div>
-                        {docsOsoba.map((doc) => (
-                          <DocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
-                        ))}
+                  {docsOsoba.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="border-t border-border pt-4">
+                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                          Individuální dokumenty ({docsOsoba.length})
+                        </h4>
                       </div>
-                    );
-                  })()}
+                      <SortableDocumentSection docs={docsOsoba} sectionKey="osoba" />
+                    </div>
+                  )}
                 </div>
               )}
             </PaperCardContent>

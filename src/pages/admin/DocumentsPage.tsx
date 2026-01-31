@@ -1,5 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Loader2, Search, X } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Plus, Loader2, Search, X } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocBadge } from "@/components/ui/doc-badge";
-import { DocumentListItem } from "@/components/admin/DocumentListItem";
+import { SortableDocumentItem } from "@/components/admin/SortableDocumentItem";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +48,7 @@ import { toast } from "sonner";
 import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
+import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
 
 interface HiddenDocument {
   document_id: string;
@@ -57,9 +73,10 @@ interface Document {
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
-  priority: number; // 1 = prioritní, 2 = normální, 3 = volitelné
+  priority: number;
   visibility_mode: string;
   visible_days_before: number | null;
+  created_at?: string;
 }
 
 export default function DocumentsPage() {
@@ -87,13 +104,25 @@ export default function DocumentsPage() {
     target_group: "",
     target_person_id: "",
     sort_order: 0,
-    priority: 2, // default = normální
-    run_id: "__all__" as string, // "__all__" = všechny běhy, jinak konkrétní run_id
+    priority: 2,
+    run_id: "__all__" as string,
     visibility_mode: "immediate" as string,
     visible_days_before: 7,
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const fetchDocuments = async () => {
     if (!currentLarpId) return;
@@ -101,19 +130,17 @@ export default function DocumentsPage() {
     const { data, error } = await supabase
       .from("documents")
       .select("*")
-      .eq("larp_id", currentLarpId)
-      .order("doc_type")
-      .order("sort_order")
-      .order("title");
+      .eq("larp_id", currentLarpId);
 
     if (error) {
       toast.error("Chyba při načítání dokumentů");
       return;
     }
 
-    setDocuments(data || []);
+    // Sort by priority, then sort_order
+    const sorted = sortDocuments(data || []);
+    setDocuments(sorted);
     
-    // Fetch hidden documents for all documents in this larp
     const docIds = (data || []).map((d) => d.id);
     if (docIds.length > 0) {
       const { data: hiddenData } = await supabase
@@ -139,7 +166,6 @@ export default function DocumentsPage() {
 
     setPersons(data || []);
     
-    // Extract unique groups
     const uniqueGroups = [...new Set(
       (data || [])
         .map((p) => p.group_name)
@@ -167,7 +193,7 @@ export default function DocumentsPage() {
       target_person_id: "",
       sort_order: 0,
       priority: 2,
-      run_id: "__all__", // výchozí = pro všechny běhy
+      run_id: "__all__",
       visibility_mode: "immediate",
       visible_days_before: 7,
     });
@@ -208,7 +234,7 @@ export default function DocumentsPage() {
 
     const payload = {
       larp_id: currentLarpId,
-      run_id: formData.run_id === "__all__" ? null : formData.run_id, // "__all__" = pro všechny běhy (null)
+      run_id: formData.run_id === "__all__" ? null : formData.run_id,
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
@@ -237,7 +263,6 @@ export default function DocumentsPage() {
       documentId = selectedDoc.id;
       toast.success("Dokument upraven");
     } else {
-      // Using type assertion until types.ts is regenerated with larp_id
       const { data: inserted, error } = await supabase
         .from("documents")
         .insert(payload as never)
@@ -253,7 +278,6 @@ export default function DocumentsPage() {
       toast.success("Dokument vytvořen");
     }
 
-    // Synchronizace „skrýt před“: smazat staré záznamy, vložit nové
     await supabase.from("hidden_documents").delete().eq("document_id", documentId);
     if (hiddenFromPersonIds.length > 0) {
       await supabase.from("hidden_documents").insert(
@@ -281,30 +305,23 @@ export default function DocumentsPage() {
     fetchDocuments();
   };
 
-  // Unified filtering logic
+  // Filtering logic
   const filteredDocs = useMemo(() => {
     return documents.filter((doc) => {
-      // Filter by document type
       if (filterType !== "all" && doc.doc_type !== filterType) return false;
       
-      // Filter by person
       if (filterPerson !== "all") {
-        // Match only documents targeting this specific person
         if (doc.target_type !== "osoba" || doc.target_person_id !== filterPerson) return false;
       }
       
-      // Filter by group
       if (filterGroup !== "all") {
         if (filterGroup === "__vsichni__") {
-          // Show only documents for "všichni"
           if (doc.target_type !== "vsichni") return false;
         } else {
-          // Show documents for this specific group
           if (doc.target_type !== "skupina" || doc.target_group !== filterGroup) return false;
         }
       }
       
-      // Search by title
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         if (!doc.title.toLowerCase().includes(q)) return false;
@@ -314,14 +331,92 @@ export default function DocumentsPage() {
     });
   }, [documents, filterType, filterPerson, filterGroup, searchQuery]);
 
-  // Group by doc_type
-  const groupedDocs = filteredDocs.reduce((acc, doc) => {
-    if (!acc[doc.doc_type]) acc[doc.doc_type] = [];
-    acc[doc.doc_type].push(doc);
-    return acc;
-  }, {} as Record<string, Document[]>);
+  // Group by doc_type for "Podle typu" view
+  const groupedByType = useMemo(() => {
+    const result: Record<string, Document[]> = {};
+    for (const doc of filteredDocs) {
+      if (!result[doc.doc_type]) result[doc.doc_type] = [];
+      result[doc.doc_type].push(doc);
+    }
+    // Sort each group by priority → sort_order
+    for (const key of Object.keys(result)) {
+      result[key] = sortDocuments(result[key]);
+    }
+    return result;
+  }, [filteredDocs]);
 
-  // Check if any filter is active
+  // Organize for "Podle cíle" view
+  const filterByBlockSearch = useCallback((doc: Document) => {
+    if (!blockSearch.trim()) return true;
+    const q = blockSearch.toLowerCase();
+    return (
+      doc.title?.toLowerCase().includes(q) ||
+      doc.content?.toLowerCase().includes(q)
+    );
+  }, [blockSearch]);
+
+  // Common documents (vsichni)
+  const commonDocs = useMemo(() => {
+    return sortDocuments(
+      documents
+        .filter((d) => d.target_type === "vsichni")
+        .filter(filterByBlockSearch)
+    );
+  }, [documents, filterByBlockSearch]);
+
+  // Group documents organized by group name + CP as special group
+  const groupDocsMap = useMemo(() => {
+    const result: Record<string, Document[]> = {};
+    
+    // Documents targeting specific groups
+    for (const doc of documents.filter(filterByBlockSearch)) {
+      if (doc.target_type === "skupina" && doc.target_group) {
+        if (!result[doc.target_group]) result[doc.target_group] = [];
+        result[doc.target_group].push(doc);
+      }
+    }
+    
+    // Sort each group
+    for (const key of Object.keys(result)) {
+      result[key] = sortDocuments(result[key]);
+    }
+    
+    return result;
+  }, [documents, filterByBlockSearch]);
+
+  // CP documents (doc_type === "cp" and target_type === "vsichni" means for all CPs)
+  const cpGroupDocs = useMemo(() => {
+    return sortDocuments(
+      documents
+        .filter((d) => d.doc_type === "cp" && d.target_type === "vsichni")
+        .filter(filterByBlockSearch)
+    );
+  }, [documents, filterByBlockSearch]);
+
+  // Individual documents (osoba)
+  const personDocsMap = useMemo(() => {
+    const result: Record<string, Document[]> = {};
+    
+    for (const doc of documents.filter(filterByBlockSearch)) {
+      if (doc.target_type === "osoba" && doc.target_person_id) {
+        if (!result[doc.target_person_id]) result[doc.target_person_id] = [];
+        result[doc.target_person_id].push(doc);
+      }
+    }
+    
+    // Sort each person's docs
+    for (const key of Object.keys(result)) {
+      result[key] = sortDocuments(result[key]);
+    }
+    
+    return result;
+  }, [documents, filterByBlockSearch]);
+
+  // Sorted group names (alphabetically, CP at end if exists)
+  const sortedGroupNames = useMemo(() => {
+    return Object.keys(groupDocsMap).sort((a, b) => a.localeCompare(b, "cs"));
+  }, [groupDocsMap]);
+
   const hasActiveFilters = filterType !== "all" || filterPerson !== "all" || filterGroup !== "all" || searchQuery.trim() !== "";
 
   const clearAllFilters = () => {
@@ -331,17 +426,6 @@ export default function DocumentsPage() {
     setSearchQuery("");
   };
 
-  const getTargetLabel = (doc: Document) => {
-    if (doc.target_type === "vsichni") return "Všichni";
-    if (doc.target_type === "skupina") return `Skupina: ${doc.target_group}`;
-    if (doc.target_type === "osoba") {
-      const person = persons.find((p) => p.id === doc.target_person_id);
-      return person ? `Osoba: ${person.name}` : "Osoba";
-    }
-    return "";
-  };
-
-  // Get names of persons this document is hidden from
   const getHiddenFromNames = (docId: string): string[] => {
     const hiddenPersonIds = hiddenDocs
       .filter((h) => h.document_id === docId)
@@ -351,34 +435,79 @@ export default function DocumentsPage() {
       .filter((name): name is string => !!name);
   };
 
-  const filterBySearch = (doc: Document) => {
-    if (!blockSearch.trim()) return true;
-    const q = blockSearch.toLowerCase();
-    const titleMatch = doc.title?.toLowerCase().includes(q);
-    const contentMatch = doc.content?.toLowerCase().includes(q);
-    const targetMatch = getTargetLabel(doc).toLowerCase().includes(q);
-    return titleMatch || contentMatch || targetMatch;
-  };
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback(async (event: DragEndEvent, sectionDocs: Document[], sectionKey: string) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = sectionDocs.findIndex((d) => d.id === active.id);
+    const newIndex = sectionDocs.findIndex((d) => d.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    const newOrder = arrayMove(sectionDocs, oldIndex, newIndex);
+    
+    // Optimistic UI update
+    setDocuments((prev) => {
+      const updated = [...prev];
+      const docIds = new Set(newOrder.map((d) => d.id));
+      const otherDocs = updated.filter((d) => !docIds.has(d.id));
+      
+      // Update sort_order in the reordered docs
+      const reorderedDocs = newOrder.map((doc, idx) => ({
+        ...doc,
+        sort_order: idx,
+      }));
+      
+      return [...otherDocs, ...reorderedDocs];
+    });
+    
+    // Persist to database
+    await updateDocumentOrder(newOrder);
+  }, []);
 
-  const commonDocs = documents.filter((d) => d.target_type === "vsichni").filter(filterBySearch);
-  const groupDocsMap = documents
-    .filter((d) => d.target_type === "skupina" && d.target_group)
-    .filter(filterBySearch)
-    .reduce((acc, doc) => {
-      const g = doc.target_group!;
-      if (!acc[g]) acc[g] = [];
-      acc[g].push(doc);
-      return acc;
-    }, {} as Record<string, Document[]>);
-  const personDocsMap = documents
-    .filter((d) => d.target_type === "osoba" && d.target_person_id)
-    .filter(filterBySearch)
-    .reduce((acc, doc) => {
-      const pid = doc.target_person_id!;
-      if (!acc[pid]) acc[pid] = [];
-      acc[pid].push(doc);
-      return acc;
-    }, {} as Record<string, Document[]>);
+  // Section with drag and drop
+  const SortableSection = ({ 
+    title, 
+    docs, 
+    sectionKey,
+    showDocType = true,
+    emptyMessage = "Žádné dokumenty."
+  }: { 
+    title: React.ReactNode;
+    docs: Document[];
+    sectionKey: string;
+    showDocType?: boolean;
+    emptyMessage?: string;
+  }) => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(event) => handleDragEnd(event, docs, sectionKey)}
+    >
+      <SortableContext items={docs.map((d) => d.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-1">
+          {docs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+          ) : (
+            docs.map((doc) => (
+              <SortableDocumentItem
+                key={doc.id}
+                doc={doc}
+                persons={persons}
+                runs={runs}
+                hiddenFromPersons={getHiddenFromNames(doc.id)}
+                showDocType={showDocType}
+                onEdit={() => openEditDialog(doc)}
+                onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
 
   return (
     <AdminLayout>
@@ -397,7 +526,6 @@ export default function DocumentsPage() {
 
         {/* Filters row */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* View mode */}
           <Select value={viewMode} onValueChange={(v: "type" | "blocks") => setViewMode(v)}>
             <SelectTrigger className="w-44 input-vintage">
               <SelectValue placeholder="Zobrazení" />
@@ -408,7 +536,6 @@ export default function DocumentsPage() {
             </SelectContent>
           </Select>
 
-          {/* Document type filter */}
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-36 input-vintage">
               <SelectValue placeholder="Typ" />
@@ -423,7 +550,6 @@ export default function DocumentsPage() {
             </SelectContent>
           </Select>
 
-          {/* Group filter */}
           <Select value={filterGroup} onValueChange={setFilterGroup}>
             <SelectTrigger className="w-40 input-vintage">
               <SelectValue placeholder="Skupina" />
@@ -439,7 +565,6 @@ export default function DocumentsPage() {
             </SelectContent>
           </Select>
 
-          {/* Person filter */}
           <Select value={filterPerson} onValueChange={setFilterPerson}>
             <SelectTrigger className="w-44 input-vintage">
               <SelectValue placeholder="Osoba" />
@@ -454,7 +579,6 @@ export default function DocumentsPage() {
             </SelectContent>
           </Select>
 
-          {/* Clear filters button */}
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground">
               <X className="mr-1 h-4 w-4" />
@@ -510,34 +634,59 @@ export default function DocumentsPage() {
             </PaperCardContent>
           </PaperCard>
         ) : viewMode === "blocks" ? (
+          /* View by target: Společné → Skupiny → CP → Individuální */
           <div className="space-y-8">
+            {/* Společné dokumenty (pro všechny hráče, ne CP dokumenty) */}
             <section>
               <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
-                Společné dokumenty
-                <span className="text-sm text-muted-foreground">({commonDocs.length})</span>
+                Společné dokumenty (pro všechny)
+                <span className="text-sm text-muted-foreground">({commonDocs.filter(d => d.doc_type !== "cp").length})</span>
               </h3>
-              <div className="space-y-3">
-                {commonDocs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Žádné společné dokumenty.</p>
-                ) : (
-                  commonDocs.map((doc) => (
-                    <DocumentListItem
-                      key={doc.id}
-                      doc={doc}
-                      persons={persons}
-                      runs={runs}
-                      hiddenFromPersons={getHiddenFromNames(doc.id)}
-                      onEdit={() => openEditDialog(doc)}
-                      onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
+              <SortableSection
+                title="Společné"
+                docs={commonDocs.filter(d => d.doc_type !== "cp")}
+                sectionKey="common"
+                emptyMessage="Žádné společné dokumenty."
+              />
+            </section>
+
+            {/* Dokumenty skupin */}
+            {sortedGroupNames.length > 0 && (
+              <section>
+                <h3 className="font-typewriter text-lg mb-3">Po skupinách</h3>
+                {sortedGroupNames.map((groupName) => (
+                  <div key={groupName} className="mb-6">
+                    <h4 className="font-mono text-sm text-muted-foreground mb-2">
+                      Skupina: {groupName} ({groupDocsMap[groupName].length})
+                    </h4>
+                    <SortableSection
+                      title={groupName}
+                      docs={groupDocsMap[groupName]}
+                      sectionKey={`group-${groupName}`}
                     />
-                  ))
-                )}
-              </div>
-            </section>
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {/* CP dokumenty (pro všechny CP) */}
+            {cpGroupDocs.length > 0 && (
+              <section>
+                <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
+                  Skupina: CP
+                  <span className="text-sm text-muted-foreground">({cpGroupDocs.length})</span>
+                </h3>
+                <SortableSection
+                  title="CP"
+                  docs={cpGroupDocs}
+                  sectionKey="cp-group"
+                />
+              </section>
+            )}
+
+            {/* Individuální dokumenty */}
             <section>
-            </section>
-            <section>
-              <h3 className="font-typewriter text-lg mb-3">Po postavách / CP</h3>
+              <h3 className="font-typewriter text-lg mb-3">Individuální dokumenty</h3>
               {Object.keys(personDocsMap).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Žádné dokumenty cílené na konkrétní osobu.</p>
               ) : (
@@ -546,21 +695,13 @@ export default function DocumentsPage() {
                   return (
                     <div key={personId} className="mb-6">
                       <h4 className="font-mono text-sm text-muted-foreground mb-2">
-                        {person?.name ?? "Osoba"} ({docs.length})
+                        Pro: {person?.name ?? "Osoba"} ({docs.length})
                       </h4>
-                      <div className="space-y-3">
-                        {docs.map((doc) => (
-                          <DocumentListItem
-                            key={doc.id}
-                            doc={doc}
-                            persons={persons}
-                            runs={runs}
-                            hiddenFromPersons={getHiddenFromNames(doc.id)}
-                            onEdit={() => openEditDialog(doc)}
-                            onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
-                          />
-                        ))}
-                      </div>
+                      <SortableSection
+                        title={person?.name ?? "Osoba"}
+                        docs={docs}
+                        sectionKey={`person-${personId}`}
+                      />
                     </div>
                   );
                 })
@@ -568,27 +709,20 @@ export default function DocumentsPage() {
             </section>
           </div>
         ) : (
+          /* View by type */
           <div className="space-y-8">
-            {Object.entries(groupedDocs).map(([type, docs]) => (
+            {Object.entries(groupedByType).map(([type, docs]) => (
               <div key={type}>
                 <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
                   <DocBadge type={type as keyof typeof DOCUMENT_TYPES} />
                   <span className="text-sm text-muted-foreground">({docs.length})</span>
                 </h3>
-                <div className="space-y-3">
-                  {docs.map((doc) => (
-                    <DocumentListItem
-                      key={doc.id}
-                      doc={doc}
-                      persons={persons}
-                      runs={runs}
-                      hiddenFromPersons={getHiddenFromNames(doc.id)}
-                      showDocType={false}
-                      onEdit={() => openEditDialog(doc)}
-                      onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
-                    />
-                  ))}
-                </div>
+                <SortableSection
+                  title={type}
+                  docs={docs}
+                  sectionKey={`type-${type}`}
+                  showDocType={false}
+                />
               </div>
             ))}
           </div>
@@ -746,7 +880,7 @@ export default function DocumentsPage() {
               </div>
             </div>
 
-            {/* Režim zobrazení na portálu */}
+            {/* Visibility mode */}
             <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
               <Label className="font-medium">Zobrazení na portálu hráče</Label>
               <div className="flex items-center gap-4">
