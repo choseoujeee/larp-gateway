@@ -136,13 +136,6 @@ export function DocumentListItem({
                 </TooltipProvider>
               )}
             </div>
-
-            {/* Content preview */}
-            {doc.content && (
-              <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                {doc.content.replace(/<[^>]*>/g, "").slice(0, 150)}...
-              </p>
-            )}
           </div>
 
           {/* Actions */}
