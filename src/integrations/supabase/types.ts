@@ -122,6 +122,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          motto: string | null
           name: string
           owner_id: string
           slug: string
@@ -132,6 +133,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          motto?: string | null
           name: string
           owner_id: string
           slug: string
@@ -142,6 +144,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          motto?: string | null
           name?: string
           owner_id?: string
           slug?: string
@@ -620,13 +623,21 @@ export type Database = {
         Returns: {
           group_name: string
           larp_id: string
+          larp_motto: string
           larp_name: string
           larp_theme: string
+          mission_briefing: string
           performance_times: string
           performer: string
           person_id: string
           person_name: string
           person_type: Database["public"]["Enums"]["person_type"]
+          run_address: string
+          run_date_from: string
+          run_date_to: string
+          run_id: string
+          run_location: string
+          run_name: string
         }[]
       }
     }
