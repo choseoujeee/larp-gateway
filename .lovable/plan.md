@@ -1,76 +1,63 @@
 
+# Plán: Vylepšení systému CP a propojení s harmonogramem
 
-# Plán: Drag-and-drop řazení dokumentů a vylepšené zobrazení
+## Shrnutí požadavků z tvé zpětné vazby
 
-## Přehled
+Na základě tvých poznámek implementuji:
 
-Implementace drag-and-drop funkcionality pro přeřazování dokumentů a vylepšení zobrazení dokumentů podle cílení (společné → skupiny → individuální). Tím se významně zrychlí práce s pořadím dokumentů.
-
-## Co se změní pro uživatele
-
-1. **Dokumenty seřazeny podle pořadí** - všude uvidíte dokumenty ve správném pořadí (jako je vidí hráč)
-2. **Drag-and-drop** - přetáhnutím dokumentu myší změníte jeho pořadí
-3. **Logické zobrazení podle cíle** - nejdřív společné, pak po skupinách (včetně "CP" jako speciální skupiny), nakonec individuální
+1. **Stránka se všemi CP** - přístupná na heslo (bez tokenu), zobrazení společných dokumentů + dlaždice jednotlivých CP
+2. **Vylepšené dlaždice CP** - viditelný název, časy vstupů, performer, filtrování
+3. **Detail CP** - stejný feel jako postava (medailonek, mission briefing, dokumenty, scény)
+4. **Scény CP** - oddělené bloky s časem, lokací, rekvizitami, popisem
+5. **Provázání harmonogramu a scén CP** - obousměrná vazba
+6. **Přiřazování performerů k CP** s detekcí časových kolizí
+7. **Portál CP** - zobrazení scén přímo v portálu hráče - pozor, v hráčském portálu (herní postavy) hráči nevidí s kým hrajou a kdy, tam vazba není. Naopak ale CP musí mít na svém společném portálu i dlaždice hráčských postav, aby se mohli podívat na stránky jednotlivých hráčů a nahlédnout do dokumentů hráčů (pro CP je lepší, když mají možnost přečíst si komplet životopis a další dokumenty postav)
 
 ---
 
-## Technický plán
+## Databázové změny
 
-### 1. Instalace knihovny @dnd-kit
+### Nová tabulka: `cp_scenes` (scény CP)
 
-Přidám `@dnd-kit/core`, `@dnd-kit/sortable` a `@dnd-kit/utilities` pro drag-and-drop funkcionalitu.
-
-### 2. Komponenta SortableDocumentItem
-
-Vytvořím novou komponentu `src/components/admin/SortableDocumentItem.tsx`:
-- Wrapper kolem `DocumentListItem` s podporou drag-and-drop
-- Přidá "drag handle" ikonu (⣿ grip)
-- Při přetahování vizuálně indikuje stav
-
-### 3. Úprava DocumentsPage.tsx
-
-**Změny v řazení:**
-- Primární řazení podle `priority`, sekundární podle `sort_order`
-- V režimu "Podle cíle": sekce v pořadí Společné → Skupiny (včetně CP) → Individuální
-
-**Drag-and-drop implementace:**
-- Každá sekce (typ dokumentu / cíl) bude samostatný `SortableContext`
-- Po přetažení se přepočítá `sort_order` všech dokumentů v sekci
-- Batch update do databáze
-
-**Zobrazení skupin:**
-- Osoby typu "cp" se zobrazí jako zvláštní skupina "CP" v sekci skupin
-- Pořadí skupin: abecedně, "CP" na konci
-
-### 4. Úprava PersonsPage.tsx
-
-**Změny v detailu postavy:**
-- Dokumenty seřazeny podle `priority` → `sort_order`
-- Drag-and-drop v každé sekci (Všech, Skupiny, Individuální)
-- Po přetažení aktualizace `sort_order` v DB
-
-### 5. Úprava CpPage.tsx (pokud je detail CP)
-
-- Podobná logika jako u PersonsPage - drag-and-drop pro dokumenty CP
-
-### 6. Funkce pro update sort_order
-
-```typescript
-async function updateDocumentOrder(documents: Document[]) {
-  // Batch update - každý dokument dostane nový sort_order podle pozice
-  const updates = documents.map((doc, index) => ({
-    id: doc.id,
-    sort_order: index
-  }));
-  
-  for (const update of updates) {
-    await supabase
-      .from('documents')
-      .update({ sort_order: update.sort_order })
-      .eq('id', update.id);
-  }
-}
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ cp_scenes                                                     │
+├──────────────────────────────────────────────────────────────┤
+│ id              UUID PRIMARY KEY                             │
+│ cp_id           UUID FK -> persons(id)                       │
+│ run_id          UUID FK -> runs(id)                          │
+│ start_time      TIME NOT NULL                                │
+│ duration_minutes INT DEFAULT 15                              │
+│ day_number      INT DEFAULT 1                                │
+│ location        TEXT                                         │
+│ props           TEXT (rekvizity)                             │
+│ description     TEXT (úkol/instrukce)                        │
+│ sort_order      INT                                          │
+│ schedule_event_id UUID FK -> schedule_events (auto-sync)     │
+│ created_at/updated_at                                        │
+└──────────────────────────────────────────────────────────────┘
 ```
+
+### Nová tabulka: `cp_performers` (přiřazení performerů k běhu)
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ cp_performers                                                │
+├──────────────────────────────────────────────────────────────┤
+│ id              UUID PRIMARY KEY                             │
+│ run_id          UUID FK -> runs(id)                          │
+│ cp_id           UUID FK -> persons(id)                       │
+│ performer_name  TEXT NOT NULL                                │
+│ performer_email TEXT                                         │
+│ performer_phone TEXT                                         │
+│ created_at                                                   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Úprava existujících tabulek
+
+- `persons`: přidat `mission_briefing` a `act_info` pro CP
+- `schedule_events`: přidat `cp_scene_id` pro propojení se scénou
 
 ---
 
@@ -78,69 +65,188 @@ async function updateDocumentOrder(documents: Document[]) {
 
 ```text
 src/
+├── pages/admin/
+│   ├── CpPage.tsx              (přepracovat - seznam + detail)
+│   └── CpDetailPage.tsx        (nový - detailní pohled na CP)
+├── pages/portal/
+│   └── PortalViewPage.tsx      (rozšířit o scény pro CP)
 ├── components/admin/
-│   ├── SortableDocumentItem.tsx   (nový)
-│   ├── DocumentListItem.tsx       (přidání drag handle prop)
-│   └── DocumentEditDialog.tsx     (beze změn)
-└── pages/admin/
-    ├── DocumentsPage.tsx          (drag-and-drop + lepší řazení)
-    ├── PersonsPage.tsx            (drag-and-drop v detailu)
-    └── CpPage.tsx                 (možná v budoucnu)
+│   ├── CpCard.tsx              (nový - dlaždice CP)
+│   ├── CpSceneDialog.tsx       (nový - editace scény)
+│   └── CpSceneList.tsx         (nový - seznam scén CP)
+└── lib/
+    └── cpUtils.ts              (nový - detekce kolizí, sync)
 ```
 
 ---
 
-## Detaily implementace
+## Detailní implementace
 
-### Řazení dokumentů všude
+### 1. Seznam všech CP (CpPage.tsx)
 
-```typescript
-// Primární: priority (1=prioritní, 2=normální, 3=volitelné)
-// Sekundární: sort_order
-// Terciární: created_at
-documents.sort((a, b) => {
-  if (a.priority !== b.priority) return a.priority - b.priority;
-  if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-});
-```
-
-### Zobrazení "Podle cíle" na DocumentsPage
-
+**Vylepšení dlaždic:**
 ```text
-┌─────────────────────────────────────┐
-│ Společné dokumenty (pro všechny)    │
-│ ├── Dokument 1 [drag]               │
-│ └── Dokument 2 [drag]               │
-├─────────────────────────────────────┤
-│ Skupina: Fronta                     │
-│ └── Dokument 3 [drag]               │
-├─────────────────────────────────────┤
-│ Skupina: Zázemí                     │
-│ └── Dokument 4 [drag]               │
-├─────────────────────────────────────┤
-│ Skupina: CP                         │
-│ └── Dokument pro všechny CP [drag]  │
-├─────────────────────────────────────┤
-│ Individuální dokumenty              │
-│ ├── Pro: Jan Novák [drag]           │
-│ └── Pro: Eva Malá [drag]            │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│ TAJEMNÝ CIZINEC                       [✏️][🗑️] │
+│ ⏰ 14:00, 16:30, 20:00 (3 vstupy)               │
+│ 👤 Jan Novák                                    │
+│ 📄 3 dok │ 🎭 3 scény                           │
+└─────────────────────────────────────────────────┘
 ```
 
-### Drag-and-drop flow
+**Filtry:**
+- Vyhledávání podle jména CP nebo performera
+- Filtr podle času (od-do)
+- Filtr "pouze nepřiřazené"
 
-1. Uživatel uchopí dokument za "grip" ikonu
-2. Přetáhne na novou pozici ve stejné sekci
-3. Po puštění:
-   - Lokální stav se okamžitě aktualizuje (optimistic UI)
-   - Odešle se batch update do DB
-   - Toast "Pořadí uloženo"
+### 2. Detail CP (CpDetailPage.tsx)
+
+**Struktura stránky:**
+```text
+┌─────────────────────────────────────────────────┐
+│ ← Zpět                                          │
+│ TAJEMNÝ CIZINEC                     [Upravit]   │
+│ 👤 Performer: Jan Novák                         │
+├─────────────────────────────────────────────────┤
+│ MEDAILONEK                                      │
+│ [rich text obsah]                               │
+├─────────────────────────────────────────────────┤
+│ MISSION BRIEFING                                │
+│ [rich text - obecné instrukce]                  │
+├─────────────────────────────────────────────────┤
+│ ACT INFO                                        │
+│ [rich text - informace pro vystoupení]          │
+├─────────────────────────────────────────────────┤
+│ SCÉNY                              [+ Nová]     │
+│ ├── 14:00 | Kancelář | 📦 průkaz       [✏️]   │
+│ ├── 16:30 | Náměstí  | 📦 kufr         [✏️]   │
+│ └── 20:00 | Kostel   | -               [✏️]   │
+├─────────────────────────────────────────────────┤
+│ DOKUMENTY SPOLEČNÉ                              │
+│ ├── Pravidla pro CP                             │
+│ └── Mapa lokací                                 │
+├─────────────────────────────────────────────────┤
+│ DOKUMENTY INDIVIDUÁLNÍ                          │
+│ └── Detailní popis role                         │
+└─────────────────────────────────────────────────┘
+```
+
+### 3. Scény CP (CpSceneDialog.tsx)
+
+**Dialog pro vytvoření/editaci scény:**
+- Den (select)
+- Čas zahájení (time picker)
+- Délka (volitelné, default 15 min)
+- Lokace (text)
+- Rekvizity (text - co má vzít)
+- Popis/úkol (wysiwyg)
+- Checkbox "Automaticky přidat do harmonogramu"
+
+### 4. Provázání s harmonogramem
+
+**Obousměrná synchronizace:**
+
+A) **Ze scény do harmonogramu:**
+- Při vytvoření scény s checkem "přidat do harmonogramu":
+  - Automaticky vytvoří `schedule_event` typu `vystoupeni_cp`
+  - Uloží `schedule_event_id` do scény
+  
+B) **Z harmonogramu do scény:**
+- Při vytvoření události typu `vystoupeni_cp`:
+  - Nabídne výběr CP
+  - Automaticky vytvoří odpovídající scénu
+  - Propojí obě entity
+
+**Vizuální indikace:**
+- V harmonogramu u události `vystoupeni_cp` ikona 🔗 pokud má propojenou scénu
+- Ve scéně badge "V harmonogramu" pokud je propojená
+
+### 5. Detekce kolizí performerů
+
+**Logika v `cpUtils.ts`:**
+```typescript
+function detectPerformerConflicts(runId: string): Conflict[] {
+  // 1. Načti všechny scény pro běh
+  // 2. Seskup podle performera
+  // 3. Pro každého performera zkontroluj překryvy časů
+  // 4. Vrať list konfliktů
+}
+```
+
+**Zobrazení:**
+- V přehledu CP: ⚠️ ikona u CP s konfliktem
+- V přiřazování: Varování "Tento performer má kolizi s CP X v čase Y"
+- Dialog s detaily konfliktů
+
+### 6. Portál pro všechny CP
+
+**Nová stránka `/cp/:larpSlug`:**
+- Přístup na heslo (stejný systém jako pro hráče)
+- Zobrazuje:
+  - Dokumenty pro všechny CP (target_type = skupina, target_group = "CP")
+  - Dlaždice jednotlivých CP s odkazy do jejich portálů
+
+### 7. Rozšíření portálu CP (PortalViewPage.tsx)
+
+**Nová sekce "Moje scény":**
+```text
+┌─────────────────────────────────────────────────┐
+│ MOJE SCÉNY                                      │
+├─────────────────────────────────────────────────┤
+│ 🎬 Scéna 1 - 14:00                             │
+│    Lokace: Kancelář Petříka                    │
+│    Rekvizity: průkaz totožnosti, kufr          │
+│    [Popis úkolu...]                            │
+├─────────────────────────────────────────────────┤
+│ 🎬 Scéna 2 - 16:30                             │
+│    Lokace: Náměstí                             │
+│    Navazuje na scénu 1                         │
+│    [Popis úkolu...]                            │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
-## Omezení
+## Postup implementace
 
-- Drag-and-drop funguje pouze v rámci jedné sekce (nelze přetáhnout z "Společných" do "Skupinových")
-- Změna cílení dokumentu se stále dělá přes editační dialog
+### Fáze 1: Databáze a základy
+1. Vytvořit migraci pro nové tabulky (`cp_scenes`, `cp_performers`)
+2. Upravit tabulku `persons` (přidat `mission_briefing`, `act_info`)
+3. Přidat RLS policies
+4. Vytvořit databázové funkce pro načítání scén
 
+### Fáze 2: Admin rozhraní
+5. Přepracovat `CpPage.tsx` - vylepšené dlaždice s piktogramy
+6. Vytvořit `CpDetailPage.tsx` - plný detail CP
+7. Implementovat editaci scén (`CpSceneDialog.tsx`)
+8. Přidat drag-and-drop řazení scén
+9. Implementovat přiřazování performerů
+
+### Fáze 3: Propojení s harmonogramem
+10. Upravit `SchedulePage.tsx` - lepší UX pro `vystoupeni_cp`
+11. Implementovat obousměrnou synchronizaci
+12. Přidat detekci kolizí
+
+### Fáze 4: Portál
+13. Vytvořit stránku pro všechny CP
+14. Rozšířit `PortalViewPage.tsx` o sekci scén
+15. Přidat zobrazení mission briefingu a act info pro CP
+
+---
+
+## Poznámky k implementaci
+
+- **Zachování konzistence:** CP bude fungovat stejně jako postava - stejné UX pro dokumenty, tagy, rychlé info
+- **Performance:** Scény budou načítány lazy při otevření detailu CP
+- **Offline-first:** Při ztrátě spojení budou změny uloženy lokálně
+
+---
+
+## Časová náročnost
+
+Toto je rozsáhlá feature, doporučuji implementovat po fázích:
+- **Fáze 1-2:** Základ (scény, detail CP) - primární
+- **Fáze 3:** Propojení s harmonogramem - sekundární  
+- **Fáze 4:** Portál CP - finální
+
+Chceš začít s Fází 1 a 2, nebo rovnou kompletní implementaci?
