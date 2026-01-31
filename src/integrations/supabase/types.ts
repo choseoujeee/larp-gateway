@@ -396,6 +396,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_person_with_password: {
+        Args: {
+          p_group_name?: string
+          p_name: string
+          p_password: string
+          p_performance_times?: string
+          p_performer?: string
+          p_run_id: string
+          p_slug: string
+          p_type: Database["public"]["Enums"]["person_type"]
+        }
+        Returns: string
+      }
       get_person_documents: {
         Args: { p_person_id: string }
         Returns: {
@@ -426,13 +439,23 @@ export type Database = {
       verify_person_access: {
         Args: { p_access_token: string; p_password: string }
         Returns: {
+          group_name: string
           larp_name: string
+          larp_theme: string
           mission_briefing: string
+          performance_times: string
+          performer: string
           person_id: string
           person_name: string
+          person_paid_at: string
           person_type: Database["public"]["Enums"]["person_type"]
+          run_contact: string
+          run_footer_text: string
           run_id: string
           run_name: string
+          run_payment_account: string
+          run_payment_amount: string
+          run_payment_due_date: string
         }[]
       }
     }
