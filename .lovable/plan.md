@@ -263,8 +263,10 @@ function detectPerformerConflicts(runId: string): Conflict[] {
 - Implementovat obousměrnou synchronizaci
 - Přidat detekci kolizí performerů
 
-### 🔲 Fáze 4: Portál (TODO)
-- Vytvořit stránku pro všechny CP
-- Rozšířit `PortalViewPage.tsx` o sekci scén
-- Přidat zobrazení mission briefingu a act info pro CP
-- Přidat dlaždice hráčských postav do CP portálu
+### ✅ Fáze 4: Portál (DOKONČENO)
+- Vytvořena stránka `/cp/:larpSlug` pro rozcestník všech CP s přístupem na heslo
+- Rozšířen `PortalViewPage.tsx` o sekci "Moje scény" pro CP
+- Přidáno zobrazení mission briefingu a act info pro CP
+- Přidány dlaždice hráčských postav (seskupené podle skupiny) do CP portálu
+- Vytvořena RPC funkce `verify_cp_portal_access` pro ověření CP hesla
+- Vytvořena RPC funkce `get_cp_scenes_for_portal` pro načítání scén

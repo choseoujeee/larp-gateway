@@ -715,6 +715,18 @@ export type Database = {
         }
         Returns: string
       }
+      get_cp_scenes_for_portal: {
+        Args: { p_person_id: string }
+        Returns: {
+          day_number: number
+          description: string
+          duration_minutes: number
+          id: string
+          location: string
+          props: string
+          start_time: string
+        }[]
+      }
       get_person_documents: {
         Args: { p_person_id: string }
         Returns: {
@@ -743,6 +755,17 @@ export type Database = {
       }
       is_larp_owner: { Args: { larp_id: string }; Returns: boolean }
       is_run_owner: { Args: { run_id: string }; Returns: boolean }
+      verify_cp_portal_access: {
+        Args: { p_larp_slug: string; p_password: string }
+        Returns: {
+          larp_id: string
+          larp_motto: string
+          larp_name: string
+          larp_theme: string
+          run_id: string
+          run_name: string
+        }[]
+      }
       verify_person_access: {
         Args: { p_access_token: string; p_password: string }
         Returns: {
