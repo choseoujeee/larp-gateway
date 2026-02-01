@@ -26,6 +26,7 @@ import PrintablesPage from "./pages/admin/PrintablesPage";
 
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
 import PortalViewPage from "./pages/portal/PortalViewPage";
+import CpPortalPage from "./pages/portal/CpPortalPage";
 import PortalFeedbackPage from "./pages/admin/PortalFeedbackPage";
 import NotFound from "./pages/NotFound";
 import { FeedbackButton } from "./components/FeedbackButton";
@@ -79,6 +80,9 @@ const App = () => (
                   {/* Portal - hráčský portál */}
                   <Route path="/hrac/:slug" element={<PortalAccessPage />} />
                   <Route path="/hrac/:slug/view" element={<PortalViewPage />} />
+                  
+                  {/* CP Portal - rozcestník pro všechny CP */}
+                  <Route path="/cp/:larpSlug" element={<CpPortalPage />} />
 
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />

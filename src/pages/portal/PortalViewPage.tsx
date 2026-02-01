@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users } from "lucide-react";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +29,22 @@ interface Document {
   priority: number; // 1 = prioritní, 2 = normální, 3 = volitelné
 }
 
+interface CpScene {
+  id: string;
+  day_number: number;
+  start_time: string;
+  duration_minutes: number;
+  location: string | null;
+  props: string | null;
+  description: string | null;
+}
+
 export default function PortalViewPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { session, loading: sessionLoading, clearSession } = usePortalSession();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [cpScenes, setCpScenes] = useState<CpScene[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Track open categories and open documents separately
@@ -49,21 +60,34 @@ export default function PortalViewPage() {
   }, [session, sessionLoading, slug, navigate]);
 
   useEffect(() => {
-    const fetchDocuments = async () => {
+    const fetchData = async () => {
       if (!session?.personId) return;
 
-      const { data, error } = await supabase.rpc("get_person_documents", {
+      // Fetch documents
+      const { data: docsData, error: docsError } = await supabase.rpc("get_person_documents", {
         p_person_id: session.personId,
       });
 
-      if (!error && data) {
-        setDocuments(data as Document[]);
+      if (!docsError && docsData) {
+        setDocuments(docsData as Document[]);
       }
+
+      // Fetch CP scenes if person is CP
+      if (session.personType === "cp") {
+        const { data: scenesData, error: scenesError } = await supabase.rpc("get_cp_scenes_for_portal", {
+          p_person_id: session.personId,
+        });
+
+        if (!scenesError && scenesData) {
+          setCpScenes(scenesData as CpScene[]);
+        }
+      }
+
       setLoading(false);
     };
 
     if (session) {
-      fetchDocuments();
+      fetchData();
     }
   }, [session]);
 
@@ -281,6 +305,58 @@ export default function PortalViewPage() {
                     <span className="text-muted-foreground">{session.performanceTimes}</span>
                   </div>
                 )}
+              </PaperCardContent>
+            </PaperCard>
+          )}
+
+          {/* CP Scenes - Moje scény */}
+          {session.personType === "cp" && cpScenes.length > 0 && (
+            <PaperCard>
+              <PaperCardHeader>
+                <PaperCardTitle className="font-typewriter tracking-wider uppercase flex items-center gap-2">
+                  <Theater className="h-5 w-5" />
+                  Moje scény ({cpScenes.length})
+                </PaperCardTitle>
+              </PaperCardHeader>
+              <PaperCardContent className="space-y-4">
+                {cpScenes.map((scene, index) => (
+                  <div key={scene.id} className={`p-4 rounded-lg ${index % 2 === 0 ? "bg-muted/20" : "bg-muted/10"}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline" className="font-mono">
+                        Den {scene.day_number}
+                      </Badge>
+                      <span className="font-typewriter text-lg">
+                        {scene.start_time.substring(0, 5)}
+                      </span>
+                      {scene.duration_minutes && (
+                        <span className="text-xs text-muted-foreground">
+                          ({scene.duration_minutes} min)
+                        </span>
+                      )}
+                    </div>
+                    
+                    {scene.location && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{scene.location}</span>
+                      </div>
+                    )}
+                    
+                    {scene.props && (
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground mb-2">
+                        <Package className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                        <span className="font-medium">Rekvizity: {scene.props}</span>
+                      </div>
+                    )}
+                    
+                    {scene.description && (
+                      <div 
+                        className="prose prose-sm max-w-none text-muted-foreground mt-2 pt-2 border-t border-border/50"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(scene.description) }}
+                      />
+                    )}
+                  </div>
+                ))}
               </PaperCardContent>
             </PaperCard>
           )}
