@@ -188,8 +188,8 @@ export default function SchedulePortalPage() {
           toast.error("Chyba při načítání harmonogramu");
           setEvents([]);
         } else {
-          const arr = Array.isArray(data) ? data : (data as PortalScheduleEvent[] | null) ?? [];
-          setEvents(arr as PortalScheduleEvent[]);
+          const arr = Array.isArray(data) ? (data as unknown as PortalScheduleEvent[]) : [];
+          setEvents(arr);
         }
         setEventsLoading(false);
       });

@@ -78,15 +78,15 @@ interface ProductionDocument {
   larp_id: string;
   run_id: string | null;
   title: string;
-  doc_type: string;
-  target_type: string;
+  content: string | null;
+  doc_type: "cp" | "herni" | "medailonek" | "organizacni" | "postava" | "produkční";
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
   priority: number;
-  content?: string | null;
-  visibility_mode?: string;
-  visible_days_before?: number | null;
+  visibility_mode: string;
+  visible_days_before: number | null;
   visible_to_cp?: boolean;
 }
 

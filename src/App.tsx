@@ -12,6 +12,8 @@ import { RunProvider } from "@/hooks/useRunContext";
 // Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import RunsPage from "./pages/admin/RunsPage";
 import PersonsPage from "./pages/admin/PersonsPage";
@@ -58,6 +60,8 @@ const App = () => (
                   {/* Public */}
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/zapomenute-heslo" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-heslo" element={<ResetPasswordPage />} />
                   <Route path="/register" element={<Navigate to="/login" replace />} />
 
                   {/* Alias: staré URL → nové (zpětná kompatibilita) */}

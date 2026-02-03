@@ -745,6 +745,7 @@ export default function SchedulePage() {
       material_id: "",
       document_id: "",
       cp_schedule_color: "",
+      performer_text: "",
     });
     setDialogOpen(true);
   };
@@ -1441,7 +1442,7 @@ export default function SchedulePage() {
                                 <SortableScheduleRow
                                   event={ev}
                                   isCurrent={isCurrent}
-                                  onEdit={(e) => handleEditEvent(ev, e)}
+                                  onEdit={(e) => openEditDialog(ev, e)}
                                   onDelete={(e) => {
                                     e.stopPropagation();
                                     setSelectedEvent(ev);

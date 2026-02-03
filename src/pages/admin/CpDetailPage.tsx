@@ -74,8 +74,8 @@ interface CP {
 interface Document {
   id: string;
   title: string;
-  doc_type: string;
-  target_type: string;
+  doc_type: "cp" | "herni" | "medailonek" | "organizacni" | "postava" | "produkční";
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   priority: number;
@@ -123,8 +123,8 @@ export default function CpDetailPage() {
     run_id: string | null;
     title: string;
     content: string | null;
-    doc_type: string;
-    target_type: string;
+    doc_type: "cp" | "herni" | "medailonek" | "organizacni" | "postava" | "produkční";
+    target_type: "vsichni" | "skupina" | "osoba";
     target_group: string | null;
     target_person_id: string | null;
     sort_order: number;

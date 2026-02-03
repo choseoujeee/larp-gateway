@@ -154,21 +154,44 @@ export default function OrganizersPage() {
     fetchOrganizerAccounts();
   };
 
-  /** Přiřazení existujícího uživatele (podle e-mailu) – RPC */
+  /** Přiřazení existujícího uživatele (podle e-mailu) – přímý insert do larp_organizers */
   const handleAddByEmail = async () => {
-    const email = addEmail.trim();
+    const email = addEmail.trim().toLowerCase();
     if (!email || !addLarpId) {
       toast.error("Vyplňte e-mail a vyberte LARP");
       return;
     }
     setSaving(true);
-    const { error } = await supabase.rpc("assign_organizer_by_email", {
-      p_email: email,
-      p_larp_id: addLarpId,
-    });
+    
+    // Find user by auth_email in organizer_accounts
+    const { data: account, error: accountError } = await supabase
+      .from("organizer_accounts")
+      .select("user_id")
+      .eq("auth_email", email)
+      .maybeSingle();
+    
+    if (accountError || !account) {
+      setSaving(false);
+      toast.error("Uživatel s tímto e-mailem nebyl nalezen");
+      return;
+    }
+    
+    // Insert into larp_organizers
+    const { error } = await supabase
+      .from("larp_organizers")
+      .insert({
+        user_id: account.user_id,
+        larp_id: addLarpId,
+        email: email,
+      });
+    
     setSaving(false);
     if (error) {
-      toast.error(error.message || "Chyba při přidávání organizátora");
+      if (error.code === "23505") {
+        toast.error("Tento organizátor je již přiřazen k tomuto LARPu");
+      } else {
+        toast.error(error.message || "Chyba při přidávání organizátora");
+      }
       return;
     }
     toast.success("Organizátor přidán");
