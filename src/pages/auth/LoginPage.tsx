@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,11 +26,30 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signIn(email, password);
+    const loginTrim = login.trim().toLowerCase();
+    if (!loginTrim) {
+      toast.error("Vyplňte login");
+      setLoading(false);
+      return;
+    }
+
+    const { data: authEmail, error: rpcError } = await supabase.rpc("get_organizer_auth_email", {
+      p_login: loginTrim,
+    });
+
+    if (rpcError || !authEmail) {
+      toast.error("Přihlášení selhalo", {
+        description: "Neplatný login nebo heslo",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await signIn(authEmail, password);
 
     if (error) {
       toast.error("Přihlášení selhalo", {
-        description: "Zkontrolujte e-mail a heslo",
+        description: "Neplatný login nebo heslo",
       });
       setLoading(false);
       return;
@@ -66,13 +86,14 @@ export default function LoginPage() {
           <PaperCardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="font-mono">E-mail</Label>
+                <Label htmlFor="login" className="font-mono">Login</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vas@email.cz"
+                  id="login"
+                  type="text"
+                  autoComplete="username"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
+                  placeholder="váš login (např. janovak)"
                   required
                   className="input-vintage"
                 />
@@ -106,13 +127,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Nemáte účet?{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                Zaregistrujte se
-              </Link>
-            </div>
           </PaperCardContent>
         </PaperCard>
 

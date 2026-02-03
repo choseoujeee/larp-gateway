@@ -1,0 +1,10 @@
+# LARP Gateway – pravidla projektu
+
+## Změny databáze (Supabase / Lovable)
+
+**Kdykoli navrhneš nebo implementuješ změnu schématu DB** (nový sloupec, tabulka, RPC, migrace):
+
+1. **Napiš uživateli**, že má změnu provést ručně (např. přes SQL editor v Lovable/Supabase).
+2. **Uveď přesný SQL** nebo odkaz na migrační soubor v `supabase/migrations/`, aby mohl příkaz zkopírovat a spustit.
+
+Důvod: DB se spravuje z Lovable; migrace z repozitáře se tam nemusí spouštět automaticky. Uživatel chce při každé změně DB dostat instrukci a SQL k ručnímu provedení.

@@ -45,7 +45,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
+import { DOCUMENT_TYPES, DOCUMENT_TARGET_OPTIONS } from "@/lib/constants";
+import type { DocumentTargetOptionKey } from "@/lib/constants";
+import {
+  getDocumentTargetOptionKey,
+  applyTargetOptionToForm,
+} from "@/lib/documentTargetOptions";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
 import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
@@ -53,6 +58,11 @@ import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
 interface HiddenDocument {
   document_id: string;
   person_id: string;
+}
+
+interface HiddenDocumentGroup {
+  document_id: string;
+  group_name: string;
 }
 
 interface Person {
@@ -69,13 +79,14 @@ interface Document {
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
-  target_type: keyof typeof TARGET_TYPES;
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
   priority: number;
   visibility_mode: string;
   visible_days_before: number | null;
+  visible_to_cp?: boolean;
   created_at?: string;
 }
 
@@ -84,6 +95,7 @@ export default function DocumentsPage() {
   const { selectedRunId, runs } = useRunContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [hiddenDocs, setHiddenDocs] = useState<HiddenDocument[]>([]);
+  const [hiddenDocsGroups, setHiddenDocsGroups] = useState<HiddenDocumentGroup[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +112,7 @@ export default function DocumentsPage() {
     title: "",
     content: "",
     doc_type: "organizacni" as keyof typeof DOCUMENT_TYPES,
-    target_type: "vsichni" as keyof typeof TARGET_TYPES,
+    target_type: "vsichni",
     target_group: "",
     target_person_id: "",
     sort_order: 0,
@@ -108,8 +120,10 @@ export default function DocumentsPage() {
     run_id: "__all__" as string,
     visibility_mode: "immediate" as string,
     visible_days_before: 7,
+    visible_to_cp: false,
   });
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
+  const [hiddenFromGroupNames, setHiddenFromGroupNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // DnD sensors
@@ -143,13 +157,15 @@ export default function DocumentsPage() {
     
     const docIds = (data || []).map((d) => d.id);
     if (docIds.length > 0) {
-      const { data: hiddenData } = await supabase
-        .from("hidden_documents")
-        .select("document_id, person_id")
-        .in("document_id", docIds);
-      setHiddenDocs(hiddenData || []);
+      const [hd, hdg] = await Promise.all([
+        supabase.from("hidden_documents").select("document_id, person_id").in("document_id", docIds),
+        supabase.from("hidden_document_groups").select("document_id, group_name").in("document_id", docIds),
+      ]);
+      setHiddenDocs(hd.data || []);
+      setHiddenDocsGroups(hdg.data || []);
     } else {
       setHiddenDocs([]);
+      setHiddenDocsGroups([]);
     }
     
     setLoading(false);
@@ -196,8 +212,10 @@ export default function DocumentsPage() {
       run_id: "__all__",
       visibility_mode: "immediate",
       visible_days_before: 7,
+      visible_to_cp: false,
     });
     setHiddenFromPersonIds([]);
+    setHiddenFromGroupNames([]);
     setDialogOpen(true);
   };
 
@@ -215,12 +233,14 @@ export default function DocumentsPage() {
       run_id: doc.run_id || "__all__",
       visibility_mode: doc.visibility_mode || "immediate",
       visible_days_before: doc.visible_days_before ?? 7,
+      visible_to_cp: doc.visible_to_cp ?? false,
     });
-    const { data: hiddenRows } = await supabase
-      .from("hidden_documents")
-      .select("person_id")
-      .eq("document_id", doc.id);
-    setHiddenFromPersonIds((hiddenRows ?? []).map((r) => r.person_id));
+    const [hd, hdg] = await Promise.all([
+      supabase.from("hidden_documents").select("person_id").eq("document_id", doc.id),
+      supabase.from("hidden_document_groups").select("group_name").eq("document_id", doc.id),
+    ]);
+    setHiddenFromPersonIds((hd.data ?? []).map((r) => r.person_id));
+    setHiddenFromGroupNames((hdg.data ?? []).map((r) => r.group_name));
     setDialogOpen(true);
   };
 
@@ -245,6 +265,7 @@ export default function DocumentsPage() {
       priority: formData.priority,
       visibility_mode: formData.visibility_mode,
       visible_days_before: formData.visibility_mode === "delayed" ? formData.visible_days_before : null,
+      visible_to_cp: formData.target_type === "vsichni" ? formData.visible_to_cp : false,
     };
 
     let documentId: string;
@@ -282,6 +303,12 @@ export default function DocumentsPage() {
     if (hiddenFromPersonIds.length > 0) {
       await supabase.from("hidden_documents").insert(
         hiddenFromPersonIds.map((person_id) => ({ document_id: documentId, person_id }))
+      );
+    }
+    await supabase.from("hidden_document_groups").delete().eq("document_id", documentId);
+    if (hiddenFromGroupNames.length > 0) {
+      await supabase.from("hidden_document_groups").insert(
+        hiddenFromGroupNames.map((group_name) => ({ document_id: documentId, group_name }))
       );
     }
 
@@ -435,6 +462,12 @@ export default function DocumentsPage() {
       .filter((name): name is string => !!name);
   };
 
+  const getHiddenFromGroups = (docId: string): string[] => {
+    return hiddenDocsGroups
+      .filter((h) => h.document_id === docId)
+      .map((h) => h.group_name);
+  };
+
   // Handle drag end for reordering
   const handleDragEnd = useCallback(async (event: DragEndEvent, sectionDocs: Document[], sectionKey: string) => {
     const { active, over } = event;
@@ -498,9 +531,11 @@ export default function DocumentsPage() {
                 persons={persons}
                 runs={runs}
                 hiddenFromPersons={getHiddenFromNames(doc.id)}
+                hiddenFromGroups={getHiddenFromGroups(doc.id)}
                 showDocType={showDocType}
+                clickableRow
+                titleWithTarget
                 onEdit={() => openEditDialog(doc)}
-                onDelete={() => { setSelectedDoc(doc); setDeleteDialogOpen(true); }}
               />
             ))
           )}
@@ -772,14 +807,21 @@ export default function DocumentsPage() {
               <div className="space-y-2">
                 <Label>Cílení</Label>
                 <Select
-                  value={formData.target_type}
-                  onValueChange={(v) => setFormData({ ...formData, target_type: v as keyof typeof TARGET_TYPES })}
+                  value={getDocumentTargetOptionKey(formData, persons)}
+                  onValueChange={(v) => {
+                    const next = applyTargetOptionToForm(
+                      v as DocumentTargetOptionKey,
+                      formData,
+                      persons
+                    );
+                    setFormData({ ...formData, ...next });
+                  }}
                 >
                   <SelectTrigger className="input-vintage">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TARGET_TYPES).map(([key, { label }]) => (
+                    {Object.entries(DOCUMENT_TARGET_OPTIONS).map(([key, { label }]) => (
                       <SelectItem key={key} value={key}>
                         {label}
                       </SelectItem>
@@ -789,7 +831,7 @@ export default function DocumentsPage() {
               </div>
             </div>
 
-            {formData.target_type === "skupina" && (
+            {getDocumentTargetOptionKey(formData, persons) === "skupina" && (
               <div className="space-y-2">
                 <Label>Skupina</Label>
                 <Select
@@ -800,7 +842,7 @@ export default function DocumentsPage() {
                     <SelectValue placeholder="Vyberte skupinu" />
                   </SelectTrigger>
                   <SelectContent>
-                    {groups.map((group) => (
+                    {groups.filter((g) => g !== "CP").map((group) => (
                       <SelectItem key={group} value={group}>
                         {group}
                       </SelectItem>
@@ -810,7 +852,8 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            {formData.target_type === "osoba" && (
+            {(getDocumentTargetOptionKey(formData, persons) === "osoba_postava" ||
+              getDocumentTargetOptionKey(formData, persons) === "osoba_cp") && (
               <div className="space-y-2">
                 <Label>Osoba</Label>
                 <Select
@@ -821,7 +864,10 @@ export default function DocumentsPage() {
                     <SelectValue placeholder="Vyberte osobu" />
                   </SelectTrigger>
                   <SelectContent>
-                    {persons.map((person) => (
+                    {(getDocumentTargetOptionKey(formData, persons) === "osoba_cp"
+                      ? persons.filter((p) => p.type === "cp")
+                      : persons.filter((p) => p.type === "postava")
+                    ).map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {person.name} {person.group_name ? `(${person.group_name})` : ""}
                       </SelectItem>
@@ -929,36 +975,76 @@ export default function DocumentsPage() {
 
             {formData.target_type !== "osoba" && (
               <div className="space-y-2">
-                <Label>Skrýt před (dokument se těmto osobám nezobrazí)</Label>
-                <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
-                  <div className="space-y-2">
-                    {persons.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">V tomto LARPu zatím nejsou žádné osoby.</p>
-                    ) : (
-                      persons.map((person) => (
-                        <label
-                          key={person.id}
-                          className="flex items-center gap-2 cursor-pointer text-sm"
-                        >
-                          <Checkbox
-                            checked={hiddenFromPersonIds.includes(person.id)}
-                            onCheckedChange={(checked) => {
-                              setHiddenFromPersonIds((prev) =>
-                                checked
-                                  ? [...prev, person.id]
-                                  : prev.filter((id) => id !== person.id)
-                              );
-                            }}
-                          />
-                          <span>
-                            {person.name}
-                            {person.group_name ? ` (${person.group_name})` : ""}
-                          </span>
-                        </label>
-                      ))
-                    )}
+                <Label>Skrýt před (dokument se nezobrazí vybraným osobám resp. celé skupině)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Skrýt před osobami</p>
+                    <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                      <div className="space-y-2">
+                        {persons.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Žádné osoby.</p>
+                        ) : (
+                          persons.map((person) => (
+                            <label
+                              key={person.id}
+                              className="flex items-center gap-2 cursor-pointer text-sm"
+                            >
+                              <Checkbox
+                                checked={hiddenFromPersonIds.includes(person.id)}
+                                onCheckedChange={(checked) => {
+                                  setHiddenFromPersonIds((prev) =>
+                                    checked
+                                      ? [...prev, person.id]
+                                      : prev.filter((id) => id !== person.id)
+                                  );
+                                }}
+                              />
+                              <span>
+                                {person.name}
+                                {person.group_name ? ` (${person.group_name})` : ""}
+                              </span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Skrýt před skupinami</p>
+                    <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                      <div className="space-y-2">
+                        {(() => {
+                          const groupNames = [
+                            ...new Set(
+                              persons.map((p) => p.group_name).filter((g): g is string => g != null && g !== "")
+                            ),
+                          ].sort();
+                          if (groupNames.length === 0) {
+                            return <p className="text-xs text-muted-foreground">Žádné skupiny.</p>;
+                          }
+                          return groupNames.map((groupName) => (
+                            <label
+                              key={groupName}
+                              className="flex items-center gap-2 cursor-pointer text-sm"
+                            >
+                              <Checkbox
+                                checked={hiddenFromGroupNames.includes(groupName)}
+                                onCheckedChange={(checked) => {
+                                  setHiddenFromGroupNames((prev) =>
+                                    checked
+                                      ? [...prev, groupName]
+                                      : prev.filter((g) => g !== groupName)
+                                  );
+                                }}
+                              />
+                              <span>{groupName}</span>
+                            </label>
+                          ));
+                        })()}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -975,10 +1061,24 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Zrušit
-            </Button>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2 flex-row flex-wrap gap-2 sm:justify-between">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Zrušit
+              </Button>
+              {selectedDoc && (
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  Smazat
+                </Button>
+              )}
+            </div>
             <Button onClick={handleSave} disabled={saving} className="btn-vintage">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Uložit

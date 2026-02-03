@@ -8,6 +8,7 @@ export const DOCUMENT_TYPES = {
   postava: { label: "Postava", color: "doc-osobni" },
   medailonek: { label: "Medailonek", color: "doc-medailonek" },
   cp: { label: "CP", color: "doc-cp" },
+  produkční: { label: "Produkční", color: "doc-organizacni" },
 } as const;
 
 export const EVENT_TYPES = {
@@ -29,6 +30,18 @@ export const TARGET_TYPES = {
   osoba: { label: "Konkrétní osoba" },
 } as const;
 
+/** UI možnosti cílení dokumentů (6 položek) – mapují se na target_type, target_group, target_person_id, visible_to_cp */
+export const DOCUMENT_TARGET_OPTIONS = {
+  vsichni: { label: "Všem hráčům" },
+  vsichni_cp: { label: "Všem hráčům a všem CP" },
+  skupina_cp: { label: "Všem CP" },
+  skupina: { label: "Konkrétní skupině" },
+  osoba_postava: { label: "Konkrétnímu hráči" },
+  osoba_cp: { label: "Konkrétnímu CP" },
+} as const;
+
+export type DocumentTargetOptionKey = keyof typeof DOCUMENT_TARGET_OPTIONS;
+
 export const ROUTES = {
   home: "/",
   login: "/login",
@@ -38,6 +51,7 @@ export const ROUTES = {
     larps: "/admin/larpy",
     runs: "/admin/behy",
     persons: "/admin/osoby",
+    groups: "/admin/skupiny",
     documents: "/admin/dokumenty",
     schedule: "/admin/harmonogram",
     production: "/admin/produkce",

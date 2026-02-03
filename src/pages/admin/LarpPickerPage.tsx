@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 
 export default function LarpPickerPage() {
   const { user, session, signOut } = useAuth();
+  const { isSuperAdmin } = useAdminRole();
   const { larps, currentLarpId, setCurrentLarpId, loading, fetchLarps } = useLarpContext();
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -151,29 +153,31 @@ export default function LarpPickerPage() {
               </PaperCard>
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="text-left rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
-          >
-            <PaperCard className="h-full border-0 shadow-none">
-              <PaperCardContent>
-                <div className="flex items-center gap-3 py-2">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-muted">
-                    <Plus className="h-6 w-6 text-muted-foreground" />
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="text-left rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <PaperCard className="h-full border-0 shadow-none">
+                <PaperCardContent>
+                  <div className="flex items-center gap-3 py-2">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-muted">
+                      <Plus className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-typewriter text-lg font-medium text-muted-foreground">
+                        Nový LARP
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Vytvořit nový LARP
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-typewriter text-lg font-medium text-muted-foreground">
-                      Nový LARP
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Vytvořit nový LARP
-                    </p>
-                  </div>
-                </div>
-              </PaperCardContent>
-            </PaperCard>
-          </button>
+                </PaperCardContent>
+              </PaperCard>
+            </button>
+          )}
         </div>
         {larps.length === 0 && (
           <p className="mt-6 text-sm text-muted-foreground">

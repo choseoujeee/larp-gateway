@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLarpContext } from "@/hooks/useLarpContext";
+import { useRunContext } from "@/hooks/useRunContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -38,6 +39,8 @@ interface Printable {
 
 export default function PrintablesPage() {
   const { currentLarpId, currentLarp } = useLarpContext();
+  const { selectedRunId, runs } = useRunContext();
+  const effectiveRunId = selectedRunId ?? (runs?.[0]?.id ?? null);
   const [items, setItems] = useState<Printable[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,9 +97,14 @@ export default function PrintablesPage() {
       toast.error("Vyplňte název");
       return;
     }
+    if (!effectiveRunId) {
+      toast.error("Vyberte běh (v menu nahoře) nebo vytvořte běh na stránce Běhy.");
+      return;
+    }
     setSaving(true);
     const payload = {
       larp_id: currentLarpId,
+      run_id: effectiveRunId,
       title: formData.title,
       url: formData.url || null,
       print_instructions: formData.print_instructions || null,
@@ -145,7 +153,7 @@ export default function PrintablesPage() {
               Materiály k tisku pro LARP {currentLarp?.name}
             </p>
           </div>
-          <Button onClick={openCreate} className="btn-vintage" disabled={!currentLarpId}>
+          <Button onClick={openCreate} className="btn-vintage" disabled={!currentLarpId || !effectiveRunId} title={!effectiveRunId ? "Vyberte běh" : undefined}>
             <Plus className="mr-2 h-4 w-4" />
             Přidat tiskovinu
           </Button>

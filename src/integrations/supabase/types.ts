@@ -67,12 +67,14 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          is_preherni: boolean
           location: string | null
           props: string | null
           run_id: string
           schedule_event_id: string | null
           sort_order: number | null
           start_time: string
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -82,12 +84,14 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          is_preherni?: boolean
           location?: string | null
           props?: string | null
           run_id: string
           schedule_event_id?: string | null
           sort_order?: number | null
           start_time: string
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -97,12 +101,14 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          is_preherni?: boolean
           location?: string | null
           props?: string | null
           run_id?: string
           schedule_event_id?: string | null
           sort_order?: number | null
           start_time?: string
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -146,6 +152,7 @@ export type Database = {
           updated_at: string
           visibility_mode: string
           visible_days_before: number | null
+          visible_to_cp: boolean
         }
         Insert: {
           content?: string | null
@@ -163,6 +170,7 @@ export type Database = {
           updated_at?: string
           visibility_mode?: string
           visible_days_before?: number | null
+          visible_to_cp?: boolean
         }
         Update: {
           content?: string | null
@@ -180,6 +188,7 @@ export type Database = {
           updated_at?: string
           visibility_mode?: string
           visible_days_before?: number | null
+          visible_to_cp?: boolean
         }
         Relationships: [
           {
@@ -241,10 +250,40 @@ export type Database = {
           },
         ]
       }
+      hidden_document_groups: {
+        Row: {
+          id: string
+          document_id: string
+          group_name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          document_id: string
+          group_name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          document_id?: string
+          group_name?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hidden_document_groups_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       larps: {
         Row: {
           created_at: string
           description: string | null
+          footer_text: string | null
           id: string
           motto: string | null
           name: string
@@ -256,6 +295,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          footer_text?: string | null
           id?: string
           motto?: string | null
           name: string
@@ -267,6 +307,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          footer_text?: string | null
           id?: string
           motto?: string | null
           name?: string
@@ -628,6 +669,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           location: string | null
+          performer_text: string | null
           run_id: string
           start_time: string
           title: string
@@ -643,6 +685,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          performer_text?: string | null
           run_id: string
           start_time: string
           title: string
@@ -658,6 +701,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          performer_text?: string | null
           run_id?: string
           start_time?: string
           title?: string
@@ -725,6 +769,7 @@ export type Database = {
           location: string
           props: string
           start_time: string
+          title: string | null
         }[]
       }
       get_person_documents: {
@@ -795,6 +840,7 @@ export type Database = {
           larp_id: string
           larp_motto: string
           larp_name: string
+          larp_slug: string
           larp_theme: string
           mission_briefing: string
           performance_times: string

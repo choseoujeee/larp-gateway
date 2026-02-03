@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Medal, Check, X, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, ArrowLeft, User, FileText, ExternalLink, Medal, Check, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -15,9 +15,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
@@ -53,7 +51,8 @@ import { toast } from "sonner";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
 import { DocumentEditDialog } from "@/components/admin/DocumentEditDialog";
-import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
+import { SortableDocumentItem } from "@/components/admin/SortableDocumentItem";
+import { DOCUMENT_TYPES } from "@/lib/constants";
 import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
 
 interface Person {
@@ -70,7 +69,7 @@ interface PersonDocument {
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
-  target_type: keyof typeof TARGET_TYPES;
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
@@ -78,6 +77,7 @@ interface PersonDocument {
   run_id: string | null;
   visibility_mode: string;
   visible_days_before: number | null;
+  visible_to_cp?: boolean;
   larp_id: string;
 }
 
@@ -129,6 +129,18 @@ export default function PersonsPage() {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<PersonDocument | null>(null);
   const [newDocumentDefaults, setNewDocumentDefaults] = useState<{ target_type: "osoba"; target_person_id: string } | undefined>(undefined);
+
+  // Přiřadit k běhu (z detailu postavy)
+  const [assignToRunDialogOpen, setAssignToRunDialogOpen] = useState(false);
+  const [assignToRunPerson, setAssignToRunPerson] = useState<Person | null>(null);
+  const [assignToRunFormData, setAssignToRunFormData] = useState({
+    run_id: "",
+    player_name: "",
+    player_email: "",
+    player_phone: "",
+    password: "",
+  });
+  const [assignToRunSaving, setAssignToRunSaving] = useState(false);
 
   const fetchPersons = async () => {
     if (!currentLarpId) return;
@@ -205,15 +217,22 @@ export default function PersonsPage() {
       console.error("Error fetching person documents:", error);
       setPersonDocuments([]);
     } else {
-      // Now filter out hidden documents
-      const { data: hiddenDocs } = await supabase
-        .from("hidden_documents")
-        .select("document_id")
-        .eq("person_id", personId);
-      
-      const hiddenIds = new Set((hiddenDocs || []).map(h => h.document_id));
-      const visibleDocs = (docs || []).filter(d => !hiddenIds.has(d.id));
-      // Sort by priority then sort_order
+      // Filter out by hidden_documents (person) and hidden_document_groups (person's group)
+      const docIds = (docs || []).map((d) => d.id);
+      const [hiddenDocsRes, hiddenGroupsRes] = await Promise.all([
+        supabase.from("hidden_documents").select("document_id").eq("person_id", personId),
+        docIds.length > 0
+          ? supabase.from("hidden_document_groups").select("document_id, group_name").in("document_id", docIds)
+          : { data: [] as { document_id: string; group_name: string }[] },
+      ]);
+      const hiddenByPerson = new Set((hiddenDocsRes.data || []).map((h) => h.document_id));
+      const hiddenByGroup = (hiddenGroupsRes.data || []).filter(
+        (h) => groupName != null && h.group_name === groupName
+      );
+      const hiddenGroupDocIds = new Set(hiddenByGroup.map((h) => h.document_id));
+      const visibleDocs = (docs || []).filter(
+        (d) => !hiddenByPerson.has(d.id) && !hiddenGroupDocIds.has(d.id)
+      );
       setPersonDocuments(sortDocuments(visibleDocs as PersonDocument[]));
     }
     setLoadingDocuments(false);
@@ -222,7 +241,6 @@ export default function PersonsPage() {
   const fetchPersonDocCounts = async () => {
     if (!currentLarpId || persons.length === 0) return;
     
-    // Fetch all documents for this larp
     const { data: docs } = await supabase
       .from("documents")
       .select("id, doc_type, target_type, target_group, target_person_id")
@@ -230,18 +248,38 @@ export default function PersonsPage() {
     
     if (!docs) return;
     
-    // Calculate counts per person
+    const docIds = docs.map((d) => d.id);
+    const [hiddenDocsRes, hiddenGroupsRes] = await Promise.all([
+      supabase.from("hidden_documents").select("document_id, person_id").in("document_id", docIds),
+      supabase.from("hidden_document_groups").select("document_id, group_name").in("document_id", docIds),
+    ]);
+    const hiddenByPerson = new Set(
+      (hiddenDocsRes.data || []).map((h) => `${h.document_id}:${h.person_id}`)
+    );
+    const hiddenByGroup = (hiddenGroupsRes.data || []).reduce(
+      (acc, h) => {
+        if (!acc[h.document_id]) acc[h.document_id] = new Set<string>();
+        acc[h.document_id].add(h.group_name);
+        return acc;
+      },
+      {} as Record<string, Set<string>>
+    );
+    
     const counts: Record<string, { organizacni: number; herni: number; postava: number }> = {};
     
     for (const person of persons) {
       counts[person.id] = { organizacni: 0, herni: 0, postava: 0 };
       
       for (const doc of docs) {
-        // Check if document is visible to this person
-        const isVisible = 
+        const targetMatch =
           doc.target_type === "vsichni" ||
           (doc.target_type === "skupina" && doc.target_group === person.group_name) ||
           (doc.target_type === "osoba" && doc.target_person_id === person.id);
+        const notHiddenByPerson = !hiddenByPerson.has(`${doc.id}:${person.id}`);
+        const notHiddenByGroup =
+          person.group_name == null ||
+          !(hiddenByGroup[doc.id]?.has(person.group_name));
+        const isVisible = targetMatch && notHiddenByPerson && notHiddenByGroup;
         
         if (isVisible && (doc.doc_type === "organizacni" || doc.doc_type === "herni" || doc.doc_type === "postava")) {
           counts[person.id][doc.doc_type as "organizacni" | "herni" | "postava"]++;
@@ -309,6 +347,65 @@ export default function PersonsPage() {
   };
 
   const getAssignment = (personId: string) => assignments.find((a) => a.person_id === personId);
+
+  /** Běhy aktuálního LARPu – pro výběr při „Přiřadit k běhu“ */
+  const runsOfCurrentLarp = useMemo(
+    () => (currentLarpId ? (runs || []).filter((r) => r.larp_id === currentLarpId) : []),
+    [currentLarpId, runs]
+  );
+
+  const openAssignToRunDialog = (person: Person) => {
+    setAssignToRunPerson(person);
+    setAssignToRunFormData({
+      run_id: selectedRunId || "",
+      player_name: "",
+      player_email: "",
+      player_phone: "",
+      password: "",
+    });
+    setAssignToRunDialogOpen(true);
+  };
+
+  const handleAssignToRunSave = async () => {
+    if (!assignToRunPerson || !assignToRunFormData.run_id) {
+      toast.error("Vyberte běh");
+      return;
+    }
+    if (!assignToRunFormData.password.trim()) {
+      toast.error("Zadejte heslo pro přístup hráče");
+      return;
+    }
+    setAssignToRunSaving(true);
+    const { data: assignmentId, error } = await supabase.rpc("create_person_assignment_with_password", {
+      p_run_id: assignToRunFormData.run_id,
+      p_person_id: assignToRunPerson.id,
+      p_password: assignToRunFormData.password,
+      p_player_name: assignToRunFormData.player_name.trim() || null,
+      p_player_email: assignToRunFormData.player_email.trim() || null,
+    });
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Tato postava je již přiřazena k tomuto běhu");
+      } else {
+        toast.error("Chyba při vytváření přiřazení");
+      }
+      setAssignToRunSaving(false);
+      return;
+    }
+    if (assignToRunFormData.player_phone.trim() && assignmentId) {
+      await supabase
+        .from("run_person_assignments")
+        .update({ player_phone: assignToRunFormData.player_phone.trim() || null })
+        .eq("id", assignmentId);
+    }
+    toast.success("Postava přiřazena k běhu");
+    setAssignToRunSaving(false);
+    setAssignToRunDialogOpen(false);
+    setAssignToRunPerson(null);
+    if (selectedRunId === assignToRunFormData.run_id) {
+      fetchAssignments();
+    }
+  };
 
   const generateSlug = (name: string) => {
     return name
@@ -502,70 +599,7 @@ export default function PersonsPage() {
     await updateDocumentOrder(newOrder);
   }, []);
 
-  // Sortable document row component
-  const SortableDocumentRow = ({ doc, onClick }: { doc: PersonDocument; onClick: () => void }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: doc.id });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-      zIndex: isDragging ? 10 : undefined,
-    };
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="flex items-stretch"
-      >
-        {/* Drag handle */}
-        <button
-          type="button"
-          className="flex-shrink-0 flex items-center justify-center w-8 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-l-md border border-r-0 border-border bg-muted/20 transition-colors"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        
-        {/* Document content */}
-        <div
-          className="flex-1 flex items-center justify-between p-2 rounded-r-md border border-l-0 border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors group min-w-0"
-          onClick={onClick}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="font-medium truncate">{doc.title}</span>
-            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
-            <span className="px-2 py-0.5 rounded bg-muted">
-              {doc.doc_type === "organizacni" && "Organizační"}
-              {doc.doc_type === "herni" && "Herní"}
-              {doc.doc_type === "postava" && "Postava"}
-              {doc.doc_type === "medailonek" && "Medailonek"}
-              {doc.doc_type === "cp" && "CP"}
-            </span>
-            {doc.priority === 1 && (
-              <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
-                Prioritní
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Sortable section wrapper
+  // Sortable section wrapper – stejné chování jako /dokumenty: edit na klik, tagy vpravo, vlevo DnD
   const SortableDocumentSection = ({ 
     docs, 
     sectionKey 
@@ -581,7 +615,16 @@ export default function PersonsPage() {
       <SortableContext items={docs.map((d) => d.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-1">
           {docs.map((doc) => (
-            <SortableDocumentRow key={doc.id} doc={doc} onClick={() => openDocumentEditDialog(doc)} />
+            <SortableDocumentItem
+              key={doc.id}
+              doc={doc as never}
+              persons={allPersons}
+              runs={runs ?? []}
+              hiddenFromPersons={[]}
+              showDocType
+              clickableRow
+              onEdit={() => openDocumentEditDialog(doc)}
+            />
           ))}
         </div>
       </SortableContext>
@@ -682,6 +725,17 @@ export default function PersonsPage() {
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
               Portál
             </Button>
+            {runsOfCurrentLarp.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openAssignToRunDialog(detailPerson)}
+                className="btn-vintage"
+              >
+                <Users className="mr-1.5 h-3.5 w-3.5" />
+                Přiřadit k běhu
+              </Button>
+            )}
           </div>
 
           {/* Documents visible to this person */}
@@ -905,6 +959,90 @@ export default function PersonsPage() {
               <Button onClick={handleSaveMedailonek} disabled={saving} className="btn-vintage">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Uložit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Přiřadit k běhu – dialog z detailu postavy */}
+        <Dialog open={assignToRunDialogOpen} onOpenChange={(open) => { setAssignToRunDialogOpen(open); if (!open) setAssignToRunPerson(null); }}>
+          <DialogContent className="paper-card">
+            <DialogHeader>
+              <DialogTitle className="font-typewriter">Přiřadit k běhu</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {assignToRunPerson && (
+                <p className="text-sm text-muted-foreground">
+                  Postava: <strong>{assignToRunPerson.name}</strong>
+                </p>
+              )}
+              <div className="space-y-2">
+                <Label>Běh</Label>
+                <Select
+                  value={assignToRunFormData.run_id}
+                  onValueChange={(v) => setAssignToRunFormData({ ...assignToRunFormData, run_id: v })}
+                >
+                  <SelectTrigger className="input-vintage">
+                    <SelectValue placeholder="Vyberte běh" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {runsOfCurrentLarp.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Jméno hráče</Label>
+                <Input
+                  value={assignToRunFormData.player_name}
+                  onChange={(e) => setAssignToRunFormData({ ...assignToRunFormData, player_name: e.target.value })}
+                  placeholder="Jméno hráče"
+                  className="input-vintage"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Telefon hráče</Label>
+                  <Input
+                    type="tel"
+                    value={assignToRunFormData.player_phone}
+                    onChange={(e) => setAssignToRunFormData({ ...assignToRunFormData, player_phone: e.target.value })}
+                    placeholder="+420 123 456 789"
+                    className="input-vintage"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email hráče</Label>
+                  <Input
+                    type="email"
+                    value={assignToRunFormData.player_email}
+                    onChange={(e) => setAssignToRunFormData({ ...assignToRunFormData, player_email: e.target.value })}
+                    placeholder="email@example.com"
+                    className="input-vintage"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Heslo pro přístup</Label>
+                <Input
+                  type="password"
+                  value={assignToRunFormData.password}
+                  onChange={(e) => setAssignToRunFormData({ ...assignToRunFormData, password: e.target.value })}
+                  placeholder="Heslo pro portál hráče"
+                  className="input-vintage"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setAssignToRunDialogOpen(false); setAssignToRunPerson(null); }}>
+                Zrušit
+              </Button>
+              <Button onClick={handleAssignToRunSave} disabled={assignToRunSaving || !assignToRunFormData.run_id || !assignToRunFormData.password.trim()} className="btn-vintage">
+                {assignToRunSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Přiřadit
               </Button>
             </DialogFooter>
           </DialogContent>

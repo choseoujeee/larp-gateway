@@ -68,15 +68,10 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register">
-                <Button size="lg" className="btn-vintage text-lg px-8">
-                  Začít organizovat
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
               <Link to="/login">
-                <Button variant="outline" size="lg" className="text-lg px-8">
-                  Přihlásit se
+                <Button size="lg" className="btn-vintage text-lg px-8">
+                  Přihlášení organizátora
+                  <ChevronRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>

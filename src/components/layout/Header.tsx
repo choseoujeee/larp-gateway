@@ -48,18 +48,11 @@ export function Header({ showAuth = true }: HeaderProps) {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Link to="/login">
-                    <Button variant="outline" size="sm">
-                      Přihlášení
-                    </Button>
-                  </Link>
-                  <Link to="/register">
-                    <Button size="sm">
-                      Registrace
-                    </Button>
-                  </Link>
-                </>
+                <Link to="/login">
+                  <Button variant="outline" size="sm">
+                    Přihlášení
+                  </Button>
+                </Link>
               )}
             </nav>
           )}

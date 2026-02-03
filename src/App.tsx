@@ -12,24 +12,26 @@ import { RunProvider } from "@/hooks/useRunContext";
 // Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import LarpsPage from "./pages/admin/LarpsPage";
 import RunsPage from "./pages/admin/RunsPage";
 import PersonsPage from "./pages/admin/PersonsPage";
 import CpPage from "./pages/admin/CpPage";
 import CpDetailPage from "./pages/admin/CpDetailPage";
+import GroupsPage from "./pages/admin/GroupsPage";
 import DocumentsPage from "./pages/admin/DocumentsPage";
 import SchedulePage from "./pages/admin/SchedulePage";
 import ProductionPage from "./pages/admin/ProductionPage";
-import PrintablesPage from "./pages/admin/PrintablesPage";
 
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
 import PortalViewPage from "./pages/portal/PortalViewPage";
 import CpPortalPage from "./pages/portal/CpPortalPage";
+import ProductionPortalPage from "./pages/portal/ProductionPortalPage";
+import SchedulePortalPage from "./pages/portal/SchedulePortalPage";
 import PortalFeedbackPage from "./pages/admin/PortalFeedbackPage";
+import OrganizersPage from "./pages/admin/OrganizersPage";
 import NotFound from "./pages/NotFound";
 import { FeedbackButton } from "./components/FeedbackButton";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -51,11 +53,12 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                <ErrorBoundary>
                 <Routes>
                   {/* Public */}
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/register" element={<Navigate to="/login" replace />} />
 
                   {/* Alias: staré URL → nové (zpětná kompatibilita) */}
                   <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
@@ -64,18 +67,28 @@ const App = () => (
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/larpy" element={<LarpsPage />} />
+                  <Route path="/admin/larpy" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/behy" element={<RunsPage />} />
                   <Route path="/admin/behy/:slug" element={<RunsPage />} />
                   <Route path="/admin/osoby" element={<PersonsPage />} />
                   <Route path="/admin/osoby/:slug" element={<PersonsPage />} />
+                  <Route
+                    path="/admin/cp/:slug"
+                    element={
+                      <ErrorBoundary>
+                        <CpDetailPage />
+                      </ErrorBoundary>
+                    }
+                  />
                   <Route path="/admin/cp" element={<CpPage />} />
-                  <Route path="/admin/cp/:slug" element={<CpDetailPage />} />
+                  <Route path="/admin/skupiny" element={<GroupsPage />} />
+                  <Route path="/admin/skupiny/:groupSlug" element={<GroupsPage />} />
                   <Route path="/admin/dokumenty" element={<DocumentsPage />} />
                   <Route path="/admin/harmonogram" element={<SchedulePage />} />
                   <Route path="/admin/produkce" element={<ProductionPage />} />
-                  <Route path="/admin/tiskoviny" element={<PrintablesPage />} />
+                  <Route path="/admin/tiskoviny" element={<Navigate to="/admin/produkce" replace />} />
                   <Route path="/admin/portal" element={<PortalFeedbackPage />} />
+                  <Route path="/admin/organizatori" element={<OrganizersPage />} />
 
                   {/* Portal - hráčský portál */}
                   <Route path="/hrac/:slug" element={<PortalAccessPage />} />
@@ -83,11 +96,20 @@ const App = () => (
                   
                   {/* CP Portal - rozcestník pro všechny CP */}
                   <Route path="/cp/:larpSlug" element={<CpPortalPage />} />
+                  {/* CP Portal - konkrétní CP (stejný obsah jako /hrac/:slug/view) */}
+                  <Route path="/cp/:larpSlug/:slug" element={<PortalViewPage />} />
+
+                  {/* Produkční portál – tým produkce (token + heslo) */}
+                  <Route path="/produkce-portal/:token" element={<ProductionPortalPage />} />
+
+                  {/* Portál harmonogramu – read-only harmonogram běhu (token + heslo) */}
+                  <Route path="/harmonogram-portal/:token" element={<SchedulePortalPage />} />
 
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <FeedbackButton />
+                </ErrorBoundary>
               </BrowserRouter>
             </TooltipProvider>
           </PortalProvider>

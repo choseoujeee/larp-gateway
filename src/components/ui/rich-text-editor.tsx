@@ -296,7 +296,7 @@ export function RichTextEditor({
   editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_blockquote]:my-4 [&_blockquote]:py-3 [&_blockquote]:px-4 [&_blockquote]:bg-muted/50 [&_blockquote]:border [&_blockquote]:border-border [&_blockquote]:border-l-[3px] [&_blockquote]:border-l-primary [&_blockquote]:rounded [&_blockquote]:italic",
+          "prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 pt-3 pb-2 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_blockquote]:my-4 [&_blockquote]:py-3 [&_blockquote]:px-4 [&_blockquote]:bg-muted/50 [&_blockquote]:border [&_blockquote]:border-border [&_blockquote]:border-l-[3px] [&_blockquote]:border-l-primary [&_blockquote]:rounded [&_blockquote]:italic",
       },
     },
     onUpdate: ({ editor }) => {
@@ -433,13 +433,13 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        "flex flex-col rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 max-h-[min(50vh,420px)]",
         className
       )}
       style={{ minHeight }}
     >
-      {/* Toolbar - sticky for scrolling within dialogs */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-1 py-1 rounded-t-md">
+      {/* Toolbar – pevně nahoře, scrolluje jen obsah pod ním */}
+      <div className="flex-shrink-0 flex flex-wrap items-center gap-0.5 border-b border-border bg-background px-1 py-1 rounded-t-md shadow-[0_1px_0_0_hsl(var(--border))]">
         {/* Undo/Redo */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
@@ -740,8 +740,10 @@ export function RichTextEditor({
         </ToolbarButton>
       </div>
 
-      {/* Editor Content */}
-      <EditorContent editor={editor} />
+      {/* Editor Content – scrolluje jen tato oblast, text nezaplňuje toolbar */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

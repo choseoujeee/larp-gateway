@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { CpSceneDialog } from "./CpSceneDialog";
 
 export interface CpScene {
@@ -23,6 +24,8 @@ export interface CpScene {
   start_time: string;
   duration_minutes: number;
   day_number: number;
+  title: string | null;
+  is_preherni?: boolean;
   location: string | null;
   props: string | null;
   description: string | null;
@@ -105,13 +108,21 @@ export function CpSceneList({ scenes, cpId, runId, onScenesChange, runDays = 3 }
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium flex items-center gap-1.5">
+                  {scene.title && (
+                    <span className="font-medium">{scene.title}</span>
+                  )}
+                  <span className={`flex items-center gap-1.5 ${scene.title ? "text-muted-foreground text-sm" : "font-medium"}`}>
                     <Clock className="h-3.5 w-3.5" />
                     Den {scene.day_number}, {formatTime(scene.start_time)}
                   </span>
                   {scene.duration_minutes !== 15 && (
                     <Badge variant="outline" className="text-xs">
                       {scene.duration_minutes} min
+                    </Badge>
+                  )}
+                  {scene.is_preherni && (
+                    <Badge variant="outline" className="text-xs">
+                      Předherní
                     </Badge>
                   )}
                   {scene.schedule_event_id && (
@@ -137,7 +148,12 @@ export function CpSceneList({ scenes, cpId, runId, onScenesChange, runDays = 3 }
                 )}
                 
                 {scene.description && (
-                  <p className="text-sm mt-2 line-clamp-2">{scene.description}</p>
+                  <div
+                    className="text-sm mt-2 line-clamp-2 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeHtml(scene.description.startsWith("<") ? scene.description : scene.description.replace(/\n/g, "<br/>")),
+                    }}
+                  />
                 )}
               </div>
 

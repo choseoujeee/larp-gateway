@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package } from "lucide-react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface Document {
 
 interface CpScene {
   id: string;
+  title: string | null;
   day_number: number;
   start_time: string;
   duration_minutes: number;
@@ -40,24 +41,30 @@ interface CpScene {
 }
 
 export default function PortalViewPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams<{ slug: string; larpSlug?: string }>();
+  const slug = params.slug; // /hrac/:slug/view i /cp/:larpSlug/:slug
+  const larpSlug = params.larpSlug;
   const navigate = useNavigate();
   const { session, loading: sessionLoading, clearSession } = usePortalSession();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cpScenes, setCpScenes] = useState<CpScene[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Track open categories and open documents separately
+  // Track open categories, documents and CP scenes
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   const [openDocuments, setOpenDocuments] = useState<Set<string>>(new Set());
+  const [openScenes, setOpenScenes] = useState<Set<string>>(new Set());
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
 
+  // Bez session přesměrovat na přihlášení; z /cp/... vrátit po přihlášení zpět na /cp/ URL
   useEffect(() => {
-    if (!sessionLoading && !session) {
-      navigate(`/hrac/${slug}`);
+    if (!sessionLoading && !session && slug) {
+      const returnTo = larpSlug ? `/cp/${larpSlug}/${slug}` : undefined;
+      const query = returnTo ? `?from_cp_portal=1&return_to=${encodeURIComponent(returnTo)}` : "";
+      navigate(`/hrac/${slug}${query}`);
     }
-  }, [session, sessionLoading, slug, navigate]);
+  }, [session, sessionLoading, slug, larpSlug, navigate]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -123,6 +130,18 @@ export default function PortalViewPage() {
     });
   };
 
+  const toggleScene = (sceneId: string) => {
+    setOpenScenes(prev => {
+      const next = new Set(prev);
+      if (next.has(sceneId)) {
+        next.delete(sceneId);
+      } else {
+        next.add(sceneId);
+      }
+      return next;
+    });
+  };
+
   const collapseAllDocuments = () => {
     setOpenDocuments(new Set());
   };
@@ -176,16 +195,21 @@ export default function PortalViewPage() {
           </p>
         )}
         
-        {/* Quick actions */}
+        {/* Quick actions – u CP jen zpět na společný portál, u hráče odhlásit */}
         <div className="flex items-center justify-center gap-2 mt-6 no-print">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Tisk
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Odhlásit
-          </Button>
+          {session.personType === "cp" && session.larpSlug ? (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to={`/cp/${session.larpSlug}`}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Zpět na Společný portál CP
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Odhlásit
+            </Button>
+          )}
         </div>
       </header>
 
@@ -215,8 +239,9 @@ export default function PortalViewPage() {
             </PaperCardContent>
           </PaperCard>
 
-          {/* Mission Briefing - only if run data exists */}
-          {(session.runName || session.runLocation || session.missionBriefing) && (
+          {/* Mission Briefing – jen pro herní postavy (ne pro CP) */}
+          {session.personType !== "cp" &&
+            (session.runName || session.runLocation || session.missionBriefing) && (
             <PaperCard>
               <PaperCardHeader>
                 <PaperCardTitle className="font-typewriter tracking-wider uppercase">
@@ -257,14 +282,13 @@ export default function PortalViewPage() {
                   )}
                 </div>
                 {session.missionBriefing && (
-                  <div 
+                  <div
                     className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
                 )}
-                
-                {/* Payment info button */}
-                {session.personType === "postava" && session.runPaymentAccount && (
+
+                {session.runPaymentAccount && (
                   <div className="mt-4 pt-4 border-t border-border no-print">
                     <Button
                       variant="outline"
@@ -284,80 +308,142 @@ export default function PortalViewPage() {
             </PaperCard>
           )}
 
-          {/* CP Info */}
-          {session.personType === "cp" && (session.performer || session.performanceTimes) && (
+          {/* CP: časy scén a performer (místo Mission Briefing) */}
+          {session.personType === "cp" && (session.performer || cpScenes.length > 0) && (
             <PaperCard>
               <PaperCardHeader>
                 <PaperCardTitle className="font-typewriter tracking-wider uppercase">
-                  Informace o vystoupení
+                  Rychlé info
                 </PaperCardTitle>
               </PaperCardHeader>
-              <PaperCardContent className="space-y-2 text-sm">
+              <PaperCardContent className="space-y-3 text-sm">
                 {session.performer && (
-                  <div className="flex">
-                    <span className="font-semibold w-24 text-foreground">Performer:</span>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-semibold text-foreground">Performer:</span>
                     <span className="text-muted-foreground">{session.performer}</span>
                   </div>
                 )}
-                {session.performanceTimes && (
-                  <div className="flex">
-                    <span className="font-semibold w-24 text-foreground">Časy:</span>
-                    <span className="text-muted-foreground">{session.performanceTimes}</span>
+                {cpScenes.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Theater className="h-4 w-4 text-muted-foreground" />
+                      Časy scén
+                    </span>
+                    <ul className="text-muted-foreground space-y-1">
+                      {[...cpScenes]
+                        .sort(
+                          (a, b) =>
+                            (a.day_number !== b.day_number
+                              ? a.day_number - b.day_number
+                              : a.start_time.localeCompare(b.start_time))
+                        )
+                        .map((s) => (
+                          <li key={s.id}>
+                            {s.title?.trim()
+                              ? `${s.title} – `
+                              : ""}
+                            Den {s.day_number}, {s.start_time.substring(0, 5)}
+                            {s.location ? ` (${s.location})` : ""}
+                          </li>
+                        ))}
+                    </ul>
                   </div>
                 )}
               </PaperCardContent>
             </PaperCard>
           )}
 
-          {/* CP Scenes - Moje scény */}
+          {/* CP Scenes - Moje scény (accordeon jako dokumenty) */}
           {session.personType === "cp" && cpScenes.length > 0 && (
-            <PaperCard>
-              <PaperCardHeader>
-                <PaperCardTitle className="font-typewriter tracking-wider uppercase flex items-center gap-2">
-                  <Theater className="h-5 w-5" />
-                  Moje scény ({cpScenes.length})
-                </PaperCardTitle>
-              </PaperCardHeader>
-              <PaperCardContent className="space-y-4">
-                {cpScenes.map((scene, index) => (
-                  <div key={scene.id} className={`p-4 rounded-lg ${index % 2 === 0 ? "bg-muted/20" : "bg-muted/10"}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="font-mono">
-                        Den {scene.day_number}
-                      </Badge>
-                      <span className="font-typewriter text-lg">
-                        {scene.start_time.substring(0, 5)}
-                      </span>
-                      {scene.duration_minutes && (
-                        <span className="text-xs text-muted-foreground">
-                          ({scene.duration_minutes} min)
-                        </span>
-                      )}
-                    </div>
-                    
-                    {scene.location && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{scene.location}</span>
-                      </div>
+            <PaperCard className="overflow-hidden">
+              <Collapsible
+                open={openCategories.has("cp-scenes")}
+                onOpenChange={() => {
+                  setOpenCategories(prev => {
+                    const next = new Set(prev);
+                    if (next.has("cp-scenes")) next.delete("cp-scenes");
+                    else next.add("cp-scenes");
+                    return next;
+                  });
+                }}
+              >
+                <CollapsibleTrigger asChild>
+                  <button className="w-full px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left">
+                    <Theater className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    {openCategories.has("cp-scenes") ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     )}
-                    
-                    {scene.props && (
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground mb-2">
-                        <Package className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                        <span className="font-medium">Rekvizity: {scene.props}</span>
-                      </div>
-                    )}
-                    
-                    {scene.description && (
-                      <div 
-                        className="prose prose-sm max-w-none text-muted-foreground mt-2 pt-2 border-t border-border/50"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(scene.description) }}
-                      />
-                    )}
+                    <span className="font-typewriter text-sm tracking-wider uppercase">
+                      Moje scény
+                    </span>
+                    <span className="text-sm text-muted-foreground">({cpScenes.length})</span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="divide-y divide-border/50">
+                    {cpScenes.map((scene, index) => (
+                      <Collapsible
+                        key={scene.id}
+                        open={openScenes.has(scene.id)}
+                        onOpenChange={() => toggleScene(scene.id)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <button
+                            className={`w-full text-left py-2 px-4 flex items-center gap-2 hover:bg-muted/50 transition-colors ${
+                              index % 2 === 0 ? "bg-muted/20" : ""
+                            }`}
+                          >
+                            <ChevronRight
+                              className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${
+                                openScenes.has(scene.id) ? "rotate-90" : ""
+                              }`}
+                            />
+                            <span className="font-medium text-foreground">
+                              {scene.title?.trim() ? scene.title.trim() : `Den ${scene.day_number} ${scene.start_time.substring(0, 5)}`}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              · Den {scene.day_number} · {scene.start_time.substring(0, 5)} · {scene.duration_minutes} min
+                            </span>
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-4 py-4 bg-background border-t border-border/50 space-y-2">
+                            <div className="flex flex-wrap items-baseline gap-2 text-sm">
+                              <span className="text-muted-foreground">Den {scene.day_number}</span>
+                              <span className="text-muted-foreground">{scene.start_time.substring(0, 5)}</span>
+                              <span className="text-muted-foreground">{scene.duration_minutes} min</span>
+                              {scene.title?.trim() && (
+                                <span className="font-medium text-foreground">{scene.title.trim()}</span>
+                              )}
+                            </div>
+                            {scene.location && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>{scene.location}</span>
+                              </div>
+                            )}
+                            {scene.props && (
+                              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <Package className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                                <span className="font-medium">Rekvizity: {scene.props}</span>
+                              </div>
+                            )}
+                            {scene.description && (
+                              <div
+                                className="prose prose-sm max-w-none text-muted-foreground mt-2 pt-2 border-t border-border/50"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(scene.description.startsWith("<") ? scene.description : scene.description.replace(/\n/g, "<br/>")) }}
+                              />
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
                   </div>
-                ))}
-              </PaperCardContent>
+                </CollapsibleContent>
+              </Collapsible>
             </PaperCard>
           )}
 
@@ -461,12 +547,16 @@ export default function PortalViewPage() {
       </main>
 
       {/* Footer */}
-      <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border">
+      <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-4">
         {session.runFooterText ? (
           <p className="whitespace-pre-line">{session.runFooterText}</p>
         ) : (
           <p>Kliknutím na název dokumentu rozbalíte jeho obsah.</p>
         )}
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" />
+          Tisk
+        </Button>
       </footer>
 
       {/* Payment Dialog */}

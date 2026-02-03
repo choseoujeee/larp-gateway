@@ -1,106 +1,322 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { 
-  Gamepad2, 
-  Calendar, 
-  Users, 
-  UserCog,
-  FileText, 
-  Clock, 
-  Link as LinkIcon, 
-  Printer,
-  Plus
+import {
+  FileText,
+  Gamepad2,
+  Plus,
+  LogOut,
+  Loader2,
 } from "lucide-react";
-import { AdminLayout } from "@/components/layout/AdminLayout";
-import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
-import { Stamp } from "@/components/ui/stamp";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { LarpsManagement } from "@/components/admin/LarpsManagement";
+import { Stamp } from "@/components/ui/stamp";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { useLarpContext } from "@/hooks/useLarpContext";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const quickLinks = [
-  { name: "LARPy", href: "/admin/larpy", icon: Gamepad2, description: "Správa vašich LARPů" },
-  { name: "Běhy", href: "/admin/behy", icon: Calendar, description: "Jednotlivé běhy her" },
-  { name: "Postavy", href: "/admin/osoby", icon: Users, description: "Hráčské postavy" },
-  { name: "Cizí postavy", href: "/admin/cp", icon: UserCog, description: "CP a jejich role" },
-  { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText, description: "Herní a organizační texty" },
-  { name: "Harmonogram", href: "/admin/harmonogram", icon: Clock, description: "Časový plán běhu" },
-  { name: "Produkce", href: "/admin/produkce", icon: LinkIcon, description: "Užitečné odkazy" },
-  { name: "Tiskoviny", href: "/admin/tiskoviny", icon: Printer, description: "Materiály k tisku" },
-];
+function generateSlug(name: string) {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
-export default function AdminDashboard() {
+/** Obsah stránky Přehled LARPů – seznam LARPů k výběru / přepnutí */
+function LarpOverviewContent() {
+  const { isSuperAdmin } = useAdminRole();
+  const {
+    larps,
+    currentLarpId,
+    setCurrentLarpId,
+    fetchLarps,
+  } = useLarpContext();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createSlug, setCreateSlug] = useState("");
+  const [createTheme, setCreateTheme] = useState("wwii");
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    const session = (await supabase.auth.getSession()).data?.session;
+    if (!createName?.trim()) {
+      toast.error("Zadejte název LARPu");
+      return;
+    }
+    const slug = createSlug?.trim() || generateSlug(createName);
+    if (!slug) {
+      toast.error("Slug nemůže být prázdný");
+      return;
+    }
+    if (!session?.user?.id) {
+      toast.error("Pro vytvoření LARPu se musíte přihlásit");
+      return;
+    }
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("larps")
+      .insert({
+        name: createName.trim(),
+        slug,
+        theme: createTheme,
+        owner_id: session.user.id,
+      })
+      .select("id")
+      .single();
+    setSaving(false);
+    if (error) {
+      if (error.code === "23505") toast.error("Slug už existuje");
+      else toast.error("Chyba při vytváření", { description: error.message });
+      return;
+    }
+    toast.success("LARP vytvořen");
+    setCreateOpen(false);
+    setCreateName("");
+    setCreateSlug("");
+    setCreateTheme("wwii");
+    await fetchLarps();
+    if (data?.id) setCurrentLarpId(data.id);
+  };
+
   return (
-    <AdminLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-typewriter text-3xl tracking-wide mb-2">Přehled</h1>
-            <p className="text-muted-foreground">
-              Vítejte v administraci LARP Portálu
-            </p>
-          </div>
-          <Stamp variant="primary">
-            Administrace
-          </Stamp>
-        </div>
-
-        {/* Quick action */}
-        <PaperCard className="bg-primary/5 border-primary/20">
-          <PaperCardContent>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="font-typewriter text-lg mb-1">Začněte tvořit</h2>
-                <p className="text-sm text-muted-foreground">
-                  Vytvořte svůj první LARP nebo přidejte nový běh k existujícímu
-                </p>
-              </div>
-              <Link to="/admin/larpy">
-                <Button className="btn-vintage">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nový LARP
-                </Button>
-              </Link>
-            </div>
-          </PaperCardContent>
-        </PaperCard>
-
-        {/* Quick links grid */}
+    <div className="space-y-8">
+      <div className="flex items-start justify-between">
         <div>
-          <h2 className="font-typewriter text-xl mb-4 tracking-wide">Rychlá navigace</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickLinks.map((link) => (
-              <Link key={link.name} to={link.href}>
-                <PaperCard className="h-full hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer">
-                  <PaperCardContent>
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-primary/10">
-                        <link.icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-typewriter text-sm mb-1">{link.name}</h3>
-                        <p className="text-xs text-muted-foreground">{link.description}</p>
-                      </div>
-                    </div>
-                  </PaperCardContent>
-                </PaperCard>
-              </Link>
-            ))}
-          </div>
+          <h1 className="font-typewriter text-3xl tracking-wide mb-2">
+            Přehled LARPů
+          </h1>
+          <p className="text-muted-foreground">
+            Vyberte LARP pro práci v administraci nebo vytvořte nový
+          </p>
         </div>
+        <Stamp variant="primary">Administrace</Stamp>
+      </div>
 
-        {/* Info box */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {larps.map((larp) => (
+          <button
+            key={larp.id}
+            type="button"
+            onClick={() => setCurrentLarpId(larp.id)}
+            className={cn(
+              "text-left rounded-lg border-2 transition-all hover:shadow-lg hover:-translate-y-0.5",
+              currentLarpId === larp.id
+                ? "border-primary bg-primary/5"
+                : "border-border bg-card hover:border-primary/50"
+            )}
+          >
+            <PaperCard className="h-full border-0 shadow-none">
+              <PaperCardContent>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-primary/10">
+                    <Gamepad2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-typewriter text-lg font-medium truncate">
+                      {larp.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {currentLarpId === larp.id
+                        ? "Aktuálně vybraný – klikněte pro vstup"
+                        : "Klikněte pro vstup do administrace"}
+                    </p>
+                  </div>
+                </div>
+              </PaperCardContent>
+            </PaperCard>
+          </button>
+        ))}
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="text-left rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
+          >
+            <PaperCard className="h-full border-0 shadow-none">
+              <PaperCardContent>
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-muted">
+                    <Plus className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="font-typewriter text-lg font-medium text-muted-foreground">
+                      Nový LARP
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Vytvořit nový LARP
+                    </p>
+                  </div>
+                </div>
+              </PaperCardContent>
+            </PaperCard>
+          </button>
+        )}
+      </div>
+
+      {larps.length === 0 && (
         <PaperCard>
           <PaperCardContent>
-            <h2 className="font-typewriter text-lg mb-3">Jak začít?</h2>
-            <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-              <li>Vytvořte nový LARP v sekci <strong>"LARPy"</strong></li>
-              <li>Přidejte běh (konkrétní uvedení hry) v sekci <strong>"Běhy"</strong></li>
-              <li>Vytvořte postavy pro hráče v sekci <strong>"Postavy"</strong></li>
-              <li>Napište dokumenty a přiřaďte je postavám v sekci <strong>"Dokumenty"</strong></li>
-              <li>Sdílejte přístupové odkazy s hráči</li>
-            </ol>
+            <p className="text-muted-foreground">
+              Zatím nemáte žádný LARP.
+              {isSuperAdmin
+                ? " Klikněte na „Nový LARP“ a vytvořte první."
+                : " Požádejte organizátora o přístup."}
+            </p>
           </PaperCardContent>
         </PaperCard>
+      )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nový LARP</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="create-name">Název</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => {
+                  setCreateName(e.target.value);
+                  if (!createSlug) setCreateSlug(generateSlug(e.target.value));
+                }}
+                placeholder="např. Krypta"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create-slug">Slug (URL)</Label>
+              <Input
+                id="create-slug"
+                value={createSlug}
+                onChange={(e) => setCreateSlug(e.target.value)}
+                placeholder="krypta"
+              />
+            </div>
+            <div>
+              <Label>Téma</Label>
+              <Select value={createTheme} onValueChange={setCreateTheme}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wwii">WWII / historie</SelectItem>
+                  <SelectItem value="fantasy">Fantasy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Zrušit
+            </Button>
+            <Button onClick={handleCreate} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Vytvořit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Přehled LARPů: úvodní stránka adminu.
+ * Bez vybraného LARPu = celostránkový výběr (header + seznam).
+ * S vybraným LARPem = stejný obsah uvnitř AdminLayoutu (možnost přepnout LARP).
+ */
+export default function AdminDashboard() {
+  const { user, signOut } = useAuth();
+  const {
+    larps,
+    currentLarpId,
+    setCurrentLarpId,
+    loading,
+  } = useLarpContext();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="font-typewriter text-xl text-muted-foreground animate-pulse">
+          Načítání LARPů...
+        </div>
       </div>
+    );
+  }
+
+  // Bez vybraného LARPu: celostránkový výběr (bez sidebaru)
+  if (!currentLarpId) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded bg-primary">
+                <FileText className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="font-typewriter text-lg tracking-wider text-foreground">
+                  LARP Portál – Administrace
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Vyberte LARP, do kterého chcete vstoupit
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                {user?.email}
+              </span>
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Odhlásit
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-12 max-w-4xl">
+          <h2 className="font-typewriter text-2xl mb-6 tracking-wide">
+            Přehled LARPů
+          </h2>
+          <LarpOverviewContent />
+        </main>
+      </div>
+    );
+  }
+
+  // S vybraným LARPem: obsah jako /admin/larpy + hero karta Nový LARP + Jak to funguje
+  return (
+    <AdminLayout>
+      <LarpsManagement
+        title="Přehled LARPů"
+        subtitle="Vyberte LARP pro práci v administraci nebo spravujte své hry"
+        showHeroCard
+        showHowItWorks
+      />
     </AdminLayout>
   );
 }

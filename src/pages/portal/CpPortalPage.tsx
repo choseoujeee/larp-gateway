@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2 } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2, Clock, Theater } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,9 @@ import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/
 import { Stamp } from "@/components/ui/stamp";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { DOCUMENT_TYPES } from "@/lib/constants";
 import { sanitizeHtml } from "@/lib/sanitize";
 
@@ -18,6 +20,12 @@ interface CpPerson {
   slug: string;
   performer: string | null;
   performance_times: string | null;
+}
+
+interface CpStats {
+  documentsCount: number;
+  scenesCount: number;
+  sceneTimesSummary: string | null;
 }
 
 interface PlayerPerson {
@@ -35,6 +43,7 @@ interface Document {
   target_type: string;
   sort_order: number;
   priority: number;
+  visible_to_cp?: boolean;
 }
 
 interface LarpInfo {
@@ -42,6 +51,7 @@ interface LarpInfo {
   name: string;
   motto: string | null;
   theme: string | null;
+  footer_text: string | null;
 }
 
 interface RunInfo {
@@ -51,40 +61,120 @@ interface RunInfo {
 
 export default function CpPortalPage() {
   const { larpSlug } = useParams<{ larpSlug: string }>();
+  const { user, loading: authLoading } = useAuth();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
+  const [organizerChecking, setOrganizerChecking] = useState(true);
   
   const [larpInfo, setLarpInfo] = useState<LarpInfo | null>(null);
   const [runInfo, setRunInfo] = useState<RunInfo | null>(null);
   const [cpPersons, setCpPersons] = useState<CpPerson[]>([]);
+  const [cpStats, setCpStats] = useState<Record<string, CpStats>>({});
+  const [cpScenesByCpId, setCpScenesByCpId] = useState<Record<string, { day_number: number; start_time: string; title: string | null }[]>>({});
   const [playerPersons, setPlayerPersons] = useState<PlayerPerson[]>([]);
   const [cpDocuments, setCpDocuments] = useState<Document[]>([]);
   
+  const [cpSearch, setCpSearch] = useState("");
+  const [filterPerformer, setFilterPerformer] = useState<string>("");
+  const [filterDay, setFilterDay] = useState<string>("");
+  const [filterTimeFrom, setFilterTimeFrom] = useState<string>("");
+  const [filterTimeTo, setFilterTimeTo] = useState<string>("");
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [playerGroupFilter, setPlayerGroupFilter] = useState<string>("");
+  const [playerViewMode, setPlayerViewMode] = useState<"groups" | "all">("groups");
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   const [openDocuments, setOpenDocuments] = useState<Set<string>>(new Set());
 
-  // Check for stored session
+  // Stored session nebo přihlášený organizátor/super admin: vstup bez hesla
   useEffect(() => {
+    if (!larpSlug) {
+      setOrganizerChecking(false);
+      return;
+    }
     const stored = localStorage.getItem(`cp_portal_${larpSlug}`);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (parsed.authenticated && parsed.larpId) {
           setAuthenticated(true);
-          loadPortalData(parsed.larpId, parsed.runId);
+          loadPortalData(parsed.larpId, parsed.runId ?? null);
+          setOrganizerChecking(false);
+          return;
         }
       } catch {
         localStorage.removeItem(`cp_portal_${larpSlug}`);
       }
     }
-  }, [larpSlug]);
+    if (authLoading) return;
+    if (!user) {
+      setOrganizerChecking(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: canAccess } = await supabase.rpc("can_access_cp_portal_as_organizer", {
+        p_larp_slug: larpSlug,
+      });
+      if (cancelled || !canAccess) {
+        setOrganizerChecking(false);
+        return;
+      }
+      const { data: larpRow, error: larpErr } = await supabase
+        .from("larps")
+        .select("id, name, motto, theme, footer_text")
+        .eq("slug", larpSlug)
+        .single();
+      if (larpErr || !larpRow) {
+        setOrganizerChecking(false);
+        return;
+      }
+      const larpId = larpRow.id as string;
+      const { data: runRow } = await supabase
+        .from("runs")
+        .select("id, name")
+        .eq("larp_id", larpId)
+        .eq("is_active", true)
+        .order("date_from", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const runId = runRow?.id ?? null;
+      const theme = (larpRow.theme as string)?.trim() || "wwii";
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem(`cp_portal_${larpSlug}`, JSON.stringify({
+        authenticated: true,
+        larpId,
+        runId,
+      }));
+      setLarpInfo({
+        id: larpId,
+        name: larpRow.name as string,
+        motto: (larpRow.motto as string) ?? null,
+        theme: (larpRow.theme as string) ?? null,
+        footer_text: (larpRow.footer_text as string) ?? null,
+      });
+      setRunInfo(runRow ? { id: runRow.id as string, name: runRow.name as string } : null);
+      setAuthenticated(true);
+      await loadPortalData(larpId, runId);
+      setOrganizerChecking(false);
+    })();
+    return () => { cancelled = true; };
+  }, [larpSlug, authLoading, user]);
 
   const loadPortalData = async (larpId: string, runId: string | null) => {
     setLoading(true);
     try {
-      // Load all CP persons for this larp
+      // Doplň zápatí z LARPu (při vstupu heslem RPC nevrací footer_text)
+      const { data: larpRow } = await supabase
+        .from("larps")
+        .select("footer_text")
+        .eq("id", larpId)
+        .single();
+      setLarpInfo((prev) =>
+        prev ? { ...prev, footer_text: (larpRow?.footer_text as string) ?? null } : null
+      );
+
       const { data: cps } = await supabase
         .from("persons")
         .select("id, name, slug, performer, performance_times")
@@ -94,7 +184,6 @@ export default function CpPortalPage() {
       
       if (cps) setCpPersons(cps);
 
-      // Load all player persons (postavy) for this larp
       const { data: players } = await supabase
         .from("persons")
         .select("id, name, slug, group_name")
@@ -104,16 +193,69 @@ export default function CpPortalPage() {
       
       if (players) setPlayerPersons(players);
 
-      // Load CP documents (doc_type = 'cp')
+      // Společné dokumenty pro CP: jen skupina CP a vsichni s visible_to_cp (hodnoty v uvozovkách pro PostgREST)
       const { data: docs } = await supabase
         .from("documents")
-        .select("id, title, content, doc_type, target_type, sort_order, priority")
+        .select("id, title, content, doc_type, target_type, sort_order, priority, visible_to_cp")
         .eq("larp_id", larpId)
-        .eq("doc_type", "cp")
+        .or(`and(target_type.eq."skupina",target_group.eq."CP"),and(target_type.eq."vsichni",visible_to_cp.eq.true)`)
         .order("priority")
         .order("sort_order");
       
       if (docs) setCpDocuments(docs as Document[]);
+
+      // Počty dokumentů a scén per CP (jako na adminu)
+      const stats: Record<string, CpStats> = {};
+      if (cps?.length) {
+        const cpIds = cps.map((c) => c.id);
+        const [docCountRes, scenesRes] = await Promise.all([
+          supabase
+            .from("documents")
+            .select("target_person_id")
+            .eq("larp_id", larpId)
+            .eq("target_type", "osoba")
+            .in("target_person_id", cpIds),
+          runId
+            ? supabase
+                .from("cp_scenes")
+                .select("cp_id, day_number, start_time, title")
+                .eq("run_id", runId)
+                .order("day_number")
+                .order("start_time")
+            : { data: [] as { cp_id: string; day_number: number; start_time: string; title: string | null }[] },
+        ]);
+        const docCountByCp = (docCountRes.data ?? []).reduce((acc, r) => {
+          const id = (r as { target_person_id: string }).target_person_id;
+          if (id) acc[id] = (acc[id] ?? 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        type SceneRow = { cp_id: string; day_number: number; start_time: string; title: string | null };
+        const scenesByCp = (scenesRes.data ?? []).reduce((acc, s) => {
+          const row = s as SceneRow;
+          if (!acc[row.cp_id]) acc[row.cp_id] = [];
+          acc[row.cp_id].push({ day_number: row.day_number, start_time: row.start_time, title: row.title });
+          return acc;
+        }, {} as Record<string, { day_number: number; start_time: string; title: string | null }[]>);
+        setCpScenesByCpId(scenesByCp);
+        for (const cp of cps) {
+          const sceneList = scenesByCp[cp.id] ?? [];
+          stats[cp.id] = {
+            documentsCount: docCountByCp[cp.id] ?? 0,
+            scenesCount: sceneList.length,
+            sceneTimesSummary:
+              sceneList.length > 0
+                ? sceneList
+                    .map((s) => {
+                      const time = `Den ${s.day_number} ${s.start_time.substring(0, 5)}`;
+                      return s.title?.trim() ? `${time} · ${s.title.trim()}` : time;
+                    })
+                    .join(", ")
+                : null,
+          };
+        }
+      }
+      setCpStats(stats);
+      if (!cps?.length) setCpScenesByCpId({});
     } catch (err) {
       console.error("Error loading portal data:", err);
     } finally {
@@ -154,6 +296,7 @@ export default function CpPortalPage() {
         name: row.larp_name,
         motto: row.larp_motto,
         theme: row.larp_theme,
+        footer_text: null,
       });
       setRunInfo(row.run_id ? {
         id: row.run_id,
@@ -186,6 +329,8 @@ export default function CpPortalPage() {
     setAuthenticated(false);
     setLarpInfo(null);
     setCpPersons([]);
+    setCpStats({});
+    setCpScenesByCpId({});
     setPlayerPersons([]);
     setCpDocuments([]);
     document.documentElement.removeAttribute("data-theme");
@@ -215,16 +360,63 @@ export default function CpPortalPage() {
     });
   };
 
-  // Group players by group_name
-  const playersByGroup = playerPersons.reduce((acc, player) => {
+  const qCp = cpSearch.trim().toLowerCase();
+  const dayNumFilter = filterDay === "" ? null : parseInt(filterDay, 10);
+
+  const filteredCpPersons = cpPersons.filter((cp) => {
+    if (qCp && !cp.name.toLowerCase().includes(qCp) && !(cp.performer?.toLowerCase().includes(qCp) ?? false))
+      return false;
+    if (filterPerformer && (cp.performer || "") !== filterPerformer) return false;
+    const scenes = cpScenesByCpId[cp.id] ?? [];
+    if (dayNumFilter != null && !scenes.some((s) => s.day_number === dayNumFilter)) return false;
+    const timeFrom = filterTimeFrom.trim().substring(0, 5);
+    const timeTo = filterTimeTo.trim().substring(0, 5);
+    if (timeFrom && !scenes.some((s) => s.start_time.substring(0, 5) >= timeFrom)) return false;
+    if (timeTo && !scenes.some((s) => s.start_time.substring(0, 5) <= timeTo)) return false;
+    return true;
+  });
+
+  const qPlayer = playerSearch.trim().toLowerCase();
+  const filteredPlayerPersons = playerPersons.filter((p) => {
+    const matchesSearch =
+      !qPlayer ||
+      p.name.toLowerCase().includes(qPlayer) ||
+      (p.group_name?.toLowerCase().includes(qPlayer) ?? false);
+    const matchesGroup =
+      !playerGroupFilter || (p.group_name || "Bez skupiny") === playerGroupFilter;
+    return matchesSearch && matchesGroup;
+  });
+
+  const uniqueGroupNames = [...new Set(playerPersons.map((p) => p.group_name || "Bez skupiny"))].sort(
+    (a, b) => a.localeCompare(b, "cs")
+  );
+
+  const uniquePerformers = [...new Set(cpPersons.map((cp) => cp.performer).filter((p): p is string => !!p))].sort(
+    (a, b) => a.localeCompare(b, "cs")
+  );
+  const uniqueSceneDays = [...new Set(Object.values(cpScenesByCpId).flat().map((s) => s.day_number))].sort(
+    (a, b) => a - b
+  );
+
+  const playersByGroup = filteredPlayerPersons.reduce((acc, player) => {
     const group = player.group_name || "Bez skupiny";
     if (!acc[group]) acc[group] = [];
     acc[group].push(player);
     return acc;
   }, {} as Record<string, PlayerPerson[]>);
 
-  // Login form
+  // Kontrola přístupu organizátora nebo načítání
   if (!authenticated) {
+    if (organizerChecking) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Ověřování přístupu...</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -348,33 +540,37 @@ export default function CpPortalPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
           
-          {/* CP Documents Section */}
-          {cpDocuments.length > 0 && (
-            <section>
-              <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Společné dokumenty pro CP
-              </h2>
-              <PaperCard className="overflow-hidden">
-                <Collapsible 
-                  open={openCategories.has("cp-docs")} 
-                  onOpenChange={() => toggleCategory("cp-docs")}
-                >
-                  <CollapsibleTrigger asChild>
-                    <button className="w-full px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
-                      <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      {openCategories.has("cp-docs") ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <span className="font-typewriter text-sm tracking-wider uppercase">
-                        CP materiály
-                      </span>
-                      <span className="text-sm text-muted-foreground">({cpDocuments.length})</span>
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
+          {/* Společné dokumenty pro CP – vždy nahoře */}
+          <section>
+            <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Společné dokumenty pro CP
+            </h2>
+            <PaperCard className="overflow-hidden">
+              <Collapsible 
+                open={openCategories.has("cp-docs")} 
+                onOpenChange={() => toggleCategory("cp-docs")}
+              >
+                <CollapsibleTrigger asChild>
+                  <button className="w-full px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
+                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    {openCategories.has("cp-docs") ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <span className="font-typewriter text-sm tracking-wider uppercase">
+                      Dokumenty pro všechny CP
+                    </span>
+                    <span className="text-sm text-muted-foreground">({cpDocuments.length})</span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  {cpDocuments.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      Zatím zde nejsou žádné společné dokumenty. Přidáte je v adminu v sekci Dokumenty s cílením „Skupina: CP“.
+                    </div>
+                  ) : (
                     <div className="divide-y divide-border/50">
                       {cpDocuments.map((doc, index) => (
                         <Collapsible
@@ -415,89 +611,247 @@ export default function CpPortalPage() {
                         </Collapsible>
                       ))}
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </PaperCard>
-            </section>
-          )}
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            </PaperCard>
+          </section>
 
           {/* CP Roles Section */}
           <section>
             <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Cizí postavy ({cpPersons.length})
+              Cizí postavy ({filteredCpPersons.length})
             </h2>
+            <div className="mb-4 flex flex-wrap items-end gap-3">
+              <div className="min-w-[200px] flex-1">
+                <Label htmlFor="cp-search" className="text-sm text-muted-foreground">
+                  Vyhledat
+                </Label>
+                <Input
+                  id="cp-search"
+                  type="search"
+                  placeholder="Podle názvu nebo performera..."
+                  value={cpSearch}
+                  onChange={(e) => setCpSearch(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="w-[180px]">
+                <Label htmlFor="cp-filter-performer" className="text-sm text-muted-foreground">
+                  Performer
+                </Label>
+                <Select value={filterPerformer || "all"} onValueChange={(v) => setFilterPerformer(v === "all" ? "" : v)}>
+                  <SelectTrigger id="cp-filter-performer" className="mt-1">
+                    <SelectValue placeholder="Všichni" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Všichni</SelectItem>
+                    {uniquePerformers.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[100px]">
+                <Label htmlFor="cp-filter-day" className="text-sm text-muted-foreground">
+                  Den scény
+                </Label>
+                <Select value={filterDay || "all"} onValueChange={(v) => setFilterDay(v === "all" ? "" : v)}>
+                  <SelectTrigger id="cp-filter-day" className="mt-1">
+                    <SelectValue placeholder="Vše" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Vše</SelectItem>
+                    {uniqueSceneDays.map((d) => (
+                      <SelectItem key={d} value={String(d)}>
+                        Den {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[100px]">
+                <Label htmlFor="cp-filter-time-from" className="text-sm text-muted-foreground">
+                  Čas od
+                </Label>
+                <Input
+                  id="cp-filter-time-from"
+                  type="time"
+                  value={filterTimeFrom}
+                  onChange={(e) => setFilterTimeFrom(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="w-[100px]">
+                <Label htmlFor="cp-filter-time-to" className="text-sm text-muted-foreground">
+                  Čas do
+                </Label>
+                <Input
+                  id="cp-filter-time-to"
+                  type="time"
+                  value={filterTimeTo}
+                  onChange={(e) => setFilterTimeTo(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {cpPersons.map((cp) => (
-                <Link
-                  key={cp.id}
-                  to={`/hrac/${cp.slug}`}
-                  className="group"
-                >
-                  <PaperCard className="p-4 hover:shadow-md transition-all cursor-pointer">
-                    <h3 className="font-typewriter text-lg tracking-wide group-hover:text-primary transition-colors">
-                      {cp.name}
-                    </h3>
-                    {cp.performer && (
-                      <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {cp.performer}
-                      </p>
-                    )}
-                    {cp.performance_times && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {cp.performance_times.length > 50 
-                          ? cp.performance_times.substring(0, 50) + "..." 
-                          : cp.performance_times}
-                      </p>
-                    )}
-                  </PaperCard>
-                </Link>
-              ))}
-              {cpPersons.length === 0 && (
+              {filteredCpPersons.map((cp) => {
+                const stats = cpStats[cp.id];
+                return (
+                  <Link
+                    key={cp.id}
+                    to={larpSlug ? `/cp/${larpSlug}/${cp.slug}` : `/hrac/${cp.slug}?from_cp_portal=1`}
+                    className="group"
+                  >
+                    <PaperCard className="p-4 hover:shadow-md transition-all cursor-pointer">
+                      <h3 className="font-typewriter text-lg tracking-wide group-hover:text-primary transition-colors">
+                        {cp.name}
+                      </h3>
+                      {stats?.sceneTimesSummary && (
+                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
+                          <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="truncate">{stats.sceneTimesSummary}</span>
+                        </p>
+                      )}
+                      {cp.performer && (
+                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                          <User className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="truncate">{cp.performer}</span>
+                        </p>
+                      )}
+                      {stats && (
+                        <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {stats.documentsCount} dok
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Theater className="h-3 w-3" />
+                            {stats.scenesCount} scén
+                          </span>
+                        </div>
+                      )}
+                    </PaperCard>
+                  </Link>
+                );
+              })}
+              {filteredCpPersons.length === 0 && (
                 <p className="text-muted-foreground col-span-2 text-center py-8">
-                  Zatím nejsou vytvořeny žádné CP.
+                  {cpPersons.length === 0
+                    ? "Zatím nejsou vytvořeny žádné CP."
+                    : "Žádná CP nevyhovuje vyhledávání."}
                 </p>
               )}
             </div>
           </section>
 
-          {/* Player Characters Section - grouped by group_name */}
+          {/* Player Characters Section - grouped by group_name or flat */}
           <section>
             <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <Gamepad2 className="h-5 w-5" />
-              Herní postavy ({playerPersons.length})
+              Herní postavy ({filteredPlayerPersons.length})
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Kliknutím na postavu můžete nahlédnout do jejich materiálů (použijte CP heslo).
+              Kliknutím na postavu můžete nahlédnout do jejich materiálů (z CP portálu bez hesla).
             </p>
-            
-            {Object.entries(playersByGroup).sort(([a], [b]) => a.localeCompare(b, "cs")).map(([groupName, players]) => (
-              <div key={groupName} className="mb-6">
-                <h3 className="font-typewriter text-sm tracking-wider uppercase text-muted-foreground mb-2">
-                  {groupName}
-                </h3>
-                <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                  {players.map((player) => (
-                    <Link
-                      key={player.id}
-                      to={`/hrac/${player.slug}`}
-                      className="group"
-                    >
-                      <div className="p-3 rounded border bg-card hover:bg-muted/50 transition-colors">
-                        <span className="text-sm font-medium group-hover:text-primary transition-colors">
-                          {player.name}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+            <div className="mb-4 flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="player-search" className="text-sm text-muted-foreground sr-only">
+                  Vyhledat postavu
+                </Label>
+                <Input
+                  id="player-search"
+                  type="search"
+                  placeholder="Vyhledat podle názvu nebo skupiny..."
+                  value={playerSearch}
+                  onChange={(e) => setPlayerSearch(e.target.value)}
+                />
               </div>
-            ))}
+              <div className="w-[200px]">
+                <Label htmlFor="player-group" className="text-sm text-muted-foreground">
+                  Skupina
+                </Label>
+                <Select
+                  value={playerGroupFilter || "all"}
+                  onValueChange={(v) => setPlayerGroupFilter(v === "all" ? "" : v)}
+                >
+                  <SelectTrigger id="player-group">
+                    <SelectValue placeholder="Všechny skupiny" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Všechny skupiny</SelectItem>
+                    {uniqueGroupNames.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Zobrazení</Label>
+                <Select value={playerViewMode} onValueChange={(v: "groups" | "all") => setPlayerViewMode(v)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="groups">Po skupinách</SelectItem>
+                    <SelectItem value="all">Všichni</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             
-            {playerPersons.length === 0 && (
+            {playerViewMode === "groups" ? (
+              Object.entries(playersByGroup).sort(([a], [b]) => a.localeCompare(b, "cs")).map(([groupName, players]) => (
+                <div key={groupName} className="mb-6">
+                  <h3 className="font-typewriter text-sm tracking-wider uppercase text-muted-foreground mb-2">
+                    {groupName}
+                  </h3>
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                    {players.map((player) => (
+                      <Link
+                        key={player.id}
+                        to={`/hrac/${player.slug}?from_cp_portal=1`}
+                        className="group"
+                      >
+                        <div className="p-3 rounded border bg-card hover:bg-muted/50 transition-colors">
+                          <span className="text-sm font-medium group-hover:text-primary transition-colors">
+                            {player.name}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                {filteredPlayerPersons.map((player) => (
+                  <Link
+                    key={player.id}
+                    to={`/hrac/${player.slug}?from_cp_portal=1`}
+                    className="group"
+                  >
+                    <div className="p-3 rounded border bg-card hover:bg-muted/50 transition-colors">
+                      <span className="text-sm font-medium group-hover:text-primary transition-colors">
+                        {player.name}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            
+            {filteredPlayerPersons.length === 0 && (
               <p className="text-muted-foreground text-center py-8">
-                Zatím nejsou vytvořeny žádné herní postavy.
+                {playerPersons.length === 0
+                  ? "Zatím nejsou vytvořeny žádné herní postavy."
+                  : "Žádná postava nevyhovuje vyhledávání nebo filtru skupiny."}
               </p>
             )}
           </section>
@@ -505,9 +859,9 @@ export default function CpPortalPage() {
       </main>
 
       <footer className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border">
-        <p>
-          Pro vstup do konkrétní CP použijte její individuální heslo.
-        </p>
+        {larpInfo?.footer_text ? (
+          <p className="whitespace-pre-line">{larpInfo.footer_text}</p>
+        ) : null}
       </footer>
     </div>
   );

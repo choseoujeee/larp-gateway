@@ -29,12 +29,23 @@ export function LarpProvider({ children }: { children: ReactNode }) {
 
   const fetchLarps = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("larps")
-      .select("id, name, slug, theme")
-      .order("name");
-    setLarps(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("larps")
+        .select("id, name, slug, theme")
+        .order("name");
+      if (error) {
+        console.error("fetchLarps error:", error);
+        setLarps([]);
+      } else {
+        setLarps(data || []);
+      }
+    } catch (err) {
+      console.error("fetchLarps failed:", err);
+      setLarps([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -49,16 +60,18 @@ export function LarpProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (larps.length === 0) return;
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const validStored = stored && larps.some((l) => l.id === stored);
-    if (validStored) {
-      setCurrentLarpIdState(stored);
-    } else if (larps.length === 1) {
-      setCurrentLarpIdState(larps[0].id);
-      localStorage.setItem(STORAGE_KEY, larps[0].id);
-    } else {
-      setCurrentLarpIdState(null);
-    }
+    // Při refetchi nemazat platný výběr – pokud je currentLarpId v novém seznamu, nechat
+    setCurrentLarpIdState((prev) => {
+      if (prev && larps.some((l) => l.id === prev)) return prev;
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const validStored = stored && larps.some((l) => l.id === stored);
+      if (validStored) return stored;
+      if (larps.length === 1) {
+        localStorage.setItem(STORAGE_KEY, larps[0].id);
+        return larps[0].id;
+      }
+      return null;
+    });
   }, [larps]);
 
   const setCurrentLarpId = (id: string | null) => {

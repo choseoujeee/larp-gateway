@@ -1,14 +1,25 @@
-import { Clock, User, FileText, Theater, Pencil, Trash2 } from "lucide-react";
+import { Clock, User, FileText, Theater, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CpCardProps {
   name: string;
   slug: string;
   performerName?: string | null;
+  /** Časy ze scén (Den 1 14:00, Den 2 10:00) – preferované */
+  sceneTimesSummary?: string | null;
+  /** Zastaralé – zobrazí se jen když chybí sceneTimesSummary */
   performanceTimes?: string | null;
   scenesCount?: number;
   documentsCount?: number;
+  /** CP má časovou kolizi (performer má překrývající scény) */
+  hasConflict?: boolean;
   onClick?: () => void;
   onEdit?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
@@ -19,30 +30,27 @@ export function CpCard({
   name,
   slug,
   performerName,
+  sceneTimesSummary,
   performanceTimes,
   scenesCount = 0,
   documentsCount = 0,
+  hasConflict = false,
   onClick,
   onEdit,
   onDelete,
   className,
 }: CpCardProps) {
-  // Parse performance times to show compact format
-  const getTimesSummary = (times: string | null | undefined) => {
+  const getLegacyTimesSummary = (times: string | null | undefined) => {
     if (!times) return null;
-    // Try to extract times like "14:00, 16:30, 20:00"
     const timeMatches = times.match(/\d{1,2}:\d{2}/g);
     if (timeMatches && timeMatches.length > 0) {
-      if (timeMatches.length <= 3) {
-        return timeMatches.join(", ");
-      }
+      if (timeMatches.length <= 3) return timeMatches.join(", ");
       return `${timeMatches.slice(0, 2).join(", ")}... (${timeMatches.length} vstupů)`;
     }
-    // If no times found, return truncated text
     return times.length > 40 ? times.substring(0, 37) + "..." : times;
   };
 
-  const timesSummary = getTimesSummary(performanceTimes);
+  const timesSummary = sceneTimesSummary ?? getLegacyTimesSummary(performanceTimes);
 
   return (
     <div
@@ -54,7 +62,23 @@ export function CpCard({
     >
       {/* Header with name and actions */}
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-typewriter text-lg leading-tight">{name}</h4>
+        <div className="flex items-center gap-2 min-w-0">
+          <h4 className="font-typewriter text-lg leading-tight truncate">{name}</h4>
+          {hasConflict && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex-shrink-0 text-amber-500" aria-label="Časová kolize">
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Tento performer má časovou kolizi (překrývající scény)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onEdit && (
             <Button
@@ -105,7 +129,6 @@ export function CpCard({
           <Theater className="h-3 w-3" />
           {scenesCount} scén
         </span>
-        <span className="font-mono ml-auto">{slug}</span>
       </div>
     </div>
   );

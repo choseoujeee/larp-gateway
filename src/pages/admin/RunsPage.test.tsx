@@ -98,6 +98,7 @@ function renderRunsPage(initialPath = "/admin/behy") {
     <MemoryRouter initialEntries={[initialPath]}>
       <TooltipProvider>
         <Routes>
+          <Route path="/admin" element={<div>Přehled LARPů</div>} />
           <Route path="/admin/behy" element={<RunsPage />} />
           <Route path="/admin/behy/:slug" element={<RunsPage />} />
         </Routes>
@@ -188,7 +189,7 @@ describe("RunsPage", () => {
     });
   });
 
-  it("zobrazí LarpPicker když není vybrán LARP", async () => {
+  it("přesměruje na Přehled LARPů když není vybrán LARP", async () => {
     mockUseLarpContext.mockReturnValue({
       currentLarpId: null,
       currentLarp: null,
@@ -199,8 +200,8 @@ describe("RunsPage", () => {
     renderRunsPage();
 
     await waitFor(() => {
-      // Když není vybrán LARP, zobrazí se LarpPickerPage s hlavičkou "Vaše LARPy"
-      expect(screen.getByText(/Vaše LARPy/i)).toBeInTheDocument();
+      // Když není vybrán LARP, AdminLayout přesměruje na /admin (Přehled LARPů)
+      expect(screen.getByText(/Přehled LARPů/i)).toBeInTheDocument();
     });
   });
 

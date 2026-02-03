@@ -26,7 +26,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DOCUMENT_TYPES, TARGET_TYPES } from "@/lib/constants";
+import { DOCUMENT_TYPES, DOCUMENT_TARGET_OPTIONS } from "@/lib/constants";
+import type { DocumentTargetOptionKey } from "@/lib/constants";
+import {
+  getDocumentTargetOptionKey,
+  applyTargetOptionToForm,
+} from "@/lib/documentTargetOptions";
 import { RunOption } from "@/hooks/useRunContext";
 
 interface Person {
@@ -43,20 +48,21 @@ interface Document {
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
-  target_type: keyof typeof TARGET_TYPES;
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;
   priority: number;
   visibility_mode: string;
   visible_days_before: number | null;
+  visible_to_cp?: boolean;
 }
 
 interface DocumentFormData {
   title: string;
   content: string;
   doc_type: keyof typeof DOCUMENT_TYPES;
-  target_type: keyof typeof TARGET_TYPES;
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string;
   target_person_id: string;
   sort_order: number;
@@ -64,6 +70,7 @@ interface DocumentFormData {
   run_id: string;
   visibility_mode: string;
   visible_days_before: number;
+  visible_to_cp: boolean;
 }
 
 interface DocumentEditDialogProps {
@@ -91,6 +98,7 @@ const defaultFormData: DocumentFormData = {
   run_id: "__all__",
   visibility_mode: "immediate",
   visible_days_before: 7,
+  visible_to_cp: false,
 };
 
 export function DocumentEditDialog({
@@ -106,6 +114,7 @@ export function DocumentEditDialog({
 }: DocumentEditDialogProps) {
   const [formData, setFormData] = useState<DocumentFormData>(defaultFormData);
   const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
+  const [hiddenFromGroupNames, setHiddenFromGroupNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -128,15 +137,16 @@ export function DocumentEditDialog({
         run_id: document.run_id || "__all__",
         visibility_mode: document.visibility_mode || "immediate",
         visible_days_before: document.visible_days_before ?? 7,
+        visible_to_cp: document.visible_to_cp ?? false,
       });
-      // Fetch hidden persons
-      supabase
-        .from("hidden_documents")
-        .select("person_id")
-        .eq("document_id", document.id)
-        .then(({ data }) => {
-          setHiddenFromPersonIds((data ?? []).map((r) => r.person_id));
-        });
+      // Fetch hidden persons and hidden groups
+      Promise.all([
+        supabase.from("hidden_documents").select("person_id").eq("document_id", document.id),
+        supabase.from("hidden_document_groups").select("group_name").eq("document_id", document.id),
+      ]).then(([hd, hdg]) => {
+        setHiddenFromPersonIds((hd.data ?? []).map((r) => r.person_id));
+        setHiddenFromGroupNames((hdg.data ?? []).map((r) => r.group_name));
+      });
     } else {
       // New document - use defaults with any overrides
       setFormData({
@@ -144,6 +154,7 @@ export function DocumentEditDialog({
         ...defaultValues,
       });
       setHiddenFromPersonIds([]);
+      setHiddenFromGroupNames([]);
     }
   }, [open, document, defaultValues]);
 
@@ -157,17 +168,18 @@ export function DocumentEditDialog({
 
     const payload = {
       larp_id: larpId,
-      run_id: formData.run_id === "__all__" ? null : formData.run_id,
+      run_id: formData.run_id === "__all__" || !formData.run_id ? null : formData.run_id,
       title: formData.title,
       content: formData.content || null,
       doc_type: formData.doc_type,
       target_type: formData.target_type,
-      target_group: formData.target_type === "skupina" ? formData.target_group : null,
-      target_person_id: formData.target_type === "osoba" ? formData.target_person_id : null,
+      target_group: formData.target_type === "skupina" ? formData.target_group || null : null,
+      target_person_id: formData.target_type === "osoba" && formData.target_person_id ? formData.target_person_id : null,
       sort_order: formData.sort_order,
       priority: formData.priority,
       visibility_mode: formData.visibility_mode,
       visible_days_before: formData.visibility_mode === "delayed" ? formData.visible_days_before : null,
+      visible_to_cp: formData.target_type === "vsichni" ? formData.visible_to_cp : false,
     };
 
     let documentId: string;
@@ -193,7 +205,8 @@ export function DocumentEditDialog({
         .single();
 
       if (error) {
-        toast.error("Chyba při vytváření");
+        console.error("DocumentEditDialog insert:", error);
+        toast.error(error.message || "Chyba při vytváření");
         setSaving(false);
         return;
       }
@@ -201,11 +214,17 @@ export function DocumentEditDialog({
       toast.success("Dokument vytvořen");
     }
 
-    // Sync hidden documents
+    // Sync hidden_documents and hidden_document_groups
     await supabase.from("hidden_documents").delete().eq("document_id", documentId);
     if (hiddenFromPersonIds.length > 0) {
       await supabase.from("hidden_documents").insert(
         hiddenFromPersonIds.map((person_id) => ({ document_id: documentId, person_id }))
+      );
+    }
+    await supabase.from("hidden_document_groups").delete().eq("document_id", documentId);
+    if (hiddenFromGroupNames.length > 0) {
+      await supabase.from("hidden_document_groups").insert(
+        hiddenFromGroupNames.map((group_name) => ({ document_id: documentId, group_name }))
       );
     }
 
@@ -219,9 +238,10 @@ export function DocumentEditDialog({
     
     setDeleting(true);
     
-    // First delete hidden_documents entries
+    // First delete hidden_documents and hidden_document_groups
     await supabase.from("hidden_documents").delete().eq("document_id", document.id);
-    
+    await supabase.from("hidden_document_groups").delete().eq("document_id", document.id);
+
     // Then delete the document
     const { error } = await supabase
       .from("documents")
@@ -243,14 +263,14 @@ export function DocumentEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="paper-card max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="paper-card max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="flex-shrink-0 border-b bg-background px-6 py-4">
           <DialogTitle className="font-typewriter">
             {document ? "Upravit dokument" : "Nový dokument"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 px-6 py-4 pr-4">
           <div className="space-y-2">
             <Label>Název</Label>
             <Input
@@ -284,14 +304,21 @@ export function DocumentEditDialog({
             <div className="space-y-2">
               <Label>Cílení</Label>
               <Select
-                value={formData.target_type}
-                onValueChange={(v) => setFormData({ ...formData, target_type: v as keyof typeof TARGET_TYPES })}
+                value={getDocumentTargetOptionKey(formData, persons)}
+                onValueChange={(v) => {
+                  const next = applyTargetOptionToForm(
+                    v as DocumentTargetOptionKey,
+                    formData,
+                    persons
+                  );
+                  setFormData({ ...formData, ...next });
+                }}
               >
                 <SelectTrigger className="input-vintage">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TARGET_TYPES).map(([key, { label }]) => (
+                  {Object.entries(DOCUMENT_TARGET_OPTIONS).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}
                     </SelectItem>
@@ -301,7 +328,7 @@ export function DocumentEditDialog({
             </div>
           </div>
 
-          {formData.target_type === "skupina" && (
+          {getDocumentTargetOptionKey(formData, persons) === "skupina" && (
             <div className="space-y-2">
               <Label>Skupina</Label>
               <Select
@@ -312,7 +339,7 @@ export function DocumentEditDialog({
                   <SelectValue placeholder="Vyberte skupinu" />
                 </SelectTrigger>
                 <SelectContent>
-                  {groups.map((group) => (
+                  {groups.filter((g) => g !== "CP").map((group) => (
                     <SelectItem key={group} value={group}>
                       {group}
                     </SelectItem>
@@ -322,7 +349,8 @@ export function DocumentEditDialog({
             </div>
           )}
 
-          {formData.target_type === "osoba" && (
+          {(getDocumentTargetOptionKey(formData, persons) === "osoba_postava" ||
+            getDocumentTargetOptionKey(formData, persons) === "osoba_cp") && (
             <div className="space-y-2">
               <Label>Osoba</Label>
               <Select
@@ -333,7 +361,10 @@ export function DocumentEditDialog({
                   <SelectValue placeholder="Vyberte osobu" />
                 </SelectTrigger>
                 <SelectContent>
-                  {persons.map((person) => (
+                  {(getDocumentTargetOptionKey(formData, persons) === "osoba_cp"
+                    ? persons.filter((p) => p.type === "cp")
+                    : persons.filter((p) => p.type === "postava")
+                  ).map((person) => (
                     <SelectItem key={person.id} value={person.id}>
                       {person.name} {person.group_name ? `(${person.group_name})` : ""}
                     </SelectItem>
@@ -441,36 +472,76 @@ export function DocumentEditDialog({
 
           {formData.target_type !== "osoba" && (
             <div className="space-y-2">
-              <Label>Skrýt před (dokument se těmto osobám nezobrazí)</Label>
-              <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
-                <div className="space-y-2">
-                  {persons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">V tomto LARPu zatím nejsou žádné osoby.</p>
-                  ) : (
-                    persons.map((person) => (
-                      <label
-                        key={person.id}
-                        className="flex items-center gap-2 cursor-pointer text-sm"
-                      >
-                        <Checkbox
-                          checked={hiddenFromPersonIds.includes(person.id)}
-                          onCheckedChange={(checked) => {
-                            setHiddenFromPersonIds((prev) =>
-                              checked
-                                ? [...prev, person.id]
-                                : prev.filter((id) => id !== person.id)
-                            );
-                          }}
-                        />
-                        <span>
-                          {person.name}
-                          {person.group_name ? ` (${person.group_name})` : ""}
-                        </span>
-                      </label>
-                    ))
-                  )}
+              <Label>Skrýt před (dokument se nezobrazí vybraným osobám resp. celé skupině)</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Skrýt před osobami</p>
+                  <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                    <div className="space-y-2">
+                      {persons.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Žádné osoby.</p>
+                      ) : (
+                        persons.map((person) => (
+                          <label
+                            key={person.id}
+                            className="flex items-center gap-2 cursor-pointer text-sm"
+                          >
+                            <Checkbox
+                              checked={hiddenFromPersonIds.includes(person.id)}
+                              onCheckedChange={(checked) => {
+                                setHiddenFromPersonIds((prev) =>
+                                  checked
+                                    ? [...prev, person.id]
+                                    : prev.filter((id) => id !== person.id)
+                                );
+                              }}
+                            />
+                            <span>
+                              {person.name}
+                              {person.group_name ? ` (${person.group_name})` : ""}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
-              </ScrollArea>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Skrýt před skupinami</p>
+                  <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
+                    <div className="space-y-2">
+                      {(() => {
+                        const groupNames = [
+                          ...new Set(
+                            persons.map((p) => p.group_name).filter((g): g is string => g != null && g !== "")
+                          ),
+                        ].sort();
+                        if (groupNames.length === 0) {
+                          return <p className="text-xs text-muted-foreground">Žádné skupiny.</p>;
+                        }
+                        return groupNames.map((groupName) => (
+                          <label
+                            key={groupName}
+                            className="flex items-center gap-2 cursor-pointer text-sm"
+                          >
+                            <Checkbox
+                              checked={hiddenFromGroupNames.includes(groupName)}
+                              onCheckedChange={(checked) => {
+                                setHiddenFromGroupNames((prev) =>
+                                  checked
+                                    ? [...prev, groupName]
+                                    : prev.filter((g) => g !== groupName)
+                                );
+                              }}
+                            />
+                            <span>{groupName}</span>
+                          </label>
+                        ));
+                      })()}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
             </div>
           )}
 
@@ -489,7 +560,7 @@ export function DocumentEditDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2">
+        <DialogFooter className="flex-shrink-0 border-t bg-background px-6 py-4">
           <div className="flex w-full justify-between">
             {document ? (
               <Button 

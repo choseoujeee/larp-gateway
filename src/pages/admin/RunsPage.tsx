@@ -83,6 +83,13 @@ interface Assignment {
   persons?: { name: string; type: string; group_name: string | null; slug: string };
 }
 
+/** Osoba z minulých běhů téhož LARPu – pro rychlý výběr při přiřazování */
+interface PastRunPerson {
+  player_name: string;
+  player_email: string | null;
+  player_phone: string | null;
+}
+
 export default function RunsPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -109,6 +116,10 @@ export default function RunsPage() {
     password: "",
   });
   const [assignSaving, setAssignSaving] = useState(false);
+  /** Režim dialogu přiřazení: jen postavy nebo jen CP */
+  const [assignMode, setAssignMode] = useState<"postava" | "cp">("postava");
+  /** Lidé z minulých běhů téhož LARPu – pro výběr při přiřazování hráče/performeru */
+  const [pastRunPeople, setPastRunPeople] = useState<PastRunPerson[]>([]);
 
   const [formData, setFormData] = useState({
     larp_id: "",
@@ -179,10 +190,45 @@ export default function RunsPage() {
     setAssignmentsLoading(false);
   };
 
+  /** Načte lidi z minulých běhů téhož LARPu (pro rychlý výběr při přiřazování) */
+  const fetchPastRunPeople = async () => {
+    if (!currentLarpId) {
+      setPastRunPeople([]);
+      return;
+    }
+    const otherRunIds = runs.filter((r) => r.larp_id === currentLarpId && r.id !== detailRun?.id).map((r) => r.id);
+    if (otherRunIds.length === 0) {
+      setPastRunPeople([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("run_person_assignments")
+      .select("player_name, player_email, player_phone")
+      .in("run_id", otherRunIds);
+    const rows = (data || []) as { player_name: string | null; player_email: string | null; player_phone: string | null }[];
+    const byName = new Map<string, PastRunPerson>();
+    for (const row of rows) {
+      const name = row.player_name?.trim();
+      if (!name) continue;
+      if (!byName.has(name)) {
+        byName.set(name, {
+          player_name: name,
+          player_email: row.player_email?.trim() || null,
+          player_phone: row.player_phone?.trim() || null,
+        });
+      }
+    }
+    setPastRunPeople(Array.from(byName.values()).sort((a, b) => a.player_name.localeCompare(b.player_name)));
+  };
+
   useEffect(() => {
     fetchRuns();
     fetchPersons();
   }, [currentLarpId]);
+
+  useEffect(() => {
+    fetchPastRunPeople();
+  }, [currentLarpId, detailRun?.id, runs]);
 
   // Handle detail view from URL param
   useEffect(() => {
@@ -332,8 +378,9 @@ export default function RunsPage() {
     navigate(`/admin/behy/${run.slug}`);
   };
 
-  // Assignment functions
-  const openAssignDialog = () => {
+  // Assignment functions: otevřít dialog pro přiřazení postavy nebo CP
+  const openAssignDialog = (mode: "postava" | "cp") => {
+    setAssignMode(mode);
     setSelectedAssignment(null);
     setAssignFormData({ person_id: "", player_name: "", player_email: "", player_phone: "", password: "" });
     setAssignDialogOpen(true);
@@ -341,6 +388,8 @@ export default function RunsPage() {
 
   const openEditAssignDialog = (assignment: Assignment, e: React.MouseEvent) => {
     e.stopPropagation();
+    const type = assignment.persons?.type;
+    setAssignMode(type === "cp" ? "cp" : "postava");
     setSelectedAssignment(assignment);
     setAssignFormData({
       person_id: assignment.person_id,
@@ -354,11 +403,11 @@ export default function RunsPage() {
 
   const handleAssignSave = async () => {
     if (!assignFormData.person_id || !detailRun) {
-      toast.error("Vyberte postavu");
+      toast.error(assignMode === "cp" ? "Vyberte CP" : "Vyberte postavu");
       return;
     }
 
-    if (!selectedAssignment && !assignFormData.password) {
+    if (!selectedAssignment && !assignFormData.password && assignMode === "postava") {
       toast.error("Zadejte heslo pro přístup hráče");
       return;
     }
@@ -466,10 +515,13 @@ export default function RunsPage() {
     }
   };
 
-  // Get available persons for assignment
+  // Dostupní lidé pro přiřazení (ještě ne přiřazení v tomto běhu, nebo právě editujeme)
   const availablePersons = persons.filter(
     (p) => !assignments.some((a) => a.person_id === p.id) || selectedAssignment?.person_id === p.id
   );
+  // Pro dialog: podle režimu jen postavy nebo jen CP
+  const availablePersonsForMode = availablePersons.filter((p) => p.type === assignMode);
+  const personsForSelect = selectedAssignment ? persons.filter((p) => p.type === assignMode) : availablePersonsForMode;
 
   // Sort and group assignments
   const sortByPersonName = (a: Assignment, b: Assignment) => {
@@ -484,16 +536,8 @@ export default function RunsPage() {
     .filter((a) => a.persons?.type === "cp")
     .sort(sortByPersonName);
 
-  const renderAssignmentTable = (typeAssignments: Assignment[], title: string) => (
-    <div>
-      <h3 className="font-typewriter text-lg mb-3 flex items-center gap-2">
-        <Users className="h-4 w-4" />
-        {title}
-        <span className="text-sm text-muted-foreground">
-          ({typeAssignments.length})
-        </span>
-      </h3>
-      <PaperCard>
+  const renderAssignmentTable = (typeAssignments: Assignment[]) => (
+    <PaperCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -513,7 +557,10 @@ export default function RunsPage() {
               >
                 <TableCell className="font-typewriter">
                   {assignment.persons?.name}
-                  {assignment.persons?.group_name && (
+                  {assignment.persons?.type === "cp" && (
+                    <span className="text-xs text-muted-foreground ml-2">(CP)</span>
+                  )}
+                  {assignment.persons?.group_name && assignment.persons?.type !== "cp" && (
                     <span className="text-xs text-muted-foreground ml-2">
                       ({assignment.persons.group_name})
                     </span>
@@ -618,7 +665,6 @@ export default function RunsPage() {
           </TableBody>
         </Table>
       </PaperCard>
-    </div>
   );
 
   // Detail view
@@ -664,33 +710,62 @@ export default function RunsPage() {
             </TabsList>
 
             <TabsContent value="assignments" className="space-y-6">
-              <div className="flex justify-end">
-                <Button onClick={openAssignDialog} className="btn-vintage">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Přiřadit hráče
-                </Button>
-              </div>
-
               {assignmentsLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : assignments.length === 0 ? (
                 <PaperCard>
-                  <PaperCardContent className="py-12 text-center">
-                    <p className="text-muted-foreground mb-4">
-                      Tento běh zatím nemá žádné přiřazení hráčů
+                  <PaperCardContent className="py-12 text-center space-y-4">
+                    <p className="text-muted-foreground">
+                      Tento běh zatím nemá žádné přiřazení
                     </p>
-                    <Button onClick={openAssignDialog} variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Přiřadit prvního hráče
-                    </Button>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button onClick={() => openAssignDialog("postava")} variant="outline">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Přiřadit hráče (postava)
+                      </Button>
+                      <Button onClick={() => openAssignDialog("cp")} variant="outline">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Přiřadit CP
+                      </Button>
+                    </div>
                   </PaperCardContent>
                 </PaperCard>
               ) : (
                 <div className="space-y-8">
-                  {postavyAssignments.length > 0 && renderAssignmentTable(postavyAssignments, "Postavy")}
-                  {cpAssignments.length > 0 && renderAssignmentTable(cpAssignments, "Cizí postavy")}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-typewriter text-lg flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Postavy
+                        <span className="text-sm text-muted-foreground">({postavyAssignments.length})</span>
+                      </h3>
+                      <Button onClick={() => openAssignDialog("postava")} size="sm" className="btn-vintage">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Přiřadit hráče
+                      </Button>
+                    </div>
+                    {postavyAssignments.length > 0 ? renderAssignmentTable(postavyAssignments) : (
+                      <p className="text-sm text-muted-foreground py-4">Žádné postavy přiřazeny</p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-typewriter text-lg flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Cizí postavy
+                        <span className="text-sm text-muted-foreground">({cpAssignments.length})</span>
+                      </h3>
+                      <Button onClick={() => openAssignDialog("cp")} size="sm" className="btn-vintage">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Přiřadit CP
+                      </Button>
+                    </div>
+                    {cpAssignments.length > 0 ? renderAssignmentTable(cpAssignments) : (
+                      <p className="text-sm text-muted-foreground py-4">Žádné CP přiřazeny</p>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -749,30 +824,73 @@ export default function RunsPage() {
           <DialogContent className="paper-card">
             <DialogHeader>
               <DialogTitle className="font-typewriter">
-                {selectedAssignment ? "Upravit přiřazení" : "Přiřadit hráče k postavě"}
+                {selectedAssignment
+                  ? "Upravit přiřazení"
+                  : assignMode === "cp"
+                    ? "Přiřadit CP"
+                    : "Přiřadit hráče k postavě"}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Postava</Label>
+                <Label>{assignMode === "cp" ? "Cizí postava (CP)" : "Postava"}</Label>
                 <Select
                   value={assignFormData.person_id}
                   onValueChange={(v) => setAssignFormData({ ...assignFormData, person_id: v })}
                 >
                   <SelectTrigger className="input-vintage">
-                    <SelectValue placeholder="Vyberte postavu" />
+                    <SelectValue placeholder={assignMode === "cp" ? "Vyberte CP" : "Vyberte postavu"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(selectedAssignment ? persons : availablePersons).map((person) => (
+                    {personsForSelect.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
-                        {person.name} ({person.type === "cp" ? "CP" : "Postava"})
-                        {person.group_name && ` - ${person.group_name}`}
+                        {person.name}
+                        {person.type === "cp" ? " (CP)" : person.group_name ? ` - ${person.group_name}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {pastRunPeople.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Vybrat z minulých běhů</Label>
+                  <Select
+                    value=""
+                    onValueChange={(v) => {
+                      if (!v) return;
+                      const p = pastRunPeople.find((x) => x.player_name === v);
+                      if (p) {
+                        setAssignFormData({
+                          ...assignFormData,
+                          player_name: p.player_name,
+                          player_email: p.player_email ?? "",
+                          player_phone: p.player_phone ?? "",
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="input-vintage">
+                      <SelectValue placeholder="— Vybrat jméno z předchozích běhů —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Ručně vyplnit —</SelectItem>
+                      {pastRunPeople.map((p) => (
+                        <SelectItem key={p.player_name} value={p.player_name}>
+                          {p.player_name}
+                          {(p.player_email || p.player_phone) && (
+                            <span className="text-muted-foreground text-xs ml-1">
+                              ({[p.player_email, p.player_phone].filter(Boolean).join(", ")})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Výběr předvyplní jméno, email a telefon.</p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Jméno hráče</Label>
