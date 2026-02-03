@@ -214,6 +214,35 @@ export type Database = {
           },
         ]
       }
+      hidden_document_groups: {
+        Row: {
+          created_at: string
+          document_id: string
+          group_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          group_name: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          group_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hidden_document_groups_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hidden_documents: {
         Row: {
           created_at: string
@@ -250,31 +279,31 @@ export type Database = {
           },
         ]
       }
-      hidden_document_groups: {
+      larp_organizers: {
         Row: {
-          id: string
-          document_id: string
-          group_name: string
           created_at: string
+          email: string | null
+          larp_id: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          document_id: string
-          group_name: string
           created_at?: string
+          email?: string | null
+          larp_id: string
+          user_id: string
         }
         Update: {
-          id?: string
-          document_id?: string
-          group_name?: string
           created_at?: string
+          email?: string | null
+          larp_id?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "hidden_document_groups_document_id_fkey"
-            columns: ["document_id"]
+            foreignKeyName: "larp_organizers_larp_id_fkey"
+            columns: ["larp_id"]
             isOneToOne: false
-            referencedRelation: "documents"
+            referencedRelation: "larps"
             referencedColumns: ["id"]
           },
         ]
@@ -318,6 +347,42 @@ export type Database = {
         }
         Relationships: []
       }
+      organizer_accounts: {
+        Row: {
+          auth_email: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          login: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_email: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          login: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_email?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          login?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       persons: {
         Row: {
           access_token: string
@@ -334,6 +399,7 @@ export type Database = {
           performance_times: string | null
           performer: string | null
           run_id: string | null
+          schedule_color: string | null
           slug: string
           type: Database["public"]["Enums"]["person_type"]
           updated_at: string
@@ -353,6 +419,7 @@ export type Database = {
           performance_times?: string | null
           performer?: string | null
           run_id?: string | null
+          schedule_color?: string | null
           slug: string
           type: Database["public"]["Enums"]["person_type"]
           updated_at?: string
@@ -372,6 +439,7 @@ export type Database = {
           performance_times?: string | null
           performer?: string | null
           run_id?: string | null
+          schedule_color?: string | null
           slug?: string
           type?: Database["public"]["Enums"]["person_type"]
           updated_at?: string
@@ -533,6 +601,137 @@ export type Database = {
           },
         ]
       }
+      production_materials: {
+        Row: {
+          created_at: string
+          id: string
+          larp_id: string
+          material_type: string
+          note: string | null
+          run_id: string | null
+          sort_order: number
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          larp_id: string
+          material_type?: string
+          note?: string | null
+          run_id?: string | null
+          sort_order?: number
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          larp_id?: string
+          material_type?: string
+          note?: string | null
+          run_id?: string | null
+          sort_order?: number
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_materials_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_materials_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_portal_access: {
+        Row: {
+          created_at: string
+          id: string
+          larp_id: string
+          name: string | null
+          password_hash: string
+          run_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          larp_id: string
+          name?: string | null
+          password_hash: string
+          run_id?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          larp_id?: string
+          name?: string | null
+          password_hash?: string
+          run_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_portal_access_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_portal_access_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_checklist: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          run_id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          run_id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          run_id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_checklist_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       run_person_assignments: {
         Row: {
           access_token: string
@@ -665,10 +864,12 @@ export type Database = {
           created_at: string
           day_number: number
           description: string | null
+          document_id: string | null
           duration_minutes: number
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           location: string | null
+          material_id: string | null
           performer_text: string | null
           run_id: string
           start_time: string
@@ -681,10 +882,12 @@ export type Database = {
           created_at?: string
           day_number?: number
           description?: string | null
+          document_id?: string | null
           duration_minutes?: number
           event_type: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          material_id?: string | null
           performer_text?: string | null
           run_id: string
           start_time: string
@@ -697,10 +900,12 @@ export type Database = {
           created_at?: string
           day_number?: number
           description?: string | null
+          document_id?: string | null
           duration_minutes?: number
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          material_id?: string | null
           performer_text?: string | null
           run_id?: string
           start_time?: string
@@ -723,7 +928,53 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedule_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_events_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "production_materials"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedule_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_portal_access: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          run_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          run_id: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          run_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_portal_access_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
@@ -736,6 +987,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_larp: { Args: { p_larp_id: string }; Returns: boolean }
       create_person_assignment_with_password: {
         Args: {
           p_password: string
@@ -759,6 +1011,14 @@ export type Database = {
         }
         Returns: string
       }
+      create_production_portal_access: {
+        Args: { p_larp_id: string; p_password: string; p_run_id: string }
+        Returns: string
+      }
+      create_schedule_portal_access: {
+        Args: { p_password: string; p_run_id: string }
+        Returns: string
+      }
       get_cp_scenes_for_portal: {
         Args: { p_person_id: string }
         Returns: {
@@ -769,9 +1029,15 @@ export type Database = {
           location: string
           props: string
           start_time: string
-          title: string | null
         }[]
       }
+      get_my_organizer_larp_ids: {
+        Args: never
+        Returns: {
+          larp_id: string
+        }[]
+      }
+      get_organizer_auth_email: { Args: { p_login: string }; Returns: string }
       get_person_documents: {
         Args: { p_person_id: string }
         Returns: {
@@ -784,6 +1050,38 @@ export type Database = {
           title: string
         }[]
       }
+      get_portal_session_as_organizer: {
+        Args: { p_person_slug: string }
+        Returns: {
+          group_name: string
+          larp_id: string
+          larp_motto: string
+          larp_name: string
+          larp_slug: string
+          larp_theme: string
+          mission_briefing: string
+          performance_times: string
+          performer: string
+          person_id: string
+          person_medailonek: string
+          person_name: string
+          person_paid_at: string
+          person_type: Database["public"]["Enums"]["person_type"]
+          player_name: string
+          run_address: string
+          run_contact: string
+          run_date_from: string
+          run_date_to: string
+          run_footer_text: string
+          run_id: string
+          run_location: string
+          run_name: string
+          run_payment_account: string
+          run_payment_amount: string
+          run_payment_due_date: string
+        }[]
+      }
+      get_production_portal_data: { Args: { p_token: string }; Returns: Json }
       get_run_schedule: {
         Args: { p_run_id: string }
         Returns: {
@@ -798,8 +1096,21 @@ export type Database = {
           title: string
         }[]
       }
+      get_schedule_portal_events: { Args: { p_token: string }; Returns: Json }
       is_larp_owner: { Args: { larp_id: string }; Returns: boolean }
       is_run_owner: { Args: { run_id: string }; Returns: boolean }
+      set_checklist_item_completed: {
+        Args: { p_completed: boolean; p_item_id: string; p_token: string }
+        Returns: boolean
+      }
+      set_production_portal_password: {
+        Args: { p_access_id: string; p_new_password: string }
+        Returns: boolean
+      }
+      set_schedule_portal_password: {
+        Args: { p_access_id: string; p_new_password: string }
+        Returns: boolean
+      }
       verify_cp_portal_access: {
         Args: { p_larp_slug: string; p_password: string }
         Returns: {
@@ -864,16 +1175,40 @@ export type Database = {
           run_payment_due_date: string
         }[]
       }
+      verify_production_portal_access: {
+        Args: { p_password: string; p_token: string }
+        Returns: {
+          larp_id: string
+          larp_name: string
+          run_id: string
+          run_name: string
+        }[]
+      }
+      verify_schedule_portal_access: {
+        Args: { p_password: string; p_token: string }
+        Returns: {
+          run_id: string
+          run_name: string
+        }[]
+      }
     }
     Enums: {
       document_target: "vsichni" | "skupina" | "osoba"
-      document_type: "organizacni" | "herni" | "postava" | "medailonek" | "cp"
+      document_type:
+        | "organizacni"
+        | "herni"
+        | "postava"
+        | "medailonek"
+        | "cp"
+        | "produkční"
       event_type:
         | "programovy_blok"
         | "jidlo"
         | "presun"
         | "informace"
         | "vystoupeni_cp"
+        | "material"
+        | "organizacni"
       feedback_status: "new" | "read" | "resolved"
       person_type: "postava" | "cp"
     }
@@ -1004,13 +1339,22 @@ export const Constants = {
   public: {
     Enums: {
       document_target: ["vsichni", "skupina", "osoba"],
-      document_type: ["organizacni", "herni", "postava", "medailonek", "cp"],
+      document_type: [
+        "organizacni",
+        "herni",
+        "postava",
+        "medailonek",
+        "cp",
+        "produkční",
+      ],
       event_type: [
         "programovy_blok",
         "jidlo",
         "presun",
         "informace",
         "vystoupeni_cp",
+        "material",
+        "organizacni",
       ],
       feedback_status: ["new", "read", "resolved"],
       person_type: ["postava", "cp"],
