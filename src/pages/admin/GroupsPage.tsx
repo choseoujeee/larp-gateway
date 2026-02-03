@@ -34,7 +34,7 @@ interface GroupDocument {
   title: string;
   content: string | null;
   doc_type: keyof typeof DOCUMENT_TYPES;
-  target_type: string;
+  target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
   sort_order: number;

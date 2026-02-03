@@ -114,8 +114,18 @@ export default function CpPortalPage() {
     }
     let cancelled = false;
     (async () => {
-      const { data: canAccess } = await supabase.rpc("can_access_cp_portal_as_organizer", {
-        p_larp_slug: larpSlug,
+      // First get larp_id from slug, then check access
+      const { data: larpData } = await supabase
+        .from("larps")
+        .select("id")
+        .eq("slug", larpSlug)
+        .single();
+      if (!larpData) {
+        setOrganizerChecking(false);
+        return;
+      }
+      const { data: canAccess } = await supabase.rpc("can_access_larp", {
+        p_larp_id: larpData.id,
       });
       if (cancelled || !canAccess) {
         setOrganizerChecking(false);

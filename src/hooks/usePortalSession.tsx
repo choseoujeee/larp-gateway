@@ -198,8 +198,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const { data: canAccess } = await supabase.rpc("can_access_portal_as_organizer", {
-        p_person_slug: slug,
+      // Fetch person by slug and check if user can access via can_access_larp
+      const { data: personRow, error: personError } = await supabase
+        .from("persons")
+        .select("larp_id")
+        .eq("slug", slug)
+        .single();
+      if (personError || !personRow?.larp_id) {
+        setLoading(false);
+        return false;
+      }
+      const { data: canAccess } = await supabase.rpc("can_access_larp", {
+        p_larp_id: personRow.larp_id,
       });
       if (!canAccess) {
         setLoading(false);

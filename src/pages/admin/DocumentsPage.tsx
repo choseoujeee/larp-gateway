@@ -112,7 +112,7 @@ export default function DocumentsPage() {
     title: "",
     content: "",
     doc_type: "organizacni" as keyof typeof DOCUMENT_TYPES,
-    target_type: "vsichni",
+    target_type: "vsichni" as "vsichni" | "skupina" | "osoba",
     target_group: "",
     target_person_id: "",
     sort_order: 0,

@@ -13,6 +13,7 @@ export interface DocumentTargetFields {
 
 export interface PersonForTarget {
   id: string;
+  name: string;
   group_name: string | null;
   type: string;
 }

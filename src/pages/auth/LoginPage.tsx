@@ -130,11 +130,18 @@ export default function LoginPage() {
           </PaperCardContent>
         </PaperCard>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">
-            ← Zpět na úvodní stránku
-          </Link>
-        </p>
+        <div className="mt-8 text-center text-xs text-muted-foreground space-y-2">
+          <p>
+            <Link to="/zapomenute-heslo" className="hover:text-foreground underline">
+              Zapomenuté heslo?
+            </Link>
+          </p>
+          <p>
+            <Link to="/" className="hover:text-foreground">
+              ← Zpět na úvodní stránku
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
