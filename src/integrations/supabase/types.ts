@@ -1019,6 +1019,10 @@ export type Database = {
         Args: { p_password: string; p_run_id: string }
         Returns: string
       }
+      get_cp_portal_full_data: {
+        Args: { p_larp_id: string; p_run_id?: string }
+        Returns: Json
+      }
       get_cp_scenes_for_portal: {
         Args: { p_person_id: string }
         Returns: {
