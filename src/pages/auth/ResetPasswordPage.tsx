@@ -18,34 +18,37 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user has valid session from email link
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    let timeoutId: ReturnType<typeof setTimeout>;
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        setSessionReady(true);
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    });
+
+    // Also check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSessionReady(true);
-      } else {
-        // Wait a bit for auth state change from URL hash
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === "PASSWORD_RECOVERY" && session) {
-            setSessionReady(true);
-          } else if (event === "SIGNED_IN" && session) {
-            setSessionReady(true);
-          }
-        });
-
-        // Timeout after 5 seconds
-        setTimeout(() => {
-          if (!sessionReady) {
-            setError("Odkaz pro reset hesla vypršel nebo je neplatný. Požádejte o nový odkaz.");
-          }
-        }, 5000);
-
-        return () => subscription.unsubscribe();
       }
-    };
+    });
 
-    checkSession();
-  }, [sessionReady]);
+    // Timeout after 8 seconds
+    timeoutId = setTimeout(() => {
+      setSessionReady((current) => {
+        if (!current) {
+          setError("Odkaz pro reset hesla vypršel nebo je neplatný. Požádejte o nový odkaz.");
+        }
+        return current;
+      });
+    }, 8000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
