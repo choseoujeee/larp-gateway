@@ -14,15 +14,14 @@ export default function PortalAccessPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { verifyAccess, enterAsOrganizer, loading: portalLoading, error } = usePortalSession();
+  const { verifyAccess, enterAsOrganizer, enterWithoutPassword, loading: portalLoading, error } = usePortalSession();
   const [password, setPassword] = useState("");
   const [accessChecking, setAccessChecking] = useState(true);
 
   const returnTo = searchParams.get("return_to");
   const fromCpPortal = searchParams.get("from_cp_portal") === "1";
 
-  // Přihlášený organizátor/super admin: vstup bez hesla. Jinak from_cp_portal: zkusit vstup bez hesla (CP).
-  // Počkáme na auth – dokud authLoading, neukončujeme checking (aby se neukázal formulář a pak redirect).
+  // Přihlášený organizátor/super admin: vstup bez hesla. from_cp_portal: vstup bez hesla přes RPC.
   useEffect(() => {
     if (!slug) {
       setAccessChecking(false);
@@ -40,8 +39,8 @@ export default function PortalAccessPage() {
             return;
           }
         }
-        if (!user && fromCpPortal) {
-          const success = await verifyAccess(slug, "");
+        if (fromCpPortal) {
+          const success = await enterWithoutPassword(slug);
           if (cancelled) return;
           if (success) {
             navigate(returnTo || `/hrac/${slug}/view`, { replace: true });
@@ -108,20 +107,17 @@ export default function PortalAccessPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password" className="font-mono">
-                  Heslo (volitelné pro CP)
+                  Heslo
                 </Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Přístupové heslo – pro CP není potřeba"
+                  placeholder="Přístupové heslo"
                   className="input-vintage text-center text-lg tracking-widest"
                   autoFocus
                 />
-                <p className="text-xs text-muted-foreground">
-                  Pro přístup jako CP (odkaz od organizátora) heslo není potřeba. Postavy zadají heslo od organizátora.
-                </p>
               </div>
 
               {error && (
@@ -147,9 +143,7 @@ export default function PortalAccessPage() {
             </form>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              Heslo (pro postavy) jste obdrželi od organizátora hry.
-              <br />
-              CP vstupují přes odkaz bez hesla.
+              Heslo jste obdrželi od organizátora hry.
             </p>
           </PaperCardContent>
         </PaperCard>
