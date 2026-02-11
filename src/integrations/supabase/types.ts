@@ -1085,6 +1085,37 @@ export type Database = {
           run_payment_due_date: string
         }[]
       }
+      get_portal_session_without_password: {
+        Args: { p_slug: string }
+        Returns: {
+          group_name: string
+          larp_id: string
+          larp_motto: string
+          larp_name: string
+          larp_slug: string
+          larp_theme: string
+          mission_briefing: string
+          performance_times: string
+          performer: string
+          person_id: string
+          person_medailonek: string
+          person_name: string
+          person_paid_at: string
+          person_type: Database["public"]["Enums"]["person_type"]
+          player_name: string
+          run_address: string
+          run_contact: string
+          run_date_from: string
+          run_date_to: string
+          run_footer_text: string
+          run_id: string
+          run_location: string
+          run_name: string
+          run_payment_account: string
+          run_payment_amount: string
+          run_payment_due_date: string
+        }[]
+      }
       get_production_portal_data: { Args: { p_token: string }; Returns: Json }
       get_run_schedule: {
         Args: { p_run_id: string }
