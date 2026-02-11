@@ -313,4 +313,6 @@ larp-gateway-app/
 - [LOGIKA-DOKUMENTU.md](LOGIKA-DOKUMENTU.md) – logika cílení a skrývání dokumentů
 - [SQL-RUCNI-UPRAVY-DB.md](SQL-RUCNI-UPRAVY-DB.md) – manuální úpravy DB
 - [ZALOHOVANI-DB.md](ZALOHOVANI-DB.md) – zálohování databáze
-- [VYSLEDKY-TESTU.md](VYSLEDKY-TESTU.md) – výsledky testů
+- [VYSLEDKY-TESTU.md](VYSLEDKY-TESTU.md) – výsledky automatizovaných testů (Vitest)
+- [VYSLEDKY-UZIVATELSKYCH-TESTU.md](VYSLEDKY-UZIVATELSKYCH-TESTU.md) – šablona reportu uživatelských testů (workflow, funkcionalita, design, přívětivost portálů); vyplňuje se po provedení testů dle plánu „Uživatelské testy a úpravy UX“
+- [NAVRH-IMPLEMENTACE-FAZE2.md](NAVRH-IMPLEMENTACE-FAZE2.md) – podrobný návrh implementace úprav UX (body A–J): konkrétní soubory, změny kódu, pořadí a kontrolní seznam

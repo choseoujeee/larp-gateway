@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { Users, Plus, Trash2, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,12 @@ export default function OrganizersPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addByEmailOpen, setAddByEmailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState<LarpOrganizerRow | null>(null);
+  const [editingRow, setEditingRow] = useState<LarpOrganizerRow | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editContactEmail, setEditContactEmail] = useState("");
+  const [editContactPhone, setEditContactPhone] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addLarpId, setAddLarpId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -201,6 +206,39 @@ export default function OrganizersPage() {
     fetchOrganizers();
   };
 
+  /** Otevřít editaci organizátora (údaje z organizer_accounts) */
+  const openEdit = (row: LarpOrganizerRow) => {
+    const acc = accountsByUserId[row.user_id];
+    setEditingRow(row);
+    setEditDisplayName(acc?.display_name ?? "");
+    setEditContactEmail(acc?.contact_email ?? "");
+    setEditContactPhone(acc?.contact_phone ?? "");
+    setEditOpen(true);
+  };
+
+  /** Uložit úpravy organizátora (display_name, contact_email, contact_phone) */
+  const handleSaveEdit = async () => {
+    if (!editingRow) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("organizer_accounts")
+      .update({
+        display_name: editDisplayName.trim() || null,
+        contact_email: editContactEmail.trim() || null,
+        contact_phone: editContactPhone.trim() || null,
+      })
+      .eq("user_id", editingRow.user_id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message || "Chyba při ukládání");
+      return;
+    }
+    toast.success("Organizátor upraven");
+    setEditOpen(false);
+    setEditingRow(null);
+    fetchOrganizerAccounts();
+  };
+
   const handleDelete = async () => {
     if (!selected) return;
     setSaving(true);
@@ -285,20 +323,36 @@ export default function OrganizersPage() {
                           return (
                           <li
                             key={`${row.larp_id}-${row.user_id}`}
-                            className="flex items-center justify-between py-2 px-3 rounded border bg-card"
+                            role="button"
+                            tabIndex={0}
+                            className="flex items-center justify-between py-2 px-3 rounded border bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => openEdit(row)}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEdit(row); } }}
                           >
                             <span className="text-sm">{label}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => {
-                                setSelected(row);
-                                setDeleteOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() => openEdit(row)}
+                                title="Upravit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  setSelected(row);
+                                  setDeleteOpen(true);
+                                }}
+                                title="Odebrat z LARPu"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </li>
                           );
                         })}
@@ -321,6 +375,9 @@ export default function OrganizersPage() {
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               Organizátor se bude přihlašovat <strong>loginem</strong> (ne e-mailem). Jméno, e-mail a telefon jsou volitelné.
+            </p>
+            <p className="text-xs text-muted-foreground border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 rounded p-2">
+              Vyžaduje nasazenou Edge Function <code className="font-mono text-xs">create-organizer</code>. Návod: README → „Edge Function Nový organizátor“. Bez ní použijte „Přiřadit podle e-mailu“ a vytvořte uživatele v Supabase Authentication ručně.
             </p>
             <div className="space-y-2">
               <Label htmlFor="org-login">Login</Label>
@@ -447,6 +504,58 @@ export default function OrganizersPage() {
             <Button onClick={handleAddByEmail} disabled={saving} className="btn-vintage">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Přiřadit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Úprava organizátora (jméno, kontakt) */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditingRow(null); }}>
+        <DialogContent className="paper-card max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-typewriter tracking-wider">Upravit organizátora</DialogTitle>
+          </DialogHeader>
+          {editingRow && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Login: <strong>{accountsByUserId[editingRow.user_id]?.login ?? editingRow.email ?? editingRow.user_id}</strong> (nelze měnit)
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="edit-display-name">Jméno</Label>
+                <Input
+                  id="edit-display-name"
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  placeholder="Jan Novák"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-contact-email">Kontaktní e-mail</Label>
+                <Input
+                  id="edit-contact-email"
+                  type="email"
+                  value={editContactEmail}
+                  onChange={(e) => setEditContactEmail(e.target.value)}
+                  placeholder="jan@example.cz"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-contact-phone">Telefon</Label>
+                <Input
+                  id="edit-contact-phone"
+                  type="tel"
+                  value={editContactPhone}
+                  onChange={(e) => setEditContactPhone(e.target.value)}
+                  placeholder="+420 123 456 789"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Zrušit</Button>
+            <Button onClick={handleSaveEdit} disabled={saving} className="btn-vintage">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Uložit
             </Button>
           </DialogFooter>
         </DialogContent>

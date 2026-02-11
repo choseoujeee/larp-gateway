@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -186,7 +193,10 @@ export default function ProductionPortalPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <h1 className="font-typewriter text-2xl tracking-wider">Produkční portál</h1>
@@ -211,6 +221,9 @@ export default function ProductionPortalPage() {
                   {verifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Přihlásit
                 </Button>
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  Heslo vám poskytne organizátor.
+                </p>
               </form>
             </PaperCardContent>
           </PaperCard>
@@ -229,10 +242,13 @@ export default function ProductionPortalPage() {
               Produkční portál {session.run_name ? ` · ${session.run_name}` : ""}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-1" />
-            Odhlásit
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-1" />
+              Odhlásit
+            </Button>
+          </div>
         </div>
 
         {dataLoading ? (
@@ -243,9 +259,10 @@ export default function ProductionPortalPage() {
           <>
             {/* 1. Checklist před během */}
             {checklist.length > 0 && (
+              <section aria-labelledby="prod-checklist-heading">
               <PaperCard>
                 <PaperCardContent className="py-4">
-                  <h2 className="font-typewriter text-xl tracking-wide flex items-center gap-2 mb-3">
+                  <h2 id="prod-checklist-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
                     <ListChecks className="h-5 w-5" />
                     Checklist před během
                   </h2>
@@ -269,38 +286,51 @@ export default function ProductionPortalPage() {
                   </ul>
                 </PaperCardContent>
               </PaperCard>
+              </section>
             )}
 
-            {/* 2. Dokumenty */}
+            {/* 2. Dokumenty – accordion jako na hráčském portálu */}
             {documents.length > 0 && (
+              <section aria-labelledby="prod-docs-heading">
               <PaperCard>
                 <PaperCardContent className="py-4">
-                  <h2 className="font-typewriter text-lg flex items-center gap-2 mb-3">
+                  <h2 id="prod-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
                     <FileStack className="h-5 w-5" />
                     Dokumenty
                   </h2>
-                  <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Kliknutím na název dokumentu rozbalíte jeho obsah.
+                  </p>
+                  <Accordion type="multiple" className="w-full" defaultValue={[]}>
                     {documents.map((doc) => (
-                      <div key={doc.id} className="rounded-md border bg-muted/20 p-3">
-                        <h3 className="font-medium mb-2">{doc.title}</h3>
-                        {doc.content && (
-                          <div
-                            className="prose prose-sm max-w-none text-foreground"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                          />
-                        )}
-                      </div>
+                      <AccordionItem key={doc.id} value={doc.id} className="border rounded-md px-3 bg-muted/20 mb-2 last:mb-0">
+                        <AccordionTrigger className="hover:no-underline hover:bg-muted/40 transition-colors py-3">
+                          <span className="font-medium text-left">{doc.title}</span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {doc.content ? (
+                            <div
+                              className="prose max-w-none text-base leading-relaxed text-foreground pb-2"
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground pb-2">Bez obsahu.</p>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
                     ))}
-                  </div>
+                  </Accordion>
                 </PaperCardContent>
               </PaperCard>
+              </section>
             )}
 
             {/* 3. Materiály – boxíky ve dvou sloupcích, celý box je klikatelný */}
             {materials.length > 0 && (
+              <section aria-labelledby="prod-materials-heading">
               <PaperCard>
                 <PaperCardContent className="py-4">
-                  <h2 className="font-typewriter text-xl tracking-wide flex items-center gap-2 mb-3">
+                  <h2 id="prod-materials-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
                     <FileText className="h-5 w-5" />
                     Materiály
                   </h2>
@@ -328,6 +358,7 @@ export default function ProductionPortalPage() {
                   </div>
                 </PaperCardContent>
               </PaperCard>
+              </section>
             )}
 
             {documents.length === 0 && materials.length === 0 && checklist.length === 0 && (

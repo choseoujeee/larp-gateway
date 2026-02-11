@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, Clock, Play, Square, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -322,7 +323,10 @@ export default function SchedulePortalPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <h1 className="font-typewriter text-2xl tracking-wider">Portál harmonogramu</h1>
@@ -347,6 +351,9 @@ export default function SchedulePortalPage() {
                   {verifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Přihlásit
                 </Button>
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  Heslo vám poskytne organizátor.
+                </p>
               </form>
             </PaperCardContent>
           </PaperCard>
@@ -358,9 +365,10 @@ export default function SchedulePortalPage() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-5xl mx-auto space-y-6">
+        <section aria-labelledby="sched-harmonogram-heading">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="font-typewriter text-2xl tracking-wide">Harmonogram</h1>
+            <h1 id="sched-harmonogram-heading" className="font-typewriter text-2xl tracking-wider uppercase text-foreground">Harmonogram</h1>
             <p className="text-sm text-muted-foreground">{session.run_name}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -396,6 +404,7 @@ export default function SchedulePortalPage() {
                 Zastavit
               </Button>
             )}
+            <ThemeToggle />
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-1" />
               Odhlásit
@@ -519,6 +528,7 @@ export default function SchedulePortalPage() {
           </div>
         )}
 
+        </section>
         <footer className="mt-8 pt-6 text-center text-sm text-muted-foreground border-t border-border">
           Portál harmonogramu · {session.run_name}
         </footer>

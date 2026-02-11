@@ -44,6 +44,25 @@ Bez těchto hodnot bude build v Lovable padat nebo aplikace nebude mít přístu
 
 ---
 
+### Jak zobrazit stránku **Organizátoři** v Lovable (návod tučně)
+
+Stránka **Organizátoři** v sekci **Správa** se zobrazí jen účtu **super administrátora**. Super admin se určuje podle e-mailu v env proměnné.
+
+**Kroky:**
+
+1. V Lovable otevři **svůj projekt** (larp-gateway).
+2. Přejdi do **nastavení projektu** (Settings / Project settings / Environment variables – podle toho, jak to Lovable pojmenovává).
+3. Najdi sekci **Environment Variables** (nebo **Build env** / **Env vars**).
+4. **Přidej** (nebo uprav) proměnnou:
+   - **Name:** `VITE_SUPER_ADMIN_EMAIL`
+   - **Value:** **e-mail, kterým se do adminu přihlašuješ** (např. `chousef@gmail.com`).
+5. **Ulož** nastavení a **znovu nasaď** aplikaci (Redeploy / Deploy), aby build vzal novou proměnnou.
+6. Po přihlášení tímto e-mailem se v postranním menu v sekci **Správa** zobrazí položka **Organizátoři**.
+
+**Shrnutí:** Bez `VITE_SUPER_ADMIN_EMAIL` v Lovable se položka Organizátoři v menu **nezobrazí**. Nastav ji na svůj přihlašovací e-mail a redeploy.
+
+---
+
 ## 4. Musíš něco přepisovat ručně?
 
 - **Ne** – pokud jen pushuješ kód a v Lovable nastavíš env (bod 3). Žádný soubor z `.gitignore` (jako `.env`) nemusíš do Lovable „přepisovat“; jen doplníš env v nastavení projektu.

@@ -779,7 +779,7 @@ export default function ProductionPage() {
                       Změnit heslo
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Sdílejte odkaz a heslo jen s důvěryhodnými členy týmu.</p>
+                  <p className="text-xs text-muted-foreground">Sdílejte tento odkaz a heslo s členy týmu produkce. Heslo nastavíte tlačítkem Změnit heslo.</p>
                 </div>
               ) : (
                 <div>

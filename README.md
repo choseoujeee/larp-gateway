@@ -36,7 +36,7 @@ cp .env.example .env
 
 - `VITE_SUPABASE_URL` – URL projektu (API URL)
 - `VITE_SUPABASE_PUBLISHABLE_KEY` – veřejný (anon) klíč; **nepoužívej** service_role v prohlížeči
-- `VITE_SUPER_ADMIN_EMAIL` (volitelně) – e-mail super administrátora; vidí LARPy všech a stránku Organizátoři
+- `VITE_SUPER_ADMIN_EMAIL` (volitelně) – e-mail super administrátora; vidí LARPy všech a stránku Organizátoři. Pokud používáte jiný e-mail než výchozí v DB, spusťte jednou v SQL Editoru skript `supabase/scripts/set-super-admin-email.sql` (nahraďte v něm e-mail a spusťte).
 
 ### 3. Migrace databáze
 
@@ -46,6 +46,19 @@ Schéma a funkce jsou v `supabase/migrations/`. Aplikace očekává, že v Supab
 - **Lokálně s Supabase CLI:** `npx supabase link` (projekt) a `npx supabase db push`.
 
 Po migraci musí být dostupné tabulky: `larps`, `runs`, `persons`, `run_person_assignments`, `documents`, `hidden_documents`, `hidden_document_groups`, `schedule_events`, `cp_scenes`, `cp_performers`, `printables`, `production_links`, `portal_feedback`, `larp_organizers` (pokud používáte organizátory). RPC: `verify_person_by_slug`, `get_person_documents`, `get_cp_scenes_for_portal`, `verify_cp_portal_access`, `create_person_assignment_with_password`; pro organizátory: `get_my_organizer_larp_ids`, `can_access_portal_as_organizer`, `get_portal_session_as_organizer`, `assign_organizer_by_email`, `can_access_cp_portal_as_organizer`.
+
+### 4. Edge Function „Nový organizátor“ (volitelně)
+
+Tlačítko **Nový organizátor** (login + heslo) volá Edge Function `create-organizer`. Bez nasazení funkce tato akce hlásí chybu; můžete používat **Přiřadit podle e-mailu** a vytvořit uživatele v Supabase Authentication ručně.
+
+Nasazení (potřebujete [Supabase CLI](https://supabase.com/docs/guides/cli)):
+
+```sh
+npx supabase link   # propojení s projektem (project-ref z dashboardu)
+npx supabase functions deploy create-organizer
+```
+
+V Supabase Dashboard: **Edge Functions** → **create-organizer** → **Secrets** nastav (volitelně) `SUPER_ADMIN_EMAIL` na e-mail super administrátora (stejný jako `VITE_SUPER_ADMIN_EMAIL`). Bez nastavení se použije výchozí hodnota z kódu.
 
 ## Spuštění
 
@@ -86,4 +99,4 @@ Výchozí heslo pro všechny osoby je `krypta2024` – po přihlášení do apli
 - **Datový model, API/RLS a user flow:** [docs/DOKUMENTACE.md](docs/DOKUMENTACE.md) – popis tabulek, RPC a flow organizátora a hráče/CP.
 - **Projektová dokumentace (mapa aplikace):** [docs/PROJEKTOVA-DOKUMENTACE.md](docs/PROJEKTOVA-DOKUMENTACE.md) – kompletní přehled rout, stránek, datového modelu a klíčových modulů.
 
-Další soubory v `docs/`: LOGIKA-DOKUMENTU.md, SQL-RUCNI-UPRAVY-DB.md, ZALOHOVANI-DB.md, VYSLEDKY-TESTU.md.
+Další soubory v `docs/`: LOGIKA-DOKUMENTU.md, SQL-RUCNI-UPRAVY-DB.md, ZALOHOVANI-DB.md, VYSLEDKY-TESTU.md, VYSLEDKY-UZIVATELSKYCH-TESTU.md (šablona reportu uživatelských testů).

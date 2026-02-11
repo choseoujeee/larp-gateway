@@ -721,9 +721,10 @@ export default function PersonsPage() {
               variant="outline"
               size="sm"
               onClick={() => window.open(`/hrac/${detailPerson.slug}`, "_blank")}
+              title="Otevře portál hráče v novém okně"
             >
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-              Portál
+              Otevřít hráčský portál
             </Button>
             {runsOfCurrentLarp.length > 0 && (
               <Button

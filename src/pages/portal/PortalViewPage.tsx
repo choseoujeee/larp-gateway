@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { supabase } from "@/integrations/supabase/client";
 import { DOCUMENT_TYPES } from "@/lib/constants";
@@ -195,8 +196,9 @@ export default function PortalViewPage() {
           </p>
         )}
         
-        {/* Quick actions – u CP jen zpět na společný portál, u hráče odhlásit */}
+        {/* Quick actions – téma, u CP zpět na společný portál, u hráče odhlásit */}
         <div className="flex items-center justify-center gap-2 mt-6 no-print">
+          <ThemeToggle />
           {session.personType === "cp" && session.larpSlug ? (
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/cp/${session.larpSlug}`}>
@@ -218,12 +220,13 @@ export default function PortalViewPage() {
         <div className="max-w-3xl mx-auto space-y-6">
           
           {/* Character Card */}
-          <PaperCard>
-            <PaperCardContent className="py-6">
-              <div className="text-center space-y-3">
-                <h2 className="font-typewriter text-2xl md:text-3xl tracking-wide text-foreground">
-                  {session.personName}
-                </h2>
+          <section aria-labelledby="portal-person-heading">
+            <PaperCard>
+              <PaperCardContent className="py-6">
+                <div className="text-center space-y-3">
+                  <h2 id="portal-person-heading" className="font-typewriter text-2xl md:text-3xl tracking-wide text-foreground">
+                    {session.personName}
+                  </h2>
                 {session.groupName && (
                   <Badge variant="secondary" className="uppercase tracking-wider text-xs px-3 py-1">
                     {session.groupName}
@@ -231,20 +234,22 @@ export default function PortalViewPage() {
                 )}
                 {session.medailonek && (
                   <div 
-                    className="prose prose-sm max-w-none text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.medailonek) }}
                   />
                 )}
               </div>
             </PaperCardContent>
           </PaperCard>
+          </section>
 
           {/* Mission Briefing – jen pro herní postavy (ne pro CP) */}
           {session.personType !== "cp" &&
             (session.runName || session.runLocation || session.missionBriefing) && (
+            <section aria-labelledby="mission-briefing-heading">
             <PaperCard>
               <PaperCardHeader>
-                <PaperCardTitle className="font-typewriter tracking-wider uppercase">
+                <PaperCardTitle id="mission-briefing-heading" className="font-typewriter tracking-wider uppercase">
                   Mission Briefing
                 </PaperCardTitle>
               </PaperCardHeader>
@@ -283,7 +288,7 @@ export default function PortalViewPage() {
                 </div>
                 {session.missionBriefing && (
                   <div
-                    className="prose prose-sm max-w-none text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
                 )}
@@ -306,6 +311,7 @@ export default function PortalViewPage() {
                 )}
               </PaperCardContent>
             </PaperCard>
+            </section>
           )}
 
           {/* CP: časy scén a performer (místo Mission Briefing) */}
@@ -433,7 +439,7 @@ export default function PortalViewPage() {
                             )}
                             {scene.description && (
                               <div
-                                className="prose prose-sm max-w-none text-muted-foreground mt-2 pt-2 border-t border-border/50"
+                                className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-2 pt-2 border-t border-border/50"
                                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(scene.description.startsWith("<") ? scene.description : scene.description.replace(/\n/g, "<br/>")) }}
                               />
                             )}
@@ -447,101 +453,98 @@ export default function PortalViewPage() {
             </PaperCard>
           )}
 
-          {/* Documents Section Title */}
-          {!loading && documents.length > 0 && (
-            <div className="pt-4">
-              <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4">
-                Dokumenty
-              </h2>
-            </div>
-          )}
-
-          {/* Documents */}
+          {/* Documents Section */}
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : documents.length === 0 ? (
-            <PaperCard>
-              <PaperCardContent className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  Zatím nejsou k dispozici žádné dokumenty.
-                </p>
-              </PaperCardContent>
-            </PaperCard>
           ) : (
-            <div className="space-y-4">
-              {/* Organizační dokumenty */}
-              {groupedDocs.organizacni.length > 0 && (
-                <DocumentCategory
-                  title="Organizační"
-                  categoryKey="organizacni"
-                  count={groupedDocs.organizacni.length}
-                  documents={groupedDocs.organizacni}
-                  isOpen={openCategories.has("organizacni")}
-                  onToggle={() => toggleCategory("organizacni")}
-                  openDocuments={openDocuments}
-                  onToggleDocument={toggleDocument}
-                />
-              )}
+            <section aria-labelledby="portal-docs-heading" className="pt-4">
+              <h2 id="portal-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4">
+                Dokumenty
+              </h2>
+              {documents.length === 0 ? (
+                <PaperCard>
+                  <PaperCardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">
+                      Zatím nejsou k dispozici žádné dokumenty.
+                    </p>
+                  </PaperCardContent>
+                </PaperCard>
+              ) : (
+                <div className="space-y-4">
+                  {/* Organizační dokumenty */}
+                  {groupedDocs.organizacni.length > 0 && (
+                    <DocumentCategory
+                      title="Organizační"
+                      categoryKey="organizacni"
+                      count={groupedDocs.organizacni.length}
+                      documents={groupedDocs.organizacni}
+                      isOpen={openCategories.has("organizacni")}
+                      onToggle={() => toggleCategory("organizacni")}
+                      openDocuments={openDocuments}
+                      onToggleDocument={toggleDocument}
+                    />
+                  )}
 
-              {/* Herní dokumenty */}
-              {groupedDocs.herni.length > 0 && (
-                <DocumentCategory
-                  title="Herní"
-                  categoryKey="herni"
-                  count={groupedDocs.herni.length}
-                  documents={groupedDocs.herni}
-                  isOpen={openCategories.has("herni")}
-                  onToggle={() => toggleCategory("herni")}
-                  openDocuments={openDocuments}
-                  onToggleDocument={toggleDocument}
-                />
-              )}
+                  {/* Herní dokumenty */}
+                  {groupedDocs.herni.length > 0 && (
+                    <DocumentCategory
+                      title="Herní"
+                      categoryKey="herni"
+                      count={groupedDocs.herni.length}
+                      documents={groupedDocs.herni}
+                      isOpen={openCategories.has("herni")}
+                      onToggle={() => toggleCategory("herni")}
+                      openDocuments={openDocuments}
+                      onToggleDocument={toggleDocument}
+                    />
+                  )}
 
-              {/* Osobní dokumenty (bez medailonku - ten je v kartě postavy) */}
-              {groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length > 0 && (
-                <DocumentCategory
-                  title="Osobní"
-                  categoryKey="osobni"
-                  count={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length}
-                  documents={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek")}
-                  isOpen={openCategories.has("osobni")}
-                  onToggle={() => toggleCategory("osobni")}
-                  openDocuments={openDocuments}
-                  onToggleDocument={toggleDocument}
-                />
-              )}
+                  {/* Osobní dokumenty (bez medailonku - ten je v kartě postavy) */}
+                  {groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length > 0 && (
+                    <DocumentCategory
+                      title="Osobní"
+                      categoryKey="osobni"
+                      count={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek").length}
+                      documents={groupedDocs.osobni.filter(d => d.doc_type !== "medailonek")}
+                      isOpen={openCategories.has("osobni")}
+                      onToggle={() => toggleCategory("osobni")}
+                      openDocuments={openDocuments}
+                      onToggleDocument={toggleDocument}
+                    />
+                  )}
 
-              {/* CP dokumenty - pouze pro CP */}
-              {session.personType === "cp" && groupedDocs.cp.length > 0 && (
-                <DocumentCategory
-                  title="CP materiály"
-                  categoryKey="cp"
-                  count={groupedDocs.cp.length}
-                  documents={groupedDocs.cp}
-                  isOpen={openCategories.has("cp")}
-                  onToggle={() => toggleCategory("cp")}
-                  openDocuments={openDocuments}
-                  onToggleDocument={toggleDocument}
-                />
+                  {/* CP dokumenty - pouze pro CP */}
+                  {session.personType === "cp" && groupedDocs.cp.length > 0 && (
+                    <DocumentCategory
+                      title="CP materiály"
+                      categoryKey="cp"
+                      count={groupedDocs.cp.length}
+                      documents={groupedDocs.cp}
+                      isOpen={openCategories.has("cp")}
+                      onToggle={() => toggleCategory("cp")}
+                      openDocuments={openDocuments}
+                      onToggleDocument={toggleDocument}
+                    />
+                  )}
+                </div>
               )}
-            </div>
-          )}
-
-          {/* Collapse All Button */}
-          {hasAnyOpenDocuments && (
-            <div className="text-center pt-4 no-print">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={collapseAllDocuments}
-                className="btn-vintage"
-              >
-                <FoldVertical className="h-4 w-4 mr-2" />
-                Sbalit vše
-              </Button>
-            </div>
+              {/* Collapse All Button */}
+              {hasAnyOpenDocuments && documents.length > 0 && (
+                <div className="text-center pt-4 no-print">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={collapseAllDocuments}
+                    className="btn-vintage"
+                  >
+                    <FoldVertical className="h-4 w-4 mr-2" />
+                    Sbalit vše
+                  </Button>
+                </div>
+              )}
+            </section>
           )}
         </div>
       </main>
@@ -785,7 +788,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
         <button 
-          className={`w-full text-left py-2 px-4 flex items-center gap-2 hover:bg-muted/50 transition-colors ${
+          className={`w-full text-left py-2 px-4 flex items-center gap-2 rounded-md border border-transparent hover:bg-muted/40 hover:border-border/50 transition-colors ${
             isEven ? "bg-muted/20" : ""
           }`}
         >
@@ -805,11 +808,12 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
         <div className="px-4 py-4 bg-background border-t border-border">
           {document.content && (
             <div
-              className="prose prose-sm max-w-none text-muted-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+              className="prose max-w-none text-base leading-relaxed text-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(document.content) }}
             />
           )}
           <Button 
+            type="button"
             variant="ghost" 
             size="sm" 
             onClick={(e) => {
@@ -817,6 +821,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
               onToggle();
             }}
             className="mt-4 text-xs uppercase tracking-wider no-print"
+            aria-label="Sbalit dokument"
           >
             Sbalit
           </Button>

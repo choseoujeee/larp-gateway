@@ -1,5 +1,5 @@
 // Edge Function: vytvoření organizátora s loginem a heslem.
-// Volá jen super admin (email = chousef@gmail.com).
+// Volá jen super admin (e-mail z env SUPER_ADMIN_EMAIL, jinak fallback).
 // Vytvoří uživatele v auth s e-mailem login@organizer.local, zapíše organizer_accounts a larp_organizers.
 
 import "jsr:@supabase/functions-js/edge_runtime.d.ts";
@@ -8,6 +8,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ORGANIZER_EMAIL_DOMAIN = Deno.env.get("ORGANIZER_EMAIL_DOMAIN") ?? "organizer.local";
+/** E-mail super administrátora – nastav v Supabase: Edge Functions → create-organizer → Secrets (SUPER_ADMIN_EMAIL) */
+const SUPER_ADMIN_EMAIL = Deno.env.get("SUPER_ADMIN_EMAIL") ?? "chousef@gmail.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +49,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (user.email !== "chousef@gmail.com") {
+    if (user.email !== SUPER_ADMIN_EMAIL) {
       return new Response(
         JSON.stringify({ error: "Pouze super admin může vytvářet organizátory" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }

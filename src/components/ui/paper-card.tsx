@@ -43,11 +43,12 @@ export function PaperCardHeader({ children, className }: PaperCardHeaderProps) {
 interface PaperCardTitleProps {
   children: ReactNode;
   className?: string;
+  id?: string;
 }
 
-export function PaperCardTitle({ children, className }: PaperCardTitleProps) {
+export function PaperCardTitle({ children, className, id }: PaperCardTitleProps) {
   return (
-    <h2 className={cn("font-typewriter text-xl tracking-wide text-foreground", className)}>
+    <h2 id={id} className={cn("font-typewriter text-xl tracking-wide text-foreground", className)}>
       {children}
     </h2>
   );

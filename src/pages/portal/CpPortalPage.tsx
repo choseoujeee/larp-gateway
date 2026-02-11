@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2, Clock, Theater } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -510,6 +511,7 @@ export default function CpPortalPage() {
         )}
         
         <div className="flex items-center justify-center gap-2 mt-6 no-print">
+          <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             Odhlásit se z CP portálu
           </Button>
@@ -520,8 +522,8 @@ export default function CpPortalPage() {
         <div className="max-w-4xl mx-auto space-y-8">
           
           {/* Společné dokumenty pro CP – vždy nahoře */}
-          <section>
-            <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
+          <section aria-labelledby="cp-docs-heading">
+            <h2 id="cp-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Společné dokumenty pro CP
             </h2>
@@ -581,7 +583,7 @@ export default function CpPortalPage() {
                             <div className="px-4 py-4 bg-background border-t border-border">
                               {doc.content && (
                                 <div
-                                  className="prose prose-sm max-w-none text-muted-foreground"
+                                  className="prose max-w-none text-base leading-relaxed text-foreground"
                                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
                                 />
                               )}
@@ -597,8 +599,8 @@ export default function CpPortalPage() {
           </section>
 
           {/* CP Roles Section */}
-          <section>
-            <h2 className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
+          <section aria-labelledby="cp-roles-heading">
+            <h2 id="cp-roles-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <Users className="h-5 w-5" />
               Cizí postavy ({filteredCpPersons.length})
             </h2>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Stamp } from "@/components/ui/stamp";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -77,7 +78,10 @@ export default function PortalAccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4 no-print">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
