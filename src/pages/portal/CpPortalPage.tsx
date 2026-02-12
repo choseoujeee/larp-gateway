@@ -552,7 +552,7 @@ export default function CpPortalPage() {
                       Zatím zde nejsou žádné společné dokumenty. Přidáte je v adminu v sekci Dokumenty s cílením „Skupina: CP“.
                     </div>
                   ) : (
-                    <div className="divide-y divide-border/50">
+                    <div className="divide-y divide-border">
                       {cpDocuments.map((doc, index) => (
                         <Collapsible
                           key={doc.id}
@@ -561,26 +561,26 @@ export default function CpPortalPage() {
                         >
                           <CollapsibleTrigger asChild>
                             <button 
-                              className={`w-full text-left py-2 px-4 flex items-center gap-2 hover:bg-muted/50 transition-colors ${
+                              className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/50 transition-colors ${
                                 index % 2 === 0 ? "bg-muted/20" : ""
                               }`}
                             >
                               <ChevronRight 
-                                className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${
+                                className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
                                   openDocuments.has(doc.id) ? "rotate-90" : ""
                                 }`} 
                               />
                               {doc.priority === 1 && (
                                 <span className="text-xs font-bold text-accent uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
                               )}
-                              <span className="text-sm text-foreground">{doc.title}</span>
+                              <span className="text-base text-foreground">{doc.title}</span>
                               {doc.priority === 3 && (
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
                               )}
                             </button>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
-                            <div className="px-4 py-4 bg-background border-t border-border">
+                            <div className="px-5 py-5 bg-background border-t border-border">
                               {doc.content && (
                                 <div
                                   className="prose max-w-none text-base leading-relaxed text-foreground"
@@ -839,10 +839,13 @@ export default function CpPortalPage() {
         </div>
       </main>
 
-      <footer className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border">
+      <footer className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3">
         {larpInfo?.footer_text ? (
           <p className="whitespace-pre-line">{larpInfo.footer_text}</p>
         ) : null}
+        <Button variant="ghost" size="sm" onClick={handleLogout}>
+          Odhlásit se z CP portálu
+        </Button>
       </footer>
     </div>
   );

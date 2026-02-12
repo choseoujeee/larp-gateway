@@ -301,16 +301,16 @@ export default function ProductionPortalPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Kliknutím na název dokumentu rozbalíte jeho obsah.
                   </p>
-                  <Accordion type="multiple" className="w-full" defaultValue={[]}>
+                  <Accordion type="multiple" className="w-full space-y-2" defaultValue={[]}>
                     {documents.map((doc) => (
-                      <AccordionItem key={doc.id} value={doc.id} className="border rounded-md px-3 bg-muted/20 mb-2 last:mb-0">
-                        <AccordionTrigger className="hover:no-underline hover:bg-muted/40 transition-colors py-3">
-                          <span className="font-medium text-left">{doc.title}</span>
+                      <AccordionItem key={doc.id} value={doc.id} className="border rounded-md px-4 bg-muted/20">
+                        <AccordionTrigger className="hover:no-underline hover:bg-muted/40 transition-colors py-3.5">
+                          <span className="font-medium text-base text-left">{doc.title}</span>
                         </AccordionTrigger>
                         <AccordionContent>
                           {doc.content ? (
                             <div
-                              className="prose max-w-none text-base leading-relaxed text-foreground pb-2"
+                              className="prose max-w-none text-base leading-relaxed text-foreground pb-3"
                               dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
                             />
                           ) : (
@@ -371,8 +371,12 @@ export default function ProductionPortalPage() {
           </>
         )}
 
-        <footer className="mt-8 pt-6 text-center text-sm text-muted-foreground border-t border-border">
-          Produkční portál · {session.larp_name}
+        <footer className="mt-8 pt-6 text-center text-sm text-muted-foreground border-t border-border space-y-3">
+          <p>Produkční portál · {session.larp_name}</p>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Odhlásit
+          </Button>
         </footer>
       </div>
     </div>
