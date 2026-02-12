@@ -3,12 +3,7 @@ import { useLocation } from "react-router-dom";
 import { MessageSquarePlus, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useLarpContext } from "@/hooks/useLarpContext";
@@ -21,7 +16,7 @@ function extractPageName(pathname: string): string {
   if (pathname.includes("/portal/")) {
     return "portal-access";
   }
-  
+
   // Admin pages - extract last segment
   if (pathname.startsWith("/admin/")) {
     const segment = pathname.replace("/admin/", "");
@@ -30,14 +25,14 @@ function extractPageName(pathname: string): string {
   if (pathname === "/admin") {
     return "admin-dashboard";
   }
-  
+
   // Auth pages
   if (pathname === "/login") return "login";
   if (pathname === "/register") return "register";
-  
+
   // Landing
   if (pathname === "/") return "landing";
-  
+
   return pathname.replace(/^\//, "") || "unknown";
 }
 
@@ -61,9 +56,11 @@ export function FeedbackButton() {
     setSubmitting(true);
     try {
       const sourcePage = extractPageName(location.pathname);
-      
+
       // Get current user if logged in
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       const { error } = await supabase.from("portal_feedback").insert({
         larp_id: currentLarpId || null,
@@ -117,9 +114,10 @@ export function FeedbackButton() {
 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Máte nápad na vylepšení nebo jste narazili na problém? Dejte nám vědět!
+              Máte nápad na vylepšení PORTÁLU nebo jste narazili na problém? Dejte nám vědět! Prosím dávejte zpětnou
+              vazbu jen na funkce a vzhled POTRTÁLU, nikoli na obsah LARPu.
             </p>
-            
+
             <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
               Stránka: <span className="font-mono">{extractPageName(location.pathname)}</span>
             </div>
@@ -134,24 +132,13 @@ export function FeedbackButton() {
             />
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {content.length}/2000
-              </span>
+              <span className="text-xs text-muted-foreground">{content.length}/2000</span>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                  disabled={submitting}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={submitting}>
                   <X className="h-4 w-4 mr-1" />
                   Zrušit
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={submitting || !content.trim()}
-                >
+                <Button size="sm" onClick={handleSubmit} disabled={submitting || !content.trim()}>
                   <Send className="h-4 w-4 mr-1" />
                   {submitting ? "Odesílám..." : "Odeslat"}
                 </Button>
