@@ -2,7 +2,7 @@
 // Volá jen super admin (e-mail z env SUPER_ADMIN_EMAIL, jinak fallback).
 // Vytvoří uživatele v auth s e-mailem login@organizer.local, zapíše organizer_accounts a larp_organizers.
 
-import "jsr:@supabase/functions-js/edge_runtime.d.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
