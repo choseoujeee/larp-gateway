@@ -699,6 +699,7 @@ export type Database = {
       }
       run_checklist: {
         Row: {
+          checklist_group: string
           completed: boolean
           created_at: string
           id: string
@@ -707,6 +708,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          checklist_group?: string
           completed?: boolean
           created_at?: string
           id?: string
@@ -715,6 +717,7 @@ export type Database = {
           title: string
         }
         Update: {
+          checklist_group?: string
           completed?: boolean
           created_at?: string
           id?: string
@@ -988,6 +991,10 @@ export type Database = {
     }
     Functions: {
       can_access_larp: { Args: { p_larp_id: string }; Returns: boolean }
+      check_production_portal_passwordless: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       create_person_assignment_with_password: {
         Args: {
           p_password: string
@@ -1013,6 +1020,10 @@ export type Database = {
       }
       create_production_portal_access: {
         Args: { p_larp_id: string; p_password: string; p_run_id: string }
+        Returns: string
+      }
+      create_production_portal_access_no_password: {
+        Args: { p_larp_id: string; p_run_id?: string }
         Returns: string
       }
       create_schedule_portal_access: {
@@ -1134,6 +1145,10 @@ export type Database = {
       get_schedule_portal_events: { Args: { p_token: string }; Returns: Json }
       is_larp_owner: { Args: { larp_id: string }; Returns: boolean }
       is_run_owner: { Args: { run_id: string }; Returns: boolean }
+      remove_production_portal_password: {
+        Args: { p_access_id: string }
+        Returns: boolean
+      }
       set_checklist_item_completed: {
         Args: { p_completed: boolean; p_item_id: string; p_token: string }
         Returns: boolean

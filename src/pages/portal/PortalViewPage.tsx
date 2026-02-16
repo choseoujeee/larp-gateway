@@ -46,7 +46,7 @@ export default function PortalViewPage() {
   const slug = params.slug; // /hrac/:slug/view i /cp/:larpSlug/:slug
   const larpSlug = params.larpSlug;
   const navigate = useNavigate();
-  const { session, loading: sessionLoading, clearSession } = usePortalSession();
+  // session destructuring moved below after larpSlug
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cpScenes, setCpScenes] = useState<CpScene[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +58,8 @@ export default function PortalViewPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
 
+  const { session, loading: sessionLoading, clearSession, enterWithoutPassword } = usePortalSession();
+
   // Bez session přesměrovat na přihlášení; z /cp/... vrátit po přihlášení zpět na /cp/ URL
   useEffect(() => {
     if (!sessionLoading && !session && slug) {
@@ -66,6 +68,21 @@ export default function PortalViewPage() {
       navigate(`/hrac/${slug}${query}`);
     }
   }, [session, sessionLoading, slug, larpSlug, navigate]);
+
+  // Fix: detect slug mismatch (e.g. navigating from CP portal to different person)
+  useEffect(() => {
+    if (!sessionLoading && session && slug && session.personSlug !== slug) {
+      // Session is for a different person – reload for correct slug
+      if (larpSlug) {
+        // Coming from CP portal – use passwordless entry
+        enterWithoutPassword(slug);
+      } else {
+        // Player portal – need password, redirect to login
+        clearSession();
+        navigate(`/hrac/${slug}`);
+      }
+    }
+  }, [session, sessionLoading, slug, larpSlug]);
 
   useEffect(() => {
     const fetchData = async () => {

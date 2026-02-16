@@ -601,7 +601,9 @@ export default function SchedulePage() {
           e.title?.toLowerCase().includes(q) ||
           e.description?.toLowerCase().includes(q) ||
           e.location?.toLowerCase().includes(q) ||
-          (e.persons?.name?.toLowerCase().includes(q) ?? false)
+          (e.persons?.name?.toLowerCase().includes(q) ?? false) ||
+          (e.performer_text?.toLowerCase().includes(q) ?? false) ||
+          ((e.persons as any)?.performer?.toLowerCase().includes(q) ?? false)
       );
     }
     if (filterDay !== "all") list = list.filter((e) => e.day_number === filterDay);
