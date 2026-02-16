@@ -48,6 +48,7 @@ interface PortalChecklistItem {
   title: string;
   completed: boolean;
   sort_order: number;
+  checklist_group?: string;
 }
 
 function materialTypeIcon(type: string) {
@@ -70,23 +71,43 @@ export default function ProductionPortalPage() {
   const [checklist, setChecklist] = useState<PortalChecklistItem[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
 
+  // Check for passwordless access first
   useEffect(() => {
     if (!token) {
       setLoading(false);
       return;
     }
+    // Check localStorage first
     const raw = localStorage.getItem(PRODUCTION_PORTAL_SESSION_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as ProductionPortalSession;
         if (parsed.token === token) {
           setSession(parsed);
+          setLoading(false);
+          return;
         }
       } catch {
         localStorage.removeItem(PRODUCTION_PORTAL_SESSION_KEY);
       }
     }
-    setLoading(false);
+    // Try passwordless access
+    supabase.rpc("check_production_portal_passwordless" as any, { p_token: token })
+      .then(({ data, error }) => {
+        if (!error && data && typeof data === "object" && (data as any).larp_id) {
+          const d = data as any;
+          const newSession: ProductionPortalSession = {
+            token,
+            larp_id: d.larp_id,
+            larp_name: d.larp_name ?? "",
+            run_id: d.run_id ?? null,
+            run_name: d.run_name ?? null,
+          };
+          setSession(newSession);
+          localStorage.setItem(PRODUCTION_PORTAL_SESSION_KEY, JSON.stringify(newSession));
+        }
+        setLoading(false);
+      });
   }, [token]);
 
   useEffect(() => {
@@ -258,7 +279,10 @@ export default function ProductionPortalPage() {
         ) : (
           <>
             {/* 1. Checklist před během */}
-            {checklist.length > 0 && (
+            {checklist.length > 0 && (() => {
+              const groups = [...new Set(checklist.map((i) => i.checklist_group || "Hlavní"))];
+              const hasMultiple = groups.length > 1;
+              return (
               <section aria-labelledby="prod-checklist-heading">
               <PaperCard>
                 <PaperCardContent className="py-4">
@@ -267,27 +291,40 @@ export default function ProductionPortalPage() {
                     Checklist před během
                   </h2>
                   <p className="text-sm text-muted-foreground mb-3">Zaškrtněte splněné úkoly – změny uvidí i organizátor v adminu.</p>
-                  <ul className="space-y-2">
-                    {checklist.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40"
-                      >
-                        <Checkbox
-                          checked={item.completed}
-                          onCheckedChange={() => handleChecklistToggle(item)}
-                          aria-label={item.title}
-                        />
-                        <span className={`flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                          {item.title}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className={hasMultiple ? "grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : ""}>
+                    {groups.sort((a, b) => a.localeCompare(b, "cs")).map((group) => {
+                      const groupItems = checklist.filter((i) => (i.checklist_group || "Hlavní") === group);
+                      return (
+                        <div key={group} className={hasMultiple ? "border rounded-md p-3" : ""}>
+                          {hasMultiple && (
+                            <h3 className="font-typewriter text-sm tracking-wider uppercase mb-2 text-muted-foreground">{group}</h3>
+                          )}
+                          <ul className="space-y-2">
+                            {groupItems.map((item) => (
+                              <li
+                                key={item.id}
+                                className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40"
+                              >
+                                <Checkbox
+                                  checked={item.completed}
+                                  onCheckedChange={() => handleChecklistToggle(item)}
+                                  aria-label={item.title}
+                                />
+                                <span className={`flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                                  {item.title}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </PaperCardContent>
               </PaperCard>
               </section>
-            )}
+              );
+            })()}
 
             {/* 2. Dokumenty – accordion jako na hráčském portálu */}
             {documents.length > 0 && (

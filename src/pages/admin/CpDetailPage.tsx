@@ -514,6 +514,16 @@ export default function CpDetailPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              onClick={() => {
+                setPerformerValue(cp.performer || "");
+                setPerformerDialogOpen(true);
+              }}
+            >
+              <User className="mr-2 h-4 w-4" />
+              {cp.performer ? "Změnit performera" : "Přiřadit performera"}
+            </Button>
             {currentLarp?.slug && (
               <>
                 <Button variant="outline" asChild>

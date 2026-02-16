@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, ExternalLink, Loader2, ListChecks, FileStack, KeyRound, Copy, CalendarPlus } from "lucide-react";
 import {
   DndContext,
@@ -58,6 +58,7 @@ interface RunChecklistItem {
   title: string;
   completed: boolean;
   sort_order: number;
+  checklist_group: string;
 }
 
 /** Materiál (odkaz, tiskovina) – production_materials */
@@ -122,6 +123,8 @@ export default function ProductionPage() {
   const [checklistDeleteDialogOpen, setChecklistDeleteDialogOpen] = useState(false);
   const [selectedChecklistItem, setSelectedChecklistItem] = useState<RunChecklistItem | null>(null);
   const [checklistTitle, setChecklistTitle] = useState("");
+  const [checklistGroup, setChecklistGroup] = useState("Hlavní");
+  const [newGroupName, setNewGroupName] = useState("");
   const [checklistSaving, setChecklistSaving] = useState(false);
 
   // Produkční dokumenty (doc_type = produkční)
@@ -332,6 +335,36 @@ export default function ProductionPage() {
     setPortalNewPassword("");
   };
 
+  const handleCreatePortalNoPassword = async () => {
+    if (!currentLarpId) return;
+    setPortalSaving(true);
+    const { data, error } = await supabase.rpc("create_production_portal_access_no_password" as any, {
+      p_larp_id: currentLarpId,
+      p_run_id: effectiveRunId ?? null,
+    });
+    setPortalSaving(false);
+    if (error || data == null) {
+      toast.error(error?.message || "Chyba při vytváření přístupu");
+      return;
+    }
+    toast.success("Přístup bez hesla vytvořen");
+    fetchPortalAccess();
+  };
+
+  const handleRemovePortalPassword = async () => {
+    if (!portalAccess) return;
+    setPortalSaving(true);
+    const { data, error } = await supabase.rpc("remove_production_portal_password" as any, {
+      p_access_id: portalAccess.id,
+    });
+    setPortalSaving(false);
+    if (error || data !== true) {
+      toast.error("Chyba při rušení hesla");
+      return;
+    }
+    toast.success("Heslo zrušeno – portál je nyní bez hesla");
+  };
+
   const portalUrl = portalAccess?.token
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/produkce-portal/${portalAccess.token}`
     : "";
@@ -467,15 +500,23 @@ export default function ProductionPage() {
     other: "Ostatní",
   };
 
-  const openCreateChecklist = () => {
+  const checklistGroups = useMemo(() => {
+    const groups = [...new Set(checklistItems.map((i) => i.checklist_group))];
+    if (groups.length === 0) groups.push("Hlavní");
+    return groups.sort((a, b) => a.localeCompare(b, "cs"));
+  }, [checklistItems]);
+
+  const openCreateChecklist = (group?: string) => {
     setSelectedChecklistItem(null);
     setChecklistTitle("");
+    setChecklistGroup(group || checklistGroups[0] || "Hlavní");
     setChecklistDialogOpen(true);
   };
 
   const openEditChecklist = (item: RunChecklistItem) => {
     setSelectedChecklistItem(item);
     setChecklistTitle(item.title);
+    setChecklistGroup(item.checklist_group);
     setChecklistDialogOpen(true);
   };
 
@@ -490,18 +531,20 @@ export default function ProductionPage() {
     if (selectedChecklistItem) {
       const { error } = await supabase
         .from("run_checklist")
-        .update({ title })
+        .update({ title, checklist_group: checklistGroup } as any)
         .eq("id", selectedChecklistItem.id);
       if (error) toast.error("Chyba při ukládání");
       else toast.success("Úkol upraven");
     } else {
-      const maxOrder = checklistItems.length ? Math.max(...checklistItems.map((i) => i.sort_order)) : 0;
+      const groupItems = checklistItems.filter((i) => i.checklist_group === checklistGroup);
+      const maxOrder = groupItems.length ? Math.max(...groupItems.map((i) => i.sort_order)) : 0;
       const { error } = await supabase.from("run_checklist").insert({
         run_id: effectiveRunId,
         title,
         completed: false,
         sort_order: maxOrder + 1,
-      });
+        checklist_group: checklistGroup,
+      } as any);
       if (error) toast.error("Chyba při vytváření");
       else toast.success("Úkol přidán");
     }
@@ -601,6 +644,51 @@ export default function ProductionPage() {
           </PaperCard>
         ) : (
           <>
+            {/* 0. Přístup k produkčnímu portálu – nahoře jako u jiných stránek */}
+            <PaperCard>
+              <PaperCardContent className="py-4">
+                <h2 className="font-typewriter text-lg mb-3 flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  Přístup k produkčnímu portálu
+                </h2>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Odkaz pro tým produkce – přístup k dokumentům, materiálům a checklistu bez přístupu do adminu.
+                </p>
+                {portalAccessLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : portalAccess ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input readOnly value={portalUrl} className="font-mono text-sm max-w-md" />
+                      <Button variant="outline" size="sm" onClick={copyPortalUrl}>
+                        <Copy className="h-4 w-4 mr-1" />
+                        Zkopírovat
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setPortalNewPasswordDialogOpen(true)}>
+                        Změnit heslo
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleRemovePortalPassword}>
+                        Zrušit heslo (bez hesla)
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setPortalPasswordDialogOpen(true)}>
+                      Vytvořit přístup s heslem
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleCreatePortalNoPassword}>
+                      Vytvořit přístup bez hesla
+                    </Button>
+                  </div>
+                )}
+              </PaperCardContent>
+            </PaperCard>
+
             {/* 1. Checklist před během */}
             {effectiveRunId && (
               <PaperCard>
@@ -610,10 +698,12 @@ export default function ProductionPage() {
                       <ListChecks className="h-5 w-5" />
                       Checklist před během
                     </h2>
-                    <Button variant="outline" size="sm" onClick={openCreateChecklist}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Přidat úkol
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openCreateChecklist()}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Přidat úkol
+                      </Button>
+                    </div>
                   </div>
                   {checklistLoading ? (
                     <div className="flex justify-center py-6">
@@ -622,40 +712,59 @@ export default function ProductionPage() {
                   ) : checklistItems.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Žádné úkoly. Přidejte např. nakoupit, vyzvednout věci, natankovat.</p>
                   ) : (
-                    <ul className="space-y-2">
-                      {checklistItems.map((item) => (
-                        <li
-                          key={item.id}
-                          className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40 group"
-                        >
-                          <Checkbox
-                            checked={item.completed}
-                            onCheckedChange={() => handleChecklistToggle(item)}
-                            aria-label={item.title}
-                          />
-                          <span className={`flex-1 font-medium ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                            {item.title}
-                          </span>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditChecklist(item)} title="Upravit">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                setSelectedChecklistItem(item);
-                                setChecklistDeleteDialogOpen(true);
-                              }}
-                              title="Smazat"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    <div className={`grid gap-4 ${checklistGroups.length > 1 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : ""}`}>
+                      {checklistGroups.map((group) => {
+                        const groupItems = checklistItems.filter((i) => i.checklist_group === group);
+                        if (groupItems.length === 0) return null;
+                        return (
+                          <div key={group} className={checklistGroups.length > 1 ? "border rounded-md p-3" : ""}>
+                            {checklistGroups.length > 1 && (
+                              <h3 className="font-typewriter text-sm tracking-wider uppercase mb-2 text-muted-foreground">{group}</h3>
+                            )}
+                            <ul className="space-y-2">
+                              {groupItems.map((item) => (
+                                <li
+                                  key={item.id}
+                                  className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40 group/item"
+                                >
+                                  <Checkbox
+                                    checked={item.completed}
+                                    onCheckedChange={() => handleChecklistToggle(item)}
+                                    aria-label={item.title}
+                                  />
+                                  <span className={`flex-1 font-medium ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                                    {item.title}
+                                  </span>
+                                  <div className="flex gap-1 opacity-0 group-hover/item:opacity-100">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditChecklist(item)} title="Upravit">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        setSelectedChecklistItem(item);
+                                        setChecklistDeleteDialogOpen(true);
+                                      }}
+                                      title="Smazat"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                            {checklistGroups.length > 1 && (
+                              <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => openCreateChecklist(group)}>
+                                <Plus className="h-3 w-3 mr-1" />
+                                Přidat do {group}
+                              </Button>
+                            )}
                           </div>
-                        </li>
-                      ))}
-                    </ul>
+                        );
+                      })}
+                    </div>
                   )}
                 </PaperCardContent>
               </PaperCard>
@@ -756,45 +865,7 @@ export default function ProductionPage() {
           </>
         )}
 
-        {/* Přístup k produkčnímu portálu – odkaz + heslo pro tým */}
-        {currentLarpId && (
-          <PaperCard>
-            <PaperCardContent className="py-4">
-              <h2 className="font-typewriter text-lg mb-3">Přístup k produkčnímu portálu</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Odkaz pro tým produkce (ruce organizace) – přístup k dokumentům, materiálům a checklistu bez přístupu do adminu. Přístup je vázaný na {effectiveRunId ? "vybraný běh" : "LARP"}.
-              </p>
-              {portalAccessLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : portalAccess ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input readOnly value={portalUrl} className="font-mono text-sm max-w-md" />
-                    <Button variant="outline" size="sm" onClick={copyPortalUrl}>
-                      Zkopírovat odkaz
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPortalNewPasswordDialogOpen(true)}>
-                      Změnit heslo
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Sdílejte tento odkaz a heslo s členy týmu produkce. Heslo nastavíte tlačítkem Změnit heslo.</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Zatím není vytvořen přístup. Vytvořte ho a nastavte heslo.</p>
-                  <Button variant="outline" size="sm" onClick={() => setPortalPasswordDialogOpen(true)}>
-                    Vytvořit přístup
-                  </Button>
-                  {!effectiveRunId && (
-                    <p className="text-xs text-muted-foreground mt-2">Bez vybraného běhu bude přístup pro celý LARP (všechny běhy).</p>
-                  )}
-                </div>
-              )}
-            </PaperCardContent>
-          </PaperCard>
-        )}
+        {/* Portal access section removed from here – moved to top */}
       </div>
 
       <Dialog open={materialDialogOpen} onOpenChange={setMaterialDialogOpen}>
@@ -972,6 +1043,41 @@ export default function ProductionPage() {
                 className="input-vintage"
                 placeholder="Např. Nakoupit potraviny, Vyzvednout kostýmy"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Skupina (checklist)</Label>
+              <div className="flex gap-2">
+                <Select value={checklistGroup} onValueChange={setChecklistGroup}>
+                  <SelectTrigger className="input-vintage flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {checklistGroups.map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 items-center">
+                <Input
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="input-vintage flex-1"
+                  placeholder="Nová skupina..."
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!newGroupName.trim()}
+                  onClick={() => {
+                    setChecklistGroup(newGroupName.trim());
+                    setNewGroupName("");
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Vytvořit
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>
