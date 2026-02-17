@@ -1230,6 +1230,7 @@ export type Database = {
         Returns: {
           larp_id: string
           larp_name: string
+          larp_slug: string
           run_id: string
           run_name: string
         }[]

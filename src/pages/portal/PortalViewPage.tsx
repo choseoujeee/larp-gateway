@@ -213,23 +213,17 @@ export default function PortalViewPage() {
           </p>
         )}
         
-        {/* Quick actions – téma, u CP zpět na společný portál, u hráče odhlásit */}
-        <div className="flex items-center justify-center gap-2 mt-6 no-print">
-          <ThemeToggle />
-          {session.personType === "cp" && session.larpSlug ? (
+        {/* Quick actions – u CP zpět na společný portál */}
+        {session.personType === "cp" && session.larpSlug && (
+          <div className="flex items-center justify-center gap-2 mt-6 no-print">
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/cp/${session.larpSlug}`}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Zpět na Společný portál CP
               </Link>
             </Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Odhlásit
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       {/* Content */}
@@ -566,6 +560,11 @@ export default function PortalViewPage() {
         </div>
       </main>
 
+      {/* Floating ThemeToggle bottom-right */}
+      <div className="fixed bottom-4 right-20 z-50 no-print">
+        <ThemeToggle />
+      </div>
+
       {/* Footer */}
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-4">
         {session.runFooterText ? (
@@ -820,8 +819,8 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
         <button 
-          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 rounded-md border border-transparent hover:bg-muted/40 hover:border-border/50 transition-colors ${
-            isEven ? "bg-muted/20" : ""
+          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/40 transition-colors sticky top-0 z-10 bg-background border-b border-border ${
+            isEven && !isOpen ? "bg-muted/20" : ""
           }`}
         >
           <ChevronRight 
@@ -837,26 +836,29 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="px-5 py-5 bg-background border-t border-border">
+        <div className="px-5 py-5 bg-background">
           {document.content && (
             <div
               className="prose max-w-none text-base leading-relaxed text-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(document.content) }}
             />
           )}
-          <Button 
-            type="button"
-            variant="ghost" 
-            size="sm" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle();
-            }}
-            className="mt-4 text-xs uppercase tracking-wider no-print"
-            aria-label="Sbalit dokument"
-          >
-            Sbalit
-          </Button>
+          <div className="border-t border-border mt-4 pt-3 text-center no-print">
+            <Button 
+              type="button"
+              variant="outline" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="text-xs uppercase tracking-wider"
+              aria-label="Sbalit dokument"
+            >
+              <FoldVertical className="h-3.5 w-3.5 mr-1.5" />
+              Sbalit
+            </Button>
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>

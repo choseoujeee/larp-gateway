@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { FileText, Loader2, FileStack, ListChecks, Music, Video, FileQuestion, LogOut, ExternalLink } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { FileText, Loader2, FileStack, ListChecks, Music, Video, FileQuestion, LogOut, ExternalLink, ChevronRight, ChevronDown, FoldVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +18,7 @@ interface ProductionPortalSession {
   token: string;
   larp_id: string;
   larp_name: string;
+  larp_slug: string | null;
   run_id: string | null;
   run_name: string | null;
 }
@@ -70,6 +66,16 @@ export default function ProductionPortalPage() {
   const [materials, setMaterials] = useState<PortalMaterial[]>([]);
   const [checklist, setChecklist] = useState<PortalChecklistItem[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [openDocuments, setOpenDocuments] = useState<Set<string>>(new Set());
+
+  const toggleDocument = (docId: string) => {
+    setOpenDocuments(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
 
   // Check for passwordless access first
   useEffect(() => {
@@ -77,7 +83,6 @@ export default function ProductionPortalPage() {
       setLoading(false);
       return;
     }
-    // Check localStorage first
     const raw = localStorage.getItem(PRODUCTION_PORTAL_SESSION_KEY);
     if (raw) {
       try {
@@ -91,7 +96,6 @@ export default function ProductionPortalPage() {
         localStorage.removeItem(PRODUCTION_PORTAL_SESSION_KEY);
       }
     }
-    // Try passwordless access
     supabase.rpc("check_production_portal_passwordless" as any, { p_token: token })
       .then(({ data, error }) => {
         if (!error && data && typeof data === "object" && (data as any).larp_id) {
@@ -100,6 +104,7 @@ export default function ProductionPortalPage() {
             token,
             larp_id: d.larp_id,
             larp_name: d.larp_name ?? "",
+            larp_slug: d.larp_slug ?? null,
             run_id: d.run_id ?? null,
             run_name: d.run_name ?? null,
           };
@@ -158,6 +163,7 @@ export default function ProductionPortalPage() {
       token,
       larp_id: row.larp_id,
       larp_name: row.larp_name ?? "",
+      larp_slug: row.larp_slug ?? null,
       run_id: row.run_id ?? null,
       run_name: row.run_name ?? null,
     };
@@ -171,6 +177,7 @@ export default function ProductionPortalPage() {
     setDocuments([]);
     setMaterials([]);
     setChecklist([]);
+    setOpenDocuments(new Set());
     localStorage.removeItem(PRODUCTION_PORTAL_SESSION_KEY);
   };
 
@@ -253,169 +260,222 @@ export default function ProductionPortalPage() {
     );
   }
 
+  const hasAnyOpenDocs = openDocuments.size > 0;
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="font-typewriter text-2xl tracking-wide">{session.larp_name}</h1>
-            <p className="text-sm text-muted-foreground">
-              Produkční portál {session.run_name ? ` · ${session.run_name}` : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-1" />
-              Odhlásit
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="py-8 px-4 text-center border-b border-border">
+        <h1 className="font-typewriter text-4xl md:text-5xl tracking-widest text-foreground uppercase mb-2">
+          {session.larp_name}
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          Produkční portál {session.run_name ? ` · ${session.run_name}` : ""}
+        </p>
+        {session.larp_slug && (
+          <div className="flex items-center justify-center gap-2 mt-4 no-print">
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/cp/${session.larp_slug}`}>
+                CP portál
+              </Link>
             </Button>
           </div>
-        </div>
+        )}
+      </header>
 
-        {dataLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <>
-            {/* 1. Checklist před během */}
-            {checklist.length > 0 && (() => {
-              const groups = [...new Set(checklist.map((i) => i.checklist_group || "Hlavní"))];
-              const hasMultiple = groups.length > 1;
-              return (
-              <section aria-labelledby="prod-checklist-heading">
-              <PaperCard>
-                <PaperCardContent className="py-4">
-                  <h2 id="prod-checklist-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
-                    <ListChecks className="h-5 w-5" />
-                    Checklist před během
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-3">Zaškrtněte splněné úkoly – změny uvidí i organizátor v adminu.</p>
-                  <div className={hasMultiple ? "grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : ""}>
-                    {groups.sort((a, b) => a.localeCompare(b, "cs")).map((group) => {
-                      const groupItems = checklist.filter((i) => (i.checklist_group || "Hlavní") === group);
-                      return (
-                        <div key={group} className={hasMultiple ? "border rounded-md p-3" : ""}>
-                          {hasMultiple && (
-                            <h3 className="font-typewriter text-sm tracking-wider uppercase mb-2 text-muted-foreground">{group}</h3>
-                          )}
-                          <ul className="space-y-2">
-                            {groupItems.map((item) => (
-                              <li
-                                key={item.id}
-                                className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40"
-                              >
-                                <Checkbox
-                                  checked={item.completed}
-                                  onCheckedChange={() => handleChecklistToggle(item)}
-                                  aria-label={item.title}
-                                />
-                                <span className={`flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                                  {item.title}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </PaperCardContent>
-              </PaperCard>
-              </section>
-              );
-            })()}
+      {/* Floating ThemeToggle */}
+      <div className="fixed bottom-4 right-20 z-50 no-print">
+        <ThemeToggle />
+      </div>
 
-            {/* 2. Dokumenty – accordion jako na hráčském portálu */}
-            {documents.length > 0 && (
-              <section aria-labelledby="prod-docs-heading">
-              <PaperCard>
-                <PaperCardContent className="py-4">
-                  <h2 id="prod-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto space-y-6">
+
+          {dataLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* 1. Checklist */}
+              {checklist.length > 0 && (() => {
+                const groups = [...new Set(checklist.map((i) => i.checklist_group || "Hlavní"))];
+                const hasMultiple = groups.length > 1;
+                return (
+                <section aria-labelledby="prod-checklist-heading">
+                <PaperCard>
+                  <PaperCardContent className="py-4">
+                    <h2 id="prod-checklist-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
+                      <ListChecks className="h-5 w-5" />
+                      Checklist před během
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-3">Zaškrtněte splněné úkoly – změny uvidí i organizátor v adminu.</p>
+                    <div className={hasMultiple ? "grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : ""}>
+                      {groups.sort((a, b) => a.localeCompare(b, "cs")).map((group) => {
+                        const groupItems = checklist.filter((i) => (i.checklist_group || "Hlavní") === group);
+                        return (
+                          <div key={group} className={hasMultiple ? "border rounded-md p-3" : ""}>
+                            {hasMultiple && (
+                              <h3 className="font-typewriter text-sm tracking-wider uppercase mb-2 text-muted-foreground">{group}</h3>
+                            )}
+                            <ul className="space-y-2">
+                              {groupItems.map((item) => (
+                                <li
+                                  key={item.id}
+                                  className="flex items-center gap-3 py-2 px-3 rounded-md border bg-muted/20 hover:bg-muted/40"
+                                >
+                                  <Checkbox
+                                    checked={item.completed}
+                                    onCheckedChange={() => handleChecklistToggle(item)}
+                                    aria-label={item.title}
+                                  />
+                                  <span className={`flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                                    {item.title}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </PaperCardContent>
+                </PaperCard>
+                </section>
+                );
+              })()}
+
+              {/* 2. Dokumenty – Collapsible styl jako hráčský portál */}
+              {documents.length > 0 && (
+                <section aria-labelledby="prod-docs-heading" className="pt-4">
+                  <h2 id="prod-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
                     <FileStack className="h-5 w-5" />
                     Dokumenty
                   </h2>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Kliknutím na název dokumentu rozbalíte jeho obsah.
-                  </p>
-                  <Accordion type="multiple" className="w-full space-y-2" defaultValue={[]}>
-                    {documents.map((doc) => (
-                      <AccordionItem key={doc.id} value={doc.id} className="border rounded-md px-4 bg-muted/20">
-                        <AccordionTrigger className="hover:no-underline hover:bg-muted/40 transition-colors py-3.5">
-                          <span className="font-medium text-base text-left">{doc.title}</span>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {doc.content ? (
-                            <div
-                              className="prose max-w-none text-base leading-relaxed text-foreground pb-3"
-                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
-                            />
-                          ) : (
-                            <p className="text-sm text-muted-foreground pb-2">Bez obsahu.</p>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </PaperCardContent>
-              </PaperCard>
-              </section>
-            )}
-
-            {/* 3. Materiály – boxíky ve dvou sloupcích, celý box je klikatelný */}
-            {materials.length > 0 && (
-              <section aria-labelledby="prod-materials-heading">
-              <PaperCard>
-                <PaperCardContent className="py-4">
-                  <h2 id="prod-materials-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
-                    <FileText className="h-5 w-5" />
-                    Materiály
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {materials.map((mat) => (
-                      <button
-                        key={mat.id}
-                        type="button"
-                        onClick={() => mat.url && window.open(mat.url, "_blank", "noopener,noreferrer")}
-                        disabled={!mat.url}
-                        className="flex items-center gap-3 py-3 px-3 rounded-md border bg-muted/20 hover:bg-muted/40 text-left w-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  <PaperCard className="overflow-hidden">
+                    <div className="divide-y divide-border">
+                      {documents.map((doc, index) => (
+                        <Collapsible
+                          key={doc.id}
+                          open={openDocuments.has(doc.id)}
+                          onOpenChange={() => toggleDocument(doc.id)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <button
+                              className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/40 transition-colors sticky top-0 z-10 bg-background border-b border-border ${
+                                index % 2 === 0 && !openDocuments.has(doc.id) ? "bg-muted/20" : ""
+                              }`}
+                            >
+                              <ChevronRight
+                                className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
+                                  openDocuments.has(doc.id) ? "rotate-90" : ""
+                                }`}
+                              />
+                              <span className="text-base text-foreground">{doc.title}</span>
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="px-5 py-5 bg-background">
+                              {doc.content ? (
+                                <div
+                                  className="prose max-w-none text-base leading-relaxed text-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                                />
+                              ) : (
+                                <p className="text-sm text-muted-foreground">Bez obsahu.</p>
+                              )}
+                              <div className="border-t border-border mt-4 pt-3 text-center no-print">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDocument(doc.id);
+                                  }}
+                                  className="text-xs uppercase tracking-wider"
+                                >
+                                  <FoldVertical className="h-3.5 w-3.5 mr-1.5" />
+                                  Sbalit
+                                </Button>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  </PaperCard>
+                  {hasAnyOpenDocs && (
+                    <div className="text-center pt-4 no-print">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpenDocuments(new Set())}
+                        className="btn-vintage"
                       >
-                        {materialTypeIcon(mat.material_type)}
-                        <div className="min-w-0 flex-1">
-                          <span className="font-medium truncate block">{mat.title}</span>
-                          {mat.note && (
-                            <span className="text-xs text-muted-foreground line-clamp-2 block">{mat.note}</span>
+                        <FoldVertical className="h-4 w-4 mr-2" />
+                        Sbalit vše
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* 3. Materiály */}
+              {materials.length > 0 && (
+                <section aria-labelledby="prod-materials-heading">
+                <PaperCard>
+                  <PaperCardContent className="py-4">
+                    <h2 id="prod-materials-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground flex items-center gap-2 mb-3">
+                      <FileText className="h-5 w-5" />
+                      Materiály
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {materials.map((mat) => (
+                        <button
+                          key={mat.id}
+                          type="button"
+                          onClick={() => mat.url && window.open(mat.url, "_blank", "noopener,noreferrer")}
+                          disabled={!mat.url}
+                          className="flex items-center gap-3 py-3 px-3 rounded-md border bg-muted/20 hover:bg-muted/40 text-left w-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {materialTypeIcon(mat.material_type)}
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium truncate block">{mat.title}</span>
+                            {mat.note && (
+                              <span className="text-xs text-muted-foreground line-clamp-2 block">{mat.note}</span>
+                            )}
+                          </div>
+                          {mat.url && (
+                            <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
                           )}
-                        </div>
-                        {mat.url && (
-                          <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </PaperCardContent>
-              </PaperCard>
-              </section>
-            )}
+                        </button>
+                      ))}
+                    </div>
+                  </PaperCardContent>
+                </PaperCard>
+                </section>
+              )}
 
-            {documents.length === 0 && materials.length === 0 && checklist.length === 0 && (
-              <PaperCard>
-                <PaperCardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">Zatím zde nejsou žádné dokumenty, materiály ani úkoly.</p>
-                </PaperCardContent>
-              </PaperCard>
-            )}
-          </>
-        )}
+              {documents.length === 0 && materials.length === 0 && checklist.length === 0 && (
+                <PaperCard>
+                  <PaperCardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">Zatím zde nejsou žádné dokumenty, materiály ani úkoly.</p>
+                  </PaperCardContent>
+                </PaperCard>
+              )}
+            </>
+          )}
+        </div>
+      </main>
 
-        <footer className="mt-8 pt-6 text-center text-sm text-muted-foreground border-t border-border space-y-3">
-          <p>Produkční portál · {session.larp_name}</p>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Odhlásit
-          </Button>
-        </footer>
-      </div>
+      <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3">
+        <p>Produkční portál · {session.larp_name}</p>
+        <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Odhlásit
+        </Button>
+      </footer>
     </div>
   );
 }
