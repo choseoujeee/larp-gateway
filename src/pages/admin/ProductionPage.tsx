@@ -661,11 +661,15 @@ export default function ProductionPage() {
                 ) : portalAccess ? (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Input readOnly value={portalUrl} className="font-mono text-sm max-w-md" />
-                      <Button variant="outline" size="sm" onClick={copyPortalUrl}>
-                        <Copy className="h-4 w-4 mr-1" />
-                        Zkopírovat
-                      </Button>
+                      <a
+                        href={portalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-mono text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                        Otevřít produkční portál
+                      </a>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setPortalNewPasswordDialogOpen(true)}>

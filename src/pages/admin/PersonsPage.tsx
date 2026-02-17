@@ -422,14 +422,20 @@ export default function PersonsPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (person: Person, e?: React.MouseEvent) => {
+  const openEditDialog = async (person: Person, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setSelectedPerson(person);
+    // Load current password_hash from DB to show in edit dialog
+    const { data: personData } = await supabase
+      .from("persons")
+      .select("password_hash")
+      .eq("id", person.id)
+      .single();
     setFormData({
       name: person.name,
       slug: person.slug,
       group_name: person.group_name || "",
-      password: "",
+      password: personData?.password_hash || "",
     });
     setDialogOpen(true);
   };
@@ -474,16 +480,15 @@ export default function PersonsPage() {
 
     setSaving(true);
 
-    if (selectedPerson) {
+      if (selectedPerson) {
       const updateData: Record<string, unknown> = {
         name: formData.name,
         slug: formData.slug,
         group_name: formData.group_name || null,
       };
 
-      if (formData.password) {
-        updateData.password_hash = formData.password;
-      }
+      // Always save password_hash (even empty string = passwordless access)
+      updateData.password_hash = formData.password;
 
       const { error } = await supabase
         .from("persons")
@@ -1270,16 +1275,29 @@ export default function PersonsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>{selectedPerson ? "Nové heslo (prázdné = beze změny)" : "Heslo"}</Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder={selectedPerson ? "••••••••" : "Přístupové heslo"}
-                className="input-vintage"
-              />
+              <Label>{selectedPerson ? "Heslo (prázdné = portál bez hesla)" : "Heslo"}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={selectedPerson ? "" : "Přístupové heslo"}
+                  className="input-vintage font-mono"
+                />
+                {selectedPerson && formData.password && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, password: "" })}
+                    className="flex-shrink-0"
+                  >
+                    Vymazat heslo
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Toto heslo se použije při přiřazení k běhu
+                {formData.password ? "Heslo se použije při přiřazení k běhu" : "Portál bude přístupný bez hesla"}
               </p>
             </div>
           </div>
