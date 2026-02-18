@@ -1,80 +1,80 @@
 
-# 5 UX vylepseni portalu a adminu
+# Redesign harmonogramu - vizualni grid + UX vylepseni
 
-## 1. ThemeToggle: jednoduche prepnuti na klik (bez dropdown)
+## 1. Vizualni redesign gridu
 
-Nahradim dropdown menu jednim tlacitkem. Klik prepne svetle na tmave a naopak. Pouziji `resolvedTheme` z `useTheme()` pro detekci aktualniho rezimu.
+### Aktualni stav
+- Grid pouziva 15min sloty s vyskou 88px (prilis velke, plytve mistem)
+- Boxy udalosti jsou vizualne monotonni - tezke rozlisit CP vstupy od materialu
+- Vsechny informace jsou viditelne naraz (preplnene boxy)
+- Barvy jsou "stone/amber" paleta - neni dostatecne kontrastni
 
-**Soubor:** `src/components/ThemeToggle.tsx`
-
----
-
-## 2. Admin/osoby – heslo v editacnim dialogu: zobrazeni + moznost vymazat
-
-V editacnim dialogu osoby:
-- Nactu aktualni `password_hash` z DB pri otevreni editace a zobrazim ho v textovem poli (type="text", ne "password")
-- Pridam tlacitko "Vymazat heslo" ktere nastavi `password_hash` na prazdny retezec
-- Kdyz je heslo prazdne, portal pusti hrace bez hesla
-
-**Soubory:**
-- `src/pages/admin/PersonsPage.tsx` – uprava `openEditDialog` (nacist password_hash), zmena type="text", tlacitko vymazat
-- `src/hooks/usePortalSession.tsx` – overit, ze prazdny password_hash = pristup bez hesla (uz je implementovano v `verify_person_by_slug` RPC? - overim a pripadne upravim)
-
-### Technicke detaily
-- Pri otevreni editace nactu `password_hash` z tabulky `persons` a predvyplnim do pole
-- Pole bude `type="text"` aby bylo heslo viditelne
-- Tlacitko "Vymazat heslo" nastavi formData.password na "" a prida flag pro ulozeni prazdneho hesla
-- V `handleSave` kdyz je flag "vymazat heslo", poslat `password_hash: ""` do DB
-- V portalu (`PortalAccessPage` nebo hook) – overit ze prazdny hash = pristup bez hesla
-
----
-
-## 3. Admin/produkce – odkaz na portal primo jako link (bez kopirovani)
-
-Nahradim Input + tlacitko "Zkopirovat" jednoduchym odkazem `<a>` na portal. Uzivatel klikne a otevre se mu portal, odkud si muze URL zkopirovat z listy prohlizece.
-
-**Soubor:** `src/pages/admin/ProductionPage.tsx` – radky 662-668
-
----
-
-## 4. Produkcni portal – design dokumentu jako na hracskem portalu + odkaz na CP portal
-
-a) Dokumenty budou pouzivat stejny Collapsible styl jako hracsky portal (PaperCard, kategorie, zebra striping) misto Accordion.
-b) Nahoře v headeru pridam odkaz "CP portal" ktery povede na `/cp/{larpSlug}`.
-
-**Soubor:** `src/pages/portal/ProductionPortalPage.tsx`
+### Nove reseni
+- **Zmensit SLOT_HEIGHT_PX na 4px** (1 slot = 1 minuta) - grid bude plynulejsi, udalosti budou mit presnou vysku odpovidajici delce
+- **MINUTES_PER_SLOT = 5** - jemnejsi grid s casovymi znackami po 30 minutach (misto kazdy slot)
+- **Kompaktni boxy** - zaklad zobrazuje jen:
+  - CP VSTUP: typ label + jmeno CP (tucne)
+  - Material: typ label + nazev materialu
+  - Ostatni: typ + nazev
+- **Rozkliknuti** (click) rozbali box horizontalne (pres vice lane) a zobrazi detaily: lokace, performer, popis, tlacitka edit/delete
+- **Vizualni odliseni typu:**
+  - CP vstupy: vyrazny levy border (4px) v barve CP + jemne pozadi
+  - Materialy: sedy border + ikona balicku
+  - Organizacni/jidlo/presun: jemne neutralni pozadi
+- **Plynule barvy** - pouzit CSS transitions na hover a expand
+- **Casove znacky** - zobrazovat jen cele a pul hodiny (ne kazdych 15 min)
 
 ### Technicke detaily
-- Potrebuji znat `larp_slug` – pridam ho do session (z RPC `get_production_portal_data` nebo z `check_production_portal_passwordless` / `verify_production_portal_access`)
-- Migrace: upravit RPC aby vracelo i `larp_slug` (z tabulky `larps`)
-- Dokumenty: nahradim Accordion za Collapsible se stejnym stylem jako `DocumentItem` v `PortalViewPage.tsx`
+- `MINUTES_PER_SLOT = 5`, `SLOT_HEIGHT_PX = 4` (kazda minuta = 4px, takze 15min udalost = 60px, 60min = 240px)
+- Casove labely zobrazovat jen pro celou hodinu a pulhodinu
+- `ScheduleEventBox` dostane stav `expanded` (useState) - click toggle
+- Expanded box dostane `z-index: 20`, `position: absolute` pres vice lane, vetsi padding, zobrazi vsechny detaily
+- Transition: `transition-all duration-200 ease-in-out`
 
----
+## 2. Odkaz na portal nahore + sprava hesla
 
-## 5. Hracsky portal – sticky hlavicka dokumentu, ThemeToggle dole, bez odhlasit nahore
+### Aktualni stav
+- Sekce "Pristup k portalu harmonogramu" je dole na strance (radky 1467-1505)
+- Pouziva Input + tlacitko Zkopirovat (stejny problem jako u produkce)
+- Chybi moznost zrusit heslo (bez-hesla pristup)
 
-a) **Sticky hlavicky dokumentu:** Kdyz uzivatel scrolluje v otevrenem dokumentu, nazev dokumentu zustane prilepeny nahoře. Dalsi sticky hlavicka predchozi "vytlaci" (CSS `position: sticky` s `top: 0` a `z-index`).
-b) **"Sbalit" tlacitko:** Oddeli vodorovnou carou, zarovnani na stred, vyraznejsi.
-c) **Odebrat odhlasit z headeru:** Presunout jen do paticky.
-d) **ThemeToggle floatuje vpravo dole:** Vedle tlacitka "Zpetna vazba". Odebrat z headeru.
+### Nove reseni
+- **Presunout portal sekci nahoru** - pod nadpis "Harmonogram", pred filtry
+- **Nahradit Input+Copy za primy odkaz** `<a href={url} target="_blank">` (jako u produkce)
+- **Pridat tlacitko "Zrusit heslo"** vedle "Zmenit heslo" - nastavi password_hash na prazdny retezec
+- **Pridat tlacitko "Vytvorit bez hesla"** vedle "Vytvorit pristup" pro bez-hesla rezim
+- **Na portalu** (`SchedulePortalPage.tsx`) - podpora prazdneho hesla (skip login screen)
 
-**Soubory:**
-- `src/pages/portal/PortalViewPage.tsx` – sticky hlavicky, odebrat ThemeToggle a Odhlasit z headeru
-- `src/components/FeedbackButton.tsx` – neni treba menit, ThemeToggle bude vedle nej primo v PortalViewPage (floating div)
-- `src/pages/portal/PortalViewPage.tsx` – DocumentItem: pridat `sticky top-0 z-10 bg-background` na CollapsibleTrigger
+### DB zmeny
+- Vytvorit RPC `create_schedule_portal_access_no_password` (analogie k produkci)
+- Vytvorit RPC `remove_schedule_portal_password` 
+- Vytvorit RPC `check_schedule_portal_passwordless` - overi token a vrati run_id pokud je heslo prazdne
+- Upravit `verify_schedule_portal_access` nebo pridat novou logiku
 
-### Technicke detaily
-- CollapsibleTrigger v DocumentItem dostane `className` s `sticky top-0 z-10 bg-background border-b`
-- Tlacitko "Sbalit" v obsahu dokumentu: `<div className="border-t border-border mt-4 pt-3 text-center">` + vyraznejsi button
-- Z headeru (radky 217-232) odebrat ThemeToggle a Odhlasit
-- Pridat fixed div vpravo dole: `<div className="fixed bottom-4 right-40 z-50 no-print"><ThemeToggle /></div>` (vedle FeedbackButton ktery je na right-4)
+## 3. Editace sceny a materialu primo z harmonogramu
 
----
+### Aktualni stav
+- CP sceny: uz existuje `openCpSceneEdit` (radek 820) + `CpSceneDialog` - FUNGUJE
+- Materialy: zadna editace z harmonogramu - chybi
 
-## Poradi implementace
+### Nove reseni
+- **CP sceny**: V expanded boxu pridat tlacitko "Upravit scenu" ktere zavola `openCpSceneEdit`
+- **Materialy**: V expanded boxu pridat tlacitko "Upravit material" - otevre dialog s editaci nazvu, URL, poznamky materialu
+- Pridat novy `MaterialEditDialog` komponent (nebo inline dialog)
 
-1. ThemeToggle (nejjednodussi, ovlivni vsechny stranky)
-2. Hracsky portal UX (sticky headers, floating toggle)
-3. Admin/osoby – heslo
-4. Admin/produkce – odkaz
-5. Produkcni portal – design + CP link
+## 4. Soubory ke zmene
+
+| Soubor | Zmeny |
+|--------|-------|
+| `src/pages/admin/SchedulePage.tsx` | Redesign gridu, presun portalu nahore, expand boxy, edit materialu |
+| `src/pages/portal/SchedulePortalPage.tsx` | Podpora bez-hesla, vizualni update boxu |
+| Migrace SQL | RPCs pro bez-hesla pristup k harmonogramu |
+
+## 5. Poradi implementace
+
+1. DB migrace - RPCs pro passwordless harmonogram
+2. Admin SchedulePage - portal nahore + hesla
+3. Admin SchedulePage - vizualni redesign gridu (slot height, barvy, kompaktni boxy)
+4. Admin SchedulePage - expandovatelne boxy s edit tlacitky
+5. SchedulePortalPage - passwordless + vizualni update
+6. Testovani - overeni DnD, expand/collapse, edit scen a materialu
