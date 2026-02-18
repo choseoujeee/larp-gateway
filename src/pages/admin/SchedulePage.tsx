@@ -46,7 +46,7 @@ import { useRunContext } from "@/hooks/useRunContext";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Play, Square, Clock, MapPin, User, Loader2, Pencil, Trash2, FileText, GripVertical, KeyRound, Copy, Drama } from "lucide-react";
+import { Plus, Play, Square, Clock, MapPin, User, Loader2, Pencil, Trash2, FileText, GripVertical, KeyRound, Drama, ExternalLink, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { CpSceneDialog } from "@/components/admin/CpSceneDialog";
@@ -116,11 +116,12 @@ const CP_SCHEDULE_COLORS = [
   { value: "#ec4899", label: "Růžová" },
 ];
 
-const MINUTES_PER_SLOT = 15;
-/** Min. šířka/výška boxu události – grid se roztáhne horizontálně i vertikálně, aby se boxy nepřekrývaly */
-const SCHEDULE_BOX_MIN_PX = 88;
-/** Výška jednoho časového slotu (15 min) = min. výška boxu, aby se boxy vertikálně nepřekrývaly */
-const SLOT_HEIGHT_PX = SCHEDULE_BOX_MIN_PX;
+const MINUTES_PER_SLOT = 5;
+/** 1 minuta = 4px → 15min = 60px, 60min = 240px */
+const PX_PER_MINUTE = 4;
+const SLOT_HEIGHT_PX = MINUTES_PER_SLOT * PX_PER_MINUTE;
+/** Min box height for draggable */
+const SCHEDULE_BOX_MIN_PX = 40;
 
 /** Přidá minuty k času ve formátu HH:MM nebo HH:MM:SS; vrací HH:MM:00 */
 function addMinutesToTime(timeStr: string, addMinutes: number): string {
@@ -143,22 +144,22 @@ interface EventWithLane extends ScheduleEventRow {
   laneIndex: number;
 }
 
-/** Třídy a barva boxu podle typu události – tlumená bež/hnědá paleta jako v původní apce */
+/** Třídy a barva boxu podle typu události – themed colors */
 function eventBoxStyle(ev: ScheduleEventRow): { className: string; style?: React.CSSProperties } {
-  const base = "rounded-md border border-stone-400/80 text-stone-800 overflow-hidden text-left flex flex-col ";
+  const base = "rounded-md border text-card-foreground overflow-hidden text-left flex flex-col transition-all duration-200 ";
   if (ev.event_type === "vystoupeni_cp") {
     const color = (ev.persons as { schedule_color?: string } | null)?.schedule_color;
     if (color) {
-      return { className: base + "border-2", style: { backgroundColor: color + "25", borderColor: color } };
+      return { className: base + "border-l-4", style: { backgroundColor: color + "18", borderLeftColor: color, borderColor: color + "40" } };
     }
-    return { className: base + "bg-amber-50/90 border-amber-300" };
+    return { className: base + "border-l-4 bg-primary/10 border-primary/30 border-l-primary/60" };
   }
-  if (ev.event_type === "material") return { className: base + "bg-amber-50/80 border-amber-300/80" };
-  if (ev.event_type === "organizacni") return { className: base + "bg-stone-100 border-stone-400" };
-  if (ev.event_type === "jidlo") return { className: base + "bg-amber-50/80 border-amber-400/80" };
-  if (ev.event_type === "presun") return { className: base + "bg-stone-50 border-stone-300" };
-  if (ev.event_type === "informace") return { className: base + "bg-stone-100/80 border-stone-400" };
-  return { className: base + "bg-stone-50/90 border-stone-400" };
+  if (ev.event_type === "material") return { className: base + "border-l-4 bg-muted/60 border-muted-foreground/20 border-l-muted-foreground/40" };
+  if (ev.event_type === "organizacni") return { className: base + "bg-accent/40 border-accent-foreground/15" };
+  if (ev.event_type === "jidlo") return { className: base + "bg-green-500/8 border-green-500/25" };
+  if (ev.event_type === "presun") return { className: base + "bg-muted/30 border-border" };
+  if (ev.event_type === "informace") return { className: base + "bg-blue-500/8 border-blue-500/20" };
+  return { className: base + "bg-muted/40 border-border" };
 }
 
 /** Řádek události v harmonogramu – přetahovatelný, layout podle obrázku (DEN + čas vlevo, detaily vpravo) */
@@ -271,7 +272,7 @@ function GridSlotDroppable({
   );
 }
 
-/** Box události v gridu – TYP + ikony: CP (které cp), papír (scéna), lokace, maska (jméno performera); draggable */
+/** Box události v gridu – kompaktní zobrazení, click expanduje */
 function ScheduleEventBox({
   event: ev,
   sceneOrder,
@@ -283,6 +284,7 @@ function ScheduleEventBox({
   isCurrent,
   onEdit,
   onDelete,
+  onEditScene,
 }: {
   event: ScheduleEventRow;
   sceneOrder?: number;
@@ -294,88 +296,110 @@ function ScheduleEventBox({
   isCurrent: boolean;
   onEdit: () => void;
   onDelete: (e: React.MouseEvent) => void;
+  onEditScene?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: ev.id });
   const { className, style } = eventBoxStyle(ev);
   const typeLabel = EVENT_TYPE_LABELS[ev.event_type] || ev.event_type;
   const persons = ev.persons as { name?: string; performer?: string } | null;
   const cpName = ev.cp_id ? (persons?.name?.trim() || null) : null;
-  // Přednost: performer_text (jednorázová role) > přiřazení z běhu > globální performer CP
   const performerLabel =
     ev.cp_id
-      ? ((ev as ScheduleEventRow).performer_text?.trim() || runPerformerByCpId?.[ev.cp_id] || persons?.performer?.trim() || "NEPŘIŘAZENO")
+      ? ((ev as ScheduleEventRow).performer_text?.trim() || runPerformerByCpId?.[ev.cp_id] || persons?.performer?.trim() || null)
       : null;
   const sceneTitleRaw = (ev as ScheduleEventRow & { cp_scenes?: { title: string | null } | null }).cp_scenes?.title?.trim();
   const sceneTitle = sceneTitleRaw || (ev.cp_scene_id && sceneOrder != null ? `Scéna ${sceneOrder}` : null) || ev.title || "—";
-  const timeDisplay = ev.start_time.length >= 5 ? ev.start_time.substring(0, 5) : ev.start_time;
+  const compact = heightPx < 50;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDragging) return;
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`absolute left-0 right-0 group cursor-grab active:cursor-grabbing ${className} ${isCurrent ? "ring-2 ring-amber-600 ring-inset" : ""} ${isDragging ? "opacity-50 z-20" : ""}`}
+      className={`absolute group cursor-grab active:cursor-grabbing ${className} ${isCurrent ? "ring-2 ring-primary ring-inset" : ""} ${isDragging ? "opacity-50 z-20" : ""} ${expanded ? "z-20 shadow-lg" : ""}`}
       style={{
         top: topPx,
-        height: Math.max(heightPx, SCHEDULE_BOX_MIN_PX),
+        height: expanded ? "auto" : Math.max(heightPx, SCHEDULE_BOX_MIN_PX),
         minHeight: SCHEDULE_BOX_MIN_PX,
         left: `${leftPct}%`,
-        width: `calc(${widthPct}% - 4px)`,
+        width: expanded ? `calc(100% - 4px)` : `calc(${widthPct}% - 4px)`,
         minWidth: SCHEDULE_BOX_MIN_PX - 4,
         marginLeft: 2,
         marginRight: 2,
         ...style,
       }}
-      onClick={(e) => { if (!isDragging) onEdit(); }}
-      title={[ev.title, typeLabel, cpName ?? undefined, performerLabel ?? undefined, ev.location ?? undefined].filter(Boolean).join(" · ")}
+      onClick={handleClick}
+      title={expanded ? undefined : [ev.title, typeLabel, cpName ?? undefined].filter(Boolean).join(" · ")}
     >
-      <div className="p-1.5 h-full flex flex-col min-w-0 text-stone-800">
-        <div className="font-bold text-stone-800 uppercase tracking-wide text-xs border-b border-stone-400/80 pb-0.5 mb-1 shrink-0 flex items-baseline gap-1.5 flex-wrap">
-          <span className="font-mono">{timeDisplay}</span>
-          <span>·</span>
-          <span>{typeLabel}</span>
-        </div>
-        <div className="flex flex-col gap-0.5 min-h-0 flex-1 text-xs">
-          {cpName != null && (
-            <span className="flex items-center gap-1.5 truncate">
-              <User className="h-3.5 w-3 shrink-0 text-stone-600" aria-hidden />
-              {cpName || "—"}
-            </span>
-          )}
-          <span className="flex items-center gap-1.5 truncate">
-            <FileText className="h-3.5 w-3 shrink-0 text-stone-600" aria-hidden />
-            {sceneTitle}
+      <div className="p-1.5 flex flex-col min-w-0">
+        {/* Compact: just type + name */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          {ev.event_type === "vystoupeni_cp" && <User className="h-3 w-3 shrink-0 text-muted-foreground" />}
+          {ev.event_type === "material" && <Package className="h-3 w-3 shrink-0 text-muted-foreground" />}
+          <span className={`font-medium truncate ${compact ? "text-[10px]" : "text-xs"}`}>
+            {ev.event_type === "vystoupeni_cp" ? (cpName || typeLabel) : (ev.event_type === "material" ? ev.title : sceneTitle)}
           </span>
-          {ev.location && (
-            <span className="flex items-center gap-1.5 truncate text-stone-700">
-              <MapPin className="h-3.5 w-3 shrink-0 text-stone-600" aria-hidden />
-              {ev.location}
-            </span>
-          )}
-          {performerLabel != null && (
-            <span className="flex items-center gap-1.5 truncate">
-              <Drama className="h-3.5 w-3 shrink-0 text-stone-600" aria-hidden />
-              {performerLabel}
-            </span>
-          )}
         </div>
-      </div>
-      <div
-        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-0.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-stone-600" onClick={onEdit} title="Upravit">
-          <Pencil className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-destructive"
-          onClick={onDelete}
-          title="Smazat"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        {!compact && !expanded && (
+          <span className="text-[10px] text-muted-foreground truncate">
+            {ev.event_type === "vystoupeni_cp" ? sceneTitle : typeLabel}
+          </span>
+        )}
+
+        {/* Expanded details */}
+        {expanded && (
+          <div className="mt-1.5 pt-1.5 border-t border-border/50 space-y-1 text-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="font-semibold text-foreground">{typeLabel}</div>
+            {cpName && (
+              <div className="flex items-center gap-1.5">
+                <User className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span>{cpName}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span>{sceneTitle}</span>
+            </div>
+            {ev.location && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span>{ev.location}</span>
+              </div>
+            )}
+            {performerLabel && (
+              <div className="flex items-center gap-1.5">
+                <Drama className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span>{performerLabel}</span>
+              </div>
+            )}
+            {ev.description && (
+              <p className="text-muted-foreground text-[11px] mt-1">{ev.description}</p>
+            )}
+            <div className="flex items-center gap-1 pt-1">
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <Pencil className="h-3 w-3 mr-1" />
+                Upravit
+              </Button>
+              {onEditScene && ev.cp_scene_id && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onEditScene(); }}>
+                  <Drama className="h-3 w-3 mr-1" />
+                  Scéna
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(e); }}>
+                <Trash2 className="h-3 w-3 mr-1" />
+                Odebrat
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1138,10 +1162,33 @@ export default function SchedulePage() {
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/harmonogram-portal/${schedulePortalAccess.token}`
     : "";
 
-  const copySchedulePortalUrl = () => {
-    if (!schedulePortalUrl) return;
-    navigator.clipboard.writeText(schedulePortalUrl);
-    toast.success("Odkaz zkopírován");
+  const handleCreateSchedulePortalAccessNoPassword = async () => {
+    if (!selectedRunId) return;
+    setSchedulePortalSaving(true);
+    const { data, error } = await supabase.rpc("create_schedule_portal_access_no_password", {
+      p_run_id: selectedRunId,
+    });
+    setSchedulePortalSaving(false);
+    if (error) {
+      toast.error("Chyba při vytváření přístupu", { description: error.message });
+      return;
+    }
+    toast.success("Přístup bez hesla vytvořen");
+    fetchSchedulePortalAccess();
+  };
+
+  const handleRemoveSchedulePortalPassword = async () => {
+    if (!schedulePortalAccess?.id) return;
+    setSchedulePortalSaving(true);
+    const { data, error } = await supabase.rpc("remove_schedule_portal_password", {
+      p_access_id: schedulePortalAccess.id,
+    });
+    setSchedulePortalSaving(false);
+    if (error || data === false) {
+      toast.error("Chyba při odebírání hesla");
+      return;
+    }
+    toast.success("Heslo odebráno – portál je nyní přístupný bez hesla");
   };
 
   const handleCreateSchedulePortalAccess = async () => {
@@ -1234,6 +1281,50 @@ export default function SchedulePage() {
             )}
           </div>
         </div>
+
+        {selectedRunId && (
+          <PaperCard>
+            <PaperCardContent className="py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <KeyRound className="h-4 w-4" />
+                  Portál:
+                </span>
+                {schedulePortalLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : schedulePortalAccess ? (
+                  <>
+                    <a
+                      href={schedulePortalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Otevřít portál
+                    </a>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSchedulePortalNewPasswordDialogOpen(true)}>
+                      Změnit heslo
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleRemoveSchedulePortalPassword} disabled={schedulePortalSaving}>
+                      Zrušit heslo
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSchedulePortalPasswordDialogOpen(true)}>
+                      Vytvořit s heslem
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCreateSchedulePortalAccessNoPassword} disabled={schedulePortalSaving}>
+                      {schedulePortalSaving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                      Vytvořit bez hesla
+                    </Button>
+                  </>
+                )}
+              </div>
+            </PaperCardContent>
+          </PaperCard>
+        )}
 
         {selectedRunId && (
           <div className="flex flex-wrap items-center gap-3">
@@ -1329,18 +1420,38 @@ export default function SchedulePage() {
                         )}
                       </h2>
                       <div className="flex gap-4 overflow-x-auto min-w-0">
-                        <div className="shrink-0 w-14 flex flex-col text-xs text-muted-foreground font-mono">
-                          {gridTimeRange.slotLabels.map((label, i) => (
-                            <div key={label} style={{ height: SLOT_HEIGHT_PX }} className="leading-none pt-0.5">
-                              {label}
-                            </div>
-                          ))}
+                        <div className="shrink-0 w-14 flex flex-col text-xs text-muted-foreground font-mono relative" style={{ height: colHeight }}>
+                          {gridTimeRange.slotLabels.map((label, i) => {
+                            const minutes = gridTimeRange.minStartMinutes + i * MINUTES_PER_SLOT;
+                            const isFullOrHalf = minutes % 30 === 0;
+                            return (
+                              <div key={label} style={{ height: SLOT_HEIGHT_PX, position: 'absolute', top: i * SLOT_HEIGHT_PX }} className="leading-none">
+                                {isFullOrHalf && <span className="text-[11px]">{label}</span>}
+                              </div>
+                            );
+                          })}
                         </div>
                         <div
                           className="flex-1 relative min-h-[200px] shrink-0"
-                          style={{ height: colHeight, minWidth: maxLanes * SCHEDULE_BOX_MIN_PX }}
+                          style={{ height: colHeight, minWidth: maxLanes * 80 }}
                         >
-                          {/* Sloty pro drop – sloupec pod boxy */}
+                          {/* Grid lines at 30-min intervals */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            {gridTimeRange.slotLabels.map((_, i) => {
+                              const minutes = gridTimeRange.minStartMinutes + i * MINUTES_PER_SLOT;
+                              const isFull = minutes % 60 === 0;
+                              const isHalf = minutes % 30 === 0;
+                              if (!isHalf) return null;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`absolute left-0 right-0 ${isFull ? "border-t border-border/60" : "border-t border-border/30"}`}
+                                  style={{ top: i * SLOT_HEIGHT_PX }}
+                                />
+                              );
+                            })}
+                          </div>
+                          {/* Sloty pro drop */}
                           <div className="absolute inset-0 flex flex-col pointer-events-none [&>*]:pointer-events-auto">
                             {gridTimeRange.slotLabels.map((_, slotIndex) => (
                               <GridSlotDroppable
@@ -1356,8 +1467,8 @@ export default function SchedulePage() {
                             <div className="relative w-full h-full pointer-events-auto">
                               {dayEvents.map((ev) => {
                                 const startMinutes = timeToMinutes(ev.start_time);
-                                const topPx = ((startMinutes - gridTimeRange.minStartMinutes) / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
-                                const heightPx = (ev.duration_minutes / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
+                                const topPx = (startMinutes - gridTimeRange.minStartMinutes) * PX_PER_MINUTE;
+                                const heightPx = ev.duration_minutes * PX_PER_MINUTE;
                                 const leftPct = (ev.laneIndex / maxLanes) * 100;
                                 const widthPct = 100 / maxLanes;
                                 const isCurrent =
@@ -1381,6 +1492,7 @@ export default function SchedulePage() {
                                       setSelectedEvent(ev);
                                       setDeleteDialogOpen(true);
                                     }}
+                                    onEditScene={ev.cp_scene_id ? () => openCpSceneEdit(ev) : undefined}
                                   />
                                 );
                               })}
@@ -1388,13 +1500,13 @@ export default function SchedulePage() {
                           </div>
                           {isLiveRunning && liveDayNumber === dayNum && (
                             <div
-                              className="absolute left-0 right-0 h-0.5 bg-red-500 z-10 pointer-events-none"
+                              className="absolute left-0 right-0 h-0.5 bg-destructive z-10 pointer-events-none"
                               style={{
                                 top: (() => {
                                   const now = currentTime;
                                   const minToday = now.getHours() * 60 + now.getMinutes();
-                                  const slotTop = ((minToday - gridTimeRange.minStartMinutes) / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
-                                  return Math.max(0, Math.min(colHeight - 2, slotTop));
+                                  const px = (minToday - gridTimeRange.minStartMinutes) * PX_PER_MINUTE;
+                                  return Math.max(0, Math.min(colHeight - 2, px));
                                 })(),
                               }}
                             />
@@ -1464,45 +1576,7 @@ export default function SchedulePage() {
           </DndContext>
         )}
 
-        {selectedRunId && (
-          <PaperCard>
-            <PaperCardContent className="py-4">
-              <h2 className="font-typewriter text-lg mb-3 flex items-center gap-2">
-                <KeyRound className="h-5 w-5" />
-                Přístup k portálu harmonogramu
-              </h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Read-only odkaz pro zobrazení harmonogramu tohoto běhu (bez přístupu do adminu). Přístup chrání heslo.
-              </p>
-              {schedulePortalLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : schedulePortalAccess ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input readOnly value={schedulePortalUrl} className="font-mono text-sm max-w-md" />
-                    <Button variant="outline" size="sm" onClick={copySchedulePortalUrl}>
-                      <Copy className="h-4 w-4 mr-1" />
-                      Zkopírovat
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setSchedulePortalNewPasswordDialogOpen(true)}>
-                      Změnit heslo
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Sdílejte odkaz a heslo jen s důvěryhodnými osobami.</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Zatím není vytvořen přístup. Nastavte heslo a vytvořte odkaz.</p>
-                  <Button variant="outline" size="sm" onClick={() => setSchedulePortalPasswordDialogOpen(true)}>
-                    Vytvořit přístup
-                  </Button>
-                </div>
-              )}
-            </PaperCardContent>
-          </PaperCard>
-        )}
+        {/* Portal section moved above */}
       </div>
 
       {/* Create/Edit Dialog */}
