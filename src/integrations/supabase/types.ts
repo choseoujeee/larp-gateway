@@ -995,6 +995,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      check_schedule_portal_passwordless: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       create_person_assignment_with_password: {
         Args: {
           p_password: string
@@ -1028,6 +1032,10 @@ export type Database = {
       }
       create_schedule_portal_access: {
         Args: { p_password: string; p_run_id: string }
+        Returns: string
+      }
+      create_schedule_portal_access_no_password: {
+        Args: { p_run_id: string }
         Returns: string
       }
       get_cp_portal_full_data: {
@@ -1146,6 +1154,10 @@ export type Database = {
       is_larp_owner: { Args: { larp_id: string }; Returns: boolean }
       is_run_owner: { Args: { run_id: string }; Returns: boolean }
       remove_production_portal_password: {
+        Args: { p_access_id: string }
+        Returns: boolean
+      }
+      remove_schedule_portal_password: {
         Args: { p_access_id: string }
         Returns: boolean
       }

@@ -12,8 +12,9 @@ import { toast } from "sonner";
 
 const SCHEDULE_PORTAL_SESSION_KEY = "larp_schedule_portal_session";
 
-const SLOT_HEIGHT_PX = 48;
-const MINUTES_PER_SLOT = 15;
+const SLOT_HEIGHT_PX = 20;
+const MINUTES_PER_SLOT = 5;
+const PX_PER_MINUTE = 4;
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   programovy_blok: "Programový blok",
@@ -78,20 +79,20 @@ function assignLanes(events: PortalScheduleEvent[]): EventWithLane[] {
 }
 
 function eventBoxStyle(ev: PortalScheduleEvent): { className: string; style?: React.CSSProperties } {
-  const base = "rounded border text-card-foreground overflow-hidden text-left flex flex-col ";
+  const base = "rounded-md border text-card-foreground overflow-hidden text-left flex flex-col transition-all duration-200 ";
   if (ev.event_type === "vystoupeni_cp") {
     const color = ev.persons?.schedule_color;
     if (color) {
-      return { className: base + "rounded-lg border-2", style: { backgroundColor: color + "30", borderColor: color } };
+      return { className: base + "border-l-4", style: { backgroundColor: color + "18", borderLeftColor: color, borderColor: color + "40" } };
     }
-    return { className: base + "rounded-lg bg-primary/15 border-primary/50" };
+    return { className: base + "border-l-4 bg-primary/10 border-primary/30 border-l-primary/60" };
   }
-  if (ev.event_type === "material") return { className: base + "rounded-md bg-amber-500/15 border-amber-500/50" };
-  if (ev.event_type === "organizacni") return { className: base + "rounded-md bg-sky-500/15 border-sky-500/50" };
-  if (ev.event_type === "jidlo") return { className: base + "rounded-lg bg-green-500/15 border-green-500/50" };
-  if (ev.event_type === "presun") return { className: base + "rounded-sm bg-muted border-border" };
-  if (ev.event_type === "informace") return { className: base + "rounded-md bg-blue-500/10 border-blue-500/40" };
-  return { className: base + "rounded-md bg-muted/50 border-border" };
+  if (ev.event_type === "material") return { className: base + "border-l-4 bg-muted/60 border-muted-foreground/20 border-l-muted-foreground/40" };
+  if (ev.event_type === "organizacni") return { className: base + "bg-accent/40 border-accent-foreground/15" };
+  if (ev.event_type === "jidlo") return { className: base + "bg-green-500/8 border-green-500/25" };
+  if (ev.event_type === "presun") return { className: base + "bg-muted/30 border-border" };
+  if (ev.event_type === "informace") return { className: base + "bg-blue-500/8 border-blue-500/20" };
+  return { className: base + "bg-muted/40 border-border" };
 }
 
 /** Read-only box události v gridu (bez tlačítek, bez drag) */
@@ -164,18 +165,31 @@ export default function SchedulePortalPage() {
       setLoading(false);
       return;
     }
+    // Check localStorage first
     const raw = localStorage.getItem(SCHEDULE_PORTAL_SESSION_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as SchedulePortalSession;
         if (parsed.token === token) {
           setSession(parsed);
+          setLoading(false);
+          return;
         }
       } catch {
         localStorage.removeItem(SCHEDULE_PORTAL_SESSION_KEY);
       }
     }
-    setLoading(false);
+    // Try passwordless access
+    supabase.rpc("check_schedule_portal_passwordless", { p_token: token })
+      .then(({ data, error }) => {
+        if (!error && data && typeof data === "object" && (data as any).run_id) {
+          const d = data as any;
+          const newSession: SchedulePortalSession = { token, run_id: d.run_id, run_name: d.run_name ?? "" };
+          setSession(newSession);
+          localStorage.setItem(SCHEDULE_PORTAL_SESSION_KEY, JSON.stringify(newSession));
+        }
+        setLoading(false);
+      });
   }, [token]);
 
   useEffect(() => {
@@ -473,20 +487,36 @@ export default function SchedulePortalPage() {
                       )}
                     </h2>
                     <div className="flex gap-4">
-                      <div className="shrink-0 w-14 flex flex-col text-xs text-muted-foreground font-mono">
-                        {gridTimeRange.slotLabels.map((label) => (
-                          <div key={label} style={{ height: SLOT_HEIGHT_PX }} className="leading-none pt-0.5">
-                            {label}
-                          </div>
-                        ))}
+                      <div className="shrink-0 w-14 flex flex-col text-xs text-muted-foreground font-mono relative" style={{ height: colHeight }}>
+                        {gridTimeRange.slotLabels.map((label, i) => {
+                          const minutes = gridTimeRange.minStartMinutes + i * MINUTES_PER_SLOT;
+                          const isFullOrHalf = minutes % 30 === 0;
+                          return (
+                            <div key={label} style={{ height: SLOT_HEIGHT_PX, position: 'absolute', top: i * SLOT_HEIGHT_PX }} className="leading-none">
+                              {isFullOrHalf && <span className="text-[11px]">{label}</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                       <div className="flex-1 relative min-h-[200px]" style={{ height: colHeight }}>
+                        {/* Grid lines */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {gridTimeRange.slotLabels.map((_, i) => {
+                            const minutes = gridTimeRange.minStartMinutes + i * MINUTES_PER_SLOT;
+                            const isFull = minutes % 60 === 0;
+                            const isHalf = minutes % 30 === 0;
+                            if (!isHalf) return null;
+                            return (
+                              <div key={i} className={`absolute left-0 right-0 ${isFull ? "border-t border-border/60" : "border-t border-border/30"}`} style={{ top: i * SLOT_HEIGHT_PX }} />
+                            );
+                          })}
+                        </div>
                         <div className="absolute inset-0 pointer-events-none">
                           <div className="relative w-full h-full pointer-events-auto">
                             {dayEvents.map((ev) => {
                               const startMinutes = timeToMinutes(ev.start_time);
-                              const topPx = ((startMinutes - gridTimeRange.minStartMinutes) / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
-                              const heightPx = (ev.duration_minutes / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
+                              const topPx = (startMinutes - gridTimeRange.minStartMinutes) * PX_PER_MINUTE;
+                              const heightPx = ev.duration_minutes * PX_PER_MINUTE;
                               const leftPct = (ev.laneIndex / maxLanes) * 100;
                               const widthPct = 100 / maxLanes;
                               const isCurrent =
@@ -509,12 +539,12 @@ export default function SchedulePortalPage() {
                         </div>
                         {isLiveRunning && liveDayNumber === dayNum && (
                           <div
-                            className="absolute left-0 right-0 h-0.5 bg-red-500 z-10 pointer-events-none"
+                            className="absolute left-0 right-0 h-0.5 bg-destructive z-10 pointer-events-none"
                             style={{
                               top: (() => {
                                 const minToday = currentTime.getHours() * 60 + currentTime.getMinutes();
-                                const slotTop = ((minToday - gridTimeRange.minStartMinutes) / MINUTES_PER_SLOT) * SLOT_HEIGHT_PX;
-                                return Math.max(0, Math.min(colHeight - 2, slotTop));
+                                const px = (minToday - gridTimeRange.minStartMinutes) * PX_PER_MINUTE;
+                                return Math.max(0, Math.min(colHeight - 2, px));
                               })(),
                             }}
                           />
