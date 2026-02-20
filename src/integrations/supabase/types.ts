@@ -809,6 +809,8 @@ export type Database = {
           payment_account: string | null
           payment_amount: string | null
           payment_due_date: string | null
+          payment_instructions: string | null
+          payment_mode: string
           slug: string
           updated_at: string
         }
@@ -828,6 +830,8 @@ export type Database = {
           payment_account?: string | null
           payment_amount?: string | null
           payment_due_date?: string | null
+          payment_instructions?: string | null
+          payment_mode?: string
           slug: string
           updated_at?: string
         }
@@ -847,6 +851,8 @@ export type Database = {
           payment_account?: string | null
           payment_amount?: string | null
           payment_due_date?: string | null
+          payment_instructions?: string | null
+          payment_mode?: string
           slug?: string
           updated_at?: string
         }
@@ -1136,6 +1142,13 @@ export type Database = {
         }[]
       }
       get_production_portal_data: { Args: { p_token: string }; Returns: Json }
+      get_run_payment_info: {
+        Args: { p_run_id: string }
+        Returns: {
+          payment_instructions: string
+          payment_mode: string
+        }[]
+      }
       get_run_schedule: {
         Args: { p_run_id: string }
         Returns: {

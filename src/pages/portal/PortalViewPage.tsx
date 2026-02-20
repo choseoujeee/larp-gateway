@@ -304,7 +304,32 @@ export default function PortalViewPage() {
                   />
                 )}
 
-                {session.runPaymentAccount && (
+                {/* Platební sekce */}
+                {session.paymentMode === "custom" && session.paymentInstructions ? (
+                  <div className="mt-4 pt-4 border-t border-border space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
+                      <CreditCard className="h-4 w-4" />
+                      Informace o platbě
+                    </div>
+                    <div
+                      className="prose max-w-none text-sm leading-relaxed text-muted-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:mt-3 [&_h2]:mb-1 [&_p]:mb-2 [&_p:last-child]:mb-0"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.paymentInstructions) }}
+                    />
+                    <div className="mt-2">
+                      {session.personPaidAt ? (
+                        <div className="flex items-center gap-2 text-green-600 text-sm">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="font-medium">Máš zaplaceno</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-amber-600 text-sm">
+                          <Clock className="h-4 w-4" />
+                          <span className="font-medium">Ještě neevidujeme tvou platbu</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : session.runPaymentAccount ? (
                   <div className="mt-4 pt-4 border-t border-border no-print">
                     <Button
                       variant="outline"
@@ -319,7 +344,8 @@ export default function PortalViewPage() {
                       Informace o platbě
                     </Button>
                   </div>
-                )}
+                ) : null}
+
               </PaperCardContent>
             </PaperCard>
             </section>

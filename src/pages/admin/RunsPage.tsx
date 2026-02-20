@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import {
   Dialog,
   DialogContent,
@@ -60,6 +63,8 @@ interface Run {
   payment_account?: string | null;
   payment_amount?: string | null;
   payment_due_date?: string | null;
+  payment_mode?: string | null;
+  payment_instructions?: string | null;
   larps?: { name: string };
 }
 
@@ -136,7 +141,10 @@ export default function RunsPage() {
     payment_account: "",
     payment_amount: "",
     payment_due_date: "",
+    payment_mode: "bank_transfer",
+    payment_instructions: "",
   });
+
   const [saving, setSaving] = useState(false);
 
   const fetchRuns = async () => {
@@ -272,7 +280,10 @@ export default function RunsPage() {
       payment_account: "",
       payment_amount: "",
       payment_due_date: "",
+      payment_mode: "bank_transfer",
+      payment_instructions: "",
     });
+
     setDialogOpen(true);
   };
 
@@ -294,7 +305,10 @@ export default function RunsPage() {
       payment_account: run.payment_account || "",
       payment_amount: run.payment_amount || "",
       payment_due_date: run.payment_due_date || "",
+      payment_mode: run.payment_mode || "bank_transfer",
+      payment_instructions: run.payment_instructions || "",
     });
+
     setDialogOpen(true);
   };
 
@@ -321,7 +335,10 @@ export default function RunsPage() {
       payment_account: formData.payment_account?.trim() || null,
       payment_amount: formData.payment_amount?.trim() || null,
       payment_due_date: formData.payment_due_date || null,
+      payment_mode: formData.payment_mode || "bank_transfer",
+      payment_instructions: formData.payment_instructions || null,
     };
+
 
     if (selectedRun) {
       const { error } = await supabase
@@ -1093,38 +1110,76 @@ export default function RunsPage() {
                 <Label>Aktivní běh</Label>
               </div>
 
-              <div className="border-t pt-4 mt-4 space-y-3">
+              <div className="border-t pt-4 mt-4 space-y-4">
                 <h4 className="font-typewriter text-sm font-medium">Platba (pro hráče)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Transparentní účet</Label>
-                    <Input
-                      value={formData.payment_account}
-                      onChange={(e) => setFormData({ ...formData, payment_account: e.target.value })}
-                      placeholder="např. 123456789/0800"
-                      className="input-vintage font-mono"
-                    />
+
+                {/* Přepínač režimu platby */}
+                <RadioGroup
+                  value={formData.payment_mode}
+                  onValueChange={(v) => setFormData({ ...formData, payment_mode: v })}
+                  className="flex gap-6"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="bank_transfer" id="pm-bank" />
+                    <Label htmlFor="pm-bank" className="cursor-pointer">
+                      Bankovní převod + QR kód
+                    </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Cena (text)</Label>
-                    <Input
-                      value={formData.payment_amount}
-                      onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
-                      placeholder="např. 500 Kč"
-                      className="input-vintage"
-                    />
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="custom" id="pm-custom" />
+                    <Label htmlFor="pm-custom" className="cursor-pointer">
+                      Vlastní instrukce
+                    </Label>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Datum splatnosti</Label>
-                  <Input
-                    type="date"
-                    value={formData.payment_due_date}
-                    onChange={(e) => setFormData({ ...formData, payment_due_date: e.target.value })}
-                    className="input-vintage w-48"
-                  />
-                </div>
+                </RadioGroup>
+
+                {formData.payment_mode === "bank_transfer" ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Transparentní účet</Label>
+                        <Input
+                          value={formData.payment_account}
+                          onChange={(e) => setFormData({ ...formData, payment_account: e.target.value })}
+                          placeholder="např. 123456789/0800"
+                          className="input-vintage font-mono"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cena (text)</Label>
+                        <Input
+                          value={formData.payment_amount}
+                          onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
+                          placeholder="např. 500 Kč"
+                          className="input-vintage"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Datum splatnosti</Label>
+                      <Input
+                        type="date"
+                        value={formData.payment_due_date}
+                        onChange={(e) => setFormData({ ...formData, payment_due_date: e.target.value })}
+                        className="input-vintage w-48"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Instrukce k platbě</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Zobrazí se hráčům místo QR kódu. Můžeš použít formátování – ideální pro platbu v hotovosti, přes e-shop, apod.
+                    </p>
+                    <RichTextEditor
+                      value={formData.payment_instructions}
+                      onChange={(html) => setFormData({ ...formData, payment_instructions: html })}
+                    />
+
+                  </div>
+                )}
               </div>
+
             </div>
 
             <DialogFooter>
