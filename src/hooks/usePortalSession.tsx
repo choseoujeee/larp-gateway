@@ -29,6 +29,10 @@ interface PortalSession {
   runPaymentDueDate: string | null;
   personPaidAt: string | null;
   playerName: string | null;
+  /** Režim platby: 'bank_transfer' = účet + QR kód, 'custom' = vlastní text */
+  paymentMode: "bank_transfer" | "custom" | null;
+  /** Vlastní instrukce k platbě (HTML z editoru) – použije se při paymentMode === 'custom' */
+  paymentInstructions: string | null;
 }
 
 /** Řádek vrácený RPC get_portal_session_as_organizer (snake_case z DB) */
@@ -107,6 +111,53 @@ const PortalContext = createContext<PortalContextType | undefined>(undefined);
 
 const STORAGE_KEY = "larp_portal_session";
 
+/** Načte paymentMode a paymentInstructions pro daný run_id z nového RPC */
+async function fetchPaymentInfo(runId: string | null): Promise<{ paymentMode: "bank_transfer" | "custom" | null; paymentInstructions: string | null }> {
+  if (!runId) return { paymentMode: null, paymentInstructions: null };
+  const { data, error } = await supabase.rpc("get_run_payment_info" as any, { p_run_id: runId });
+  if (error || !data || (data as any[]).length === 0) return { paymentMode: null, paymentInstructions: null };
+  const row = (data as any[])[0];
+  return {
+    paymentMode: (row.payment_mode as "bank_transfer" | "custom") ?? "bank_transfer",
+    paymentInstructions: row.payment_instructions ?? null,
+  };
+}
+
+/** Mapuje řádek z DB (any) na PortalSession, doplní paymentMode + paymentInstructions */
+function mapRowToSession(row: any, slug: string, paymentMode: "bank_transfer" | "custom" | null, paymentInstructions: string | null): PortalSession {
+  return {
+    personId: row.person_id,
+    personName: row.person_name,
+    personType: row.person_type,
+    personSlug: slug,
+    larpId: row.larp_id,
+    larpName: row.larp_name,
+    larpSlug: row.larp_slug ?? null,
+    larpTheme: row.larp_theme ?? null,
+    larpMotto: row.larp_motto ?? null,
+    groupName: row.group_name ?? null,
+    performer: row.performer ?? null,
+    performanceTimes: row.performance_times ?? null,
+    runId: row.run_id ?? null,
+    runName: row.run_name ?? null,
+    runDateFrom: row.run_date_from ?? null,
+    runDateTo: row.run_date_to ?? null,
+    runLocation: row.run_location ?? null,
+    runAddress: row.run_address ?? null,
+    missionBriefing: row.mission_briefing ?? null,
+    medailonek: row.person_medailonek ?? null,
+    runFooterText: row.run_footer_text ?? null,
+    runContact: row.run_contact ?? null,
+    runPaymentAccount: row.run_payment_account ?? null,
+    runPaymentAmount: row.run_payment_amount ?? null,
+    runPaymentDueDate: row.run_payment_due_date ?? null,
+    personPaidAt: row.person_paid_at ?? null,
+    playerName: row.player_name ?? null,
+    paymentMode,
+    paymentInstructions,
+  };
+}
+
 export function PortalProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<PortalSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,38 +179,11 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         if (slug) {
           supabase
             .rpc("get_portal_session_without_password" as any, { p_slug: slug })
-            .then(({ data, error }) => {
+            .then(async ({ data, error }) => {
               if (error || !data || (data as any[]).length === 0) return;
               const row = (data as any[])[0];
-              const refreshed: PortalSession = {
-                personId: row.person_id,
-                personName: row.person_name,
-                personType: row.person_type,
-                personSlug: slug,
-                larpId: row.larp_id,
-                larpName: row.larp_name,
-                larpSlug: row.larp_slug ?? null,
-                larpTheme: row.larp_theme ?? null,
-                larpMotto: row.larp_motto ?? null,
-                groupName: row.group_name ?? null,
-                performer: row.performer ?? null,
-                performanceTimes: row.performance_times ?? null,
-                runId: row.run_id ?? null,
-                runName: row.run_name ?? null,
-                runDateFrom: row.run_date_from ?? null,
-                runDateTo: row.run_date_to ?? null,
-                runLocation: row.run_location ?? null,
-                runAddress: row.run_address ?? null,
-                missionBriefing: row.mission_briefing ?? null,
-                medailonek: row.person_medailonek ?? null,
-                runFooterText: row.run_footer_text ?? null,
-                runContact: row.run_contact ?? null,
-                runPaymentAccount: row.run_payment_account ?? null,
-                runPaymentAmount: row.run_payment_amount ?? null,
-                runPaymentDueDate: row.run_payment_due_date ?? null,
-                personPaidAt: row.person_paid_at ?? null,
-                playerName: row.player_name ?? null,
-              };
+              const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
+              const refreshed = mapRowToSession(row, slug, paymentMode, paymentInstructions);
               setSession(refreshed);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
               const newTheme = refreshed.larpTheme?.trim() || "wwii";
@@ -199,35 +223,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       }
 
       const row = data[0] as VerifyPersonBySlugRow;
-      const newSession: PortalSession = {
-        personId: row.person_id,
-        personName: row.person_name,
-        personType: row.person_type,
-        personSlug: slug,
-        larpId: row.larp_id,
-        larpName: row.larp_name,
-        larpSlug: row.larp_slug ?? null,
-        larpTheme: row.larp_theme ?? null,
-        larpMotto: row.larp_motto ?? null,
-        groupName: row.group_name ?? null,
-        performer: row.performer ?? null,
-        performanceTimes: row.performance_times ?? null,
-        runId: row.run_id ?? null,
-        runName: row.run_name ?? null,
-        runDateFrom: row.run_date_from ?? null,
-        runDateTo: row.run_date_to ?? null,
-        runLocation: row.run_location ?? null,
-        runAddress: row.run_address ?? null,
-        missionBriefing: row.mission_briefing ?? null,
-        medailonek: row.person_medailonek ?? null,
-        runFooterText: row.run_footer_text ?? null,
-        runContact: row.run_contact ?? null,
-        runPaymentAccount: row.run_payment_account ?? null,
-        runPaymentAmount: row.run_payment_amount ?? null,
-        runPaymentDueDate: row.run_payment_due_date ?? null,
-        personPaidAt: row.person_paid_at ?? null,
-        playerName: row.player_name ?? null,
-      };
+      const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
+      const newSession = mapRowToSession(row, slug, paymentMode, paymentInstructions);
 
       setSession(newSession);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
@@ -273,35 +270,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const row = rows[0] as GetPortalSessionAsOrganizerRow;
-      const newSession: PortalSession = {
-        personId: row.person_id,
-        personName: row.person_name,
-        personType: row.person_type,
-        personSlug: slug,
-        larpId: row.larp_id,
-        larpName: row.larp_name,
-        larpSlug: row.larp_slug ?? null,
-        larpTheme: row.larp_theme ?? null,
-        larpMotto: row.larp_motto ?? null,
-        groupName: row.group_name ?? null,
-        performer: row.performer ?? null,
-        performanceTimes: row.performance_times ?? null,
-        runId: row.run_id ?? null,
-        runName: row.run_name ?? null,
-        runDateFrom: row.run_date_from ?? null,
-        runDateTo: row.run_date_to ?? null,
-        runLocation: row.run_location ?? null,
-        runAddress: row.run_address ?? null,
-        missionBriefing: row.mission_briefing ?? null,
-        medailonek: row.person_medailonek ?? null,
-        runFooterText: row.run_footer_text ?? null,
-        runContact: row.run_contact ?? null,
-        runPaymentAccount: row.run_payment_account ?? null,
-        runPaymentAmount: row.run_payment_amount ?? null,
-        runPaymentDueDate: row.run_payment_due_date ?? null,
-        personPaidAt: row.person_paid_at ?? null,
-        playerName: row.player_name ?? null,
-      };
+      const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
+      const newSession = mapRowToSession(row, slug, paymentMode, paymentInstructions);
       setSession(newSession);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
       const theme = newSession.larpTheme?.trim() || "wwii";
@@ -329,35 +299,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const row = (data as any[])[0];
-      const newSession: PortalSession = {
-        personId: row.person_id,
-        personName: row.person_name,
-        personType: row.person_type,
-        personSlug: slug,
-        larpId: row.larp_id,
-        larpName: row.larp_name,
-        larpSlug: row.larp_slug ?? null,
-        larpTheme: row.larp_theme ?? null,
-        larpMotto: row.larp_motto ?? null,
-        groupName: row.group_name ?? null,
-        performer: row.performer ?? null,
-        performanceTimes: row.performance_times ?? null,
-        runId: row.run_id ?? null,
-        runName: row.run_name ?? null,
-        runDateFrom: row.run_date_from ?? null,
-        runDateTo: row.run_date_to ?? null,
-        runLocation: row.run_location ?? null,
-        runAddress: row.run_address ?? null,
-        missionBriefing: row.mission_briefing ?? null,
-        medailonek: row.person_medailonek ?? null,
-        runFooterText: row.run_footer_text ?? null,
-        runContact: row.run_contact ?? null,
-        runPaymentAccount: row.run_payment_account ?? null,
-        runPaymentAmount: row.run_payment_amount ?? null,
-        runPaymentDueDate: row.run_payment_due_date ?? null,
-        personPaidAt: row.person_paid_at ?? null,
-        playerName: row.player_name ?? null,
-      };
+      const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
+      const newSession = mapRowToSession(row, slug, paymentMode, paymentInstructions);
       setSession(newSession);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
       const theme = newSession.larpTheme?.trim() || "wwii";
