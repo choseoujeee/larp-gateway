@@ -95,7 +95,7 @@ function eventBoxStyle(ev: PortalScheduleEvent): { className: string; style?: Re
   return { className: base + "bg-muted/40 border-border" };
 }
 
-/** Read-only box události v gridu (bez tlačítek, bez drag) */
+/** Read-only box události v gridu – kliknutím se rozbalí */
 function ScheduleEventBoxReadOnly({
   event: ev,
   topPx,
@@ -111,34 +111,58 @@ function ScheduleEventBoxReadOnly({
   widthPct: number;
   isCurrent: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const { className, style } = eventBoxStyle(ev);
   const typeLabel = EVENT_TYPE_LABELS[ev.event_type] || ev.event_type;
-  const sub = ev.cp_id ? ev.persons?.name : ev.location ?? null;
-  const performerLabel = ev.cp_id ? (ev.performer_text?.trim() ?? null) : null;
-  const compact = heightPx < 60;
+  const cpName = ev.cp_id ? (ev.persons?.name ?? null) : null;
+  const location = ev.location ?? null;
+  const performerLabel = ev.performer_text?.trim() || null;
+  const compact = heightPx < 48;
 
   return (
     <div
-      className={`absolute left-0 right-0 cursor-default ${className} ${isCurrent ? "ring-2 ring-primary ring-inset" : ""}`}
+      className={`absolute cursor-pointer select-none transition-all duration-200 ease-in-out ${className} ${isCurrent ? "ring-2 ring-primary ring-inset" : ""} ${expanded ? "shadow-lg" : "hover:shadow-md hover:brightness-95"}`}
       style={{
         top: topPx,
-        height: heightPx,
-        left: `${leftPct}%`,
-        width: `calc(${widthPct}% - 4px)`,
+        height: expanded ? "auto" : heightPx,
+        minHeight: heightPx,
+        left: expanded ? 0 : `${leftPct}%`,
+        width: expanded ? "calc(100% - 4px)" : `calc(${widthPct}% - 4px)`,
         marginLeft: 2,
         marginRight: 2,
+        zIndex: expanded ? 30 : 1,
         ...style,
       }}
-      title={[ev.title, typeLabel, sub].filter(Boolean).join(" · ")}
+      title={expanded ? undefined : [ev.title, typeLabel, cpName ?? location].filter(Boolean).join(" · ")}
+      onClick={() => setExpanded((v) => !v)}
     >
-      <div className="p-1.5 h-full flex flex-col min-w-0">
-        <span className={`font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>{ev.title}</span>
-        {!compact && (
-          <>
-            <span className="text-xs text-muted-foreground truncate">{typeLabel}</span>
-            {sub && <span className="text-xs text-muted-foreground truncate">{sub}</span>}
-            {performerLabel && <span className="text-xs text-muted-foreground truncate">{performerLabel}</span>}
-          </>
+      <div className="p-1.5 flex flex-col min-w-0 gap-0.5">
+        {/* Compact header – always visible */}
+        <div className="flex items-start gap-1 min-w-0">
+          <span className={`font-semibold truncate flex-1 ${compact ? "text-[10px]" : "text-xs"}`}>{ev.title}</span>
+          {!compact && <span className="text-[10px] text-muted-foreground shrink-0 opacity-70">{typeLabel}</span>}
+        </div>
+        {!compact && cpName && (
+          <span className="text-[10px] text-muted-foreground truncate">{cpName}</span>
+        )}
+        {!compact && !cpName && location && !expanded && (
+          <span className="text-[10px] text-muted-foreground truncate">{location}</span>
+        )}
+
+        {/* Expanded details */}
+        {expanded && (
+          <div className="mt-1 pt-1 border-t border-border/40 flex flex-col gap-0.5">
+            {location && (
+              <span className="text-xs text-muted-foreground">📍 {location}</span>
+            )}
+            {performerLabel && (
+              <span className="text-xs text-muted-foreground">🎭 {performerLabel}</span>
+            )}
+            {ev.description && (
+              <p className="text-xs text-foreground/80 mt-0.5 whitespace-pre-wrap">{ev.description}</p>
+            )}
+            <span className="text-[10px] text-muted-foreground/60 mt-1 self-end">Klikni pro sbalení</span>
+          </div>
         )}
       </div>
     </div>
