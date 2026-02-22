@@ -1,80 +1,87 @@
+# Vytuneni editace dokumentu - fullscreen, accordion metadata, pokrocily WYSIWYG
 
-# Redesign harmonogramu - vizualni grid + UX vylepseni
+## 1. Fullscreen tlacitko v dialogu
 
-## 1. Vizualni redesign gridu
+Pridam stav `isFullscreen` do `DocumentEditDialog`. Tlacitko v headeru (ikona Maximize2/Minimize2) prepne dialog mezi `max-w-3xl max-h-[90vh]` a `w-screen h-screen max-w-none max-h-none rounded-none`. Editor se roztahne pres celou obrazovku.
 
-### Aktualni stav
-- Grid pouziva 15min sloty s vyskou 88px (prilis velke, plytve mistem)
-- Boxy udalosti jsou vizualne monotonni - tezke rozlisit CP vstupy od materialu
-- Vsechny informace jsou viditelne naraz (preplnene boxy)
-- Barvy jsou "stone/amber" paleta - neni dostatecne kontrastni
+**Soubor:** `src/components/admin/DocumentEditDialog.tsx`
 
-### Nove reseni
-- **Zmensit SLOT_HEIGHT_PX na 4px** (1 slot = 1 minuta) - grid bude plynulejsi, udalosti budou mit presnou vysku odpovidajici delce
-- **MINUTES_PER_SLOT = 5** - jemnejsi grid s casovymi znackami po 30 minutach (misto kazdy slot)
-- **Kompaktni boxy** - zaklad zobrazuje jen:
-  - CP VSTUP: typ label + jmeno CP (tucne)
-  - Material: typ label + nazev materialu
-  - Ostatni: typ + nazev
-- **Rozkliknuti** (click) rozbali box horizontalne (pres vice lane) a zobrazi detaily: lokace, performer, popis, tlacitka edit/delete
-- **Vizualni odliseni typu:**
-  - CP vstupy: vyrazny levy border (4px) v barve CP + jemne pozadi
-  - Materialy: sedy border + ikona balicku
-  - Organizacni/jidlo/presun: jemne neutralni pozadi
-- **Plynule barvy** - pouzit CSS transitions na hover a expand
-- **Casove znacky** - zobrazovat jen cele a pul hodiny (ne kazdych 15 min)
+---
+
+## 2. Metadata v Accordion
+
+Vsechna pole krome "Nazev" a "Obsah (WYSIWYG)" zabalim do `Accordion` (defaultne zavreny). Accordion bude mit titulek "Metadata a cileni" a uvnitr budou vsechna stavajici pole: typ dokumentu, cileni, skupina/osoba, priorita, poradi, beh, viditelnost, skryt pred.
+
+Pri otevreni dialogu pro novy dokument bude accordion zavreny. Pri editaci existujiciho take zavreny (metadata uz jsou nastavena).
+
+**Soubor:** `src/components/admin/DocumentEditDialog.tsx`
+
+---
+
+## 3. Vylepseny WYSIWYG editor
+
+### a) Velikost pisma v bodech (pt)
+
+Nahradim popisne nazvy ("Male", "Normalni"...) za konkretni velikosti v bodech: 8pt, 9pt, 10pt, 11pt, 12pt, 14pt, 16pt, 18pt, 20pt, 24pt, 28pt, 36pt, 48pt. Dropdown bude zobrazovat cislo s "pt".
+
+### b) Font family
+
+Pridam novy TipTap extension `FontFamily` (custom, analogie k FontSize). Dropdown s fonty: Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Comic Sans MS. Kazda polozka bude zobrazena v danem fontu.
+
+### c) Tlacitko "Vymazat formatovani"
+
+Pridam tlacitko (ikona RemoveFormatting) ktere zavola `editor.chain().focus().clearNodes().unsetAllMarks().run()` - odstrani vsechny formaty z vyberu.
+
+### d) Tlačítko řádkování a mezery mezi odstavci
+
+Přidat tlačítko řádkování (volba z: jednoduché, 1,15, 1,5, dvojité)
+
+Přidat tlačítko mezery za odstavcem (přidat nebo odebrat mezeru před odstavcem a za odstavcem).
+
+### e) Zachovani formatu pri paste z Google Docs
+
+TipTap uz defaultne zachovava HTML formatovani pri paste. Diky tomu, ze pridam FontFamily extension s `parseHTML` ktere cte `element.style.fontFamily`, bude paste z Google Docs zachovavat fonty. Stejne tak FontSize uz parsuje `font-size` ze stylu. Potrebuji zajistit, ze sanitizer (`sanitize.ts`) povoluje `font-family` ve style atributu - to uz je pokryto, protoze povolujeme cely `style` atribut.
 
 ### Technicke detaily
-- `MINUTES_PER_SLOT = 5`, `SLOT_HEIGHT_PX = 4` (kazda minuta = 4px, takze 15min udalost = 60px, 60min = 240px)
-- Casove labely zobrazovat jen pro celou hodinu a pulhodinu
-- `ScheduleEventBox` dostane stav `expanded` (useState) - click toggle
-- Expanded box dostane `z-index: 20`, `position: absolute` pres vice lane, vetsi padding, zobrazi vsechny detaily
-- Transition: `transition-all duration-200 ease-in-out`
 
-## 2. Odkaz na portal nahore + sprava hesla
+**Soubor:** `src/components/ui/rich-text-editor.tsx`
 
-### Aktualni stav
-- Sekce "Pristup k portalu harmonogramu" je dole na strance (radky 1467-1505)
-- Pouziva Input + tlacitko Zkopirovat (stejny problem jako u produkce)
-- Chybi moznost zrusit heslo (bez-hesla pristup)
+- Novy `FontFamily` extension (analogie k `FontSize`):
+  - `parseHTML`: cte `element.style.fontFamily`
+  - `renderHTML`: generuje `style: font-family: ...`
+  - Prikaz `setFontFamily(family)` a `unsetFontFamily()`
+- `FONT_SIZES` zmena:
 
-### Nove reseni
-- **Presunout portal sekci nahoru** - pod nadpis "Harmonogram", pred filtry
-- **Nahradit Input+Copy za primy odkaz** `<a href={url} target="_blank">` (jako u produkce)
-- **Pridat tlacitko "Zrusit heslo"** vedle "Zmenit heslo" - nastavi password_hash na prazdny retezec
-- **Pridat tlacitko "Vytvorit bez hesla"** vedle "Vytvorit pristup" pro bez-hesla rezim
-- **Na portalu** (`SchedulePortalPage.tsx`) - podpora prazdneho hesla (skip login screen)
+```text
+[
+  { label: "8", value: "8pt" },
+  { label: "9", value: "9pt" },
+  { label: "10", value: "10pt" },
+  { label: "11", value: "11pt" },
+  { label: "12", value: "12pt" },
+  { label: "14", value: "14pt" },
+  { label: "16", value: "16pt" },
+  { label: "18", value: "18pt" },
+  { label: "20", value: "20pt" },
+  { label: "24", value: "24pt" },
+  { label: "28", value: "28pt" },
+  { label: "36", value: "36pt" },
+  { label: "48", value: "48pt" },
+]
+```
 
-### DB zmeny
-- Vytvorit RPC `create_schedule_portal_access_no_password` (analogie k produkci)
-- Vytvorit RPC `remove_schedule_portal_password` 
-- Vytvorit RPC `check_schedule_portal_passwordless` - overi token a vrati run_id pokud je heslo prazdne
-- Upravit `verify_schedule_portal_access` nebo pridat novou logiku
+- Novy dropdown "Font" v toolbaru (pred velikosti pisma)
+- Nove tlacitko "Vymazat formatovani" (za strikethrough, pred highlight)
 
-## 3. Editace sceny a materialu primo z harmonogramu
-
-### Aktualni stav
-- CP sceny: uz existuje `openCpSceneEdit` (radek 820) + `CpSceneDialog` - FUNGUJE
-- Materialy: zadna editace z harmonogramu - chybi
-
-### Nove reseni
-- **CP sceny**: V expanded boxu pridat tlacitko "Upravit scenu" ktere zavola `openCpSceneEdit`
-- **Materialy**: V expanded boxu pridat tlacitko "Upravit material" - otevre dialog s editaci nazvu, URL, poznamky materialu
-- Pridat novy `MaterialEditDialog` komponent (nebo inline dialog)
+---
 
 ## 4. Soubory ke zmene
 
-| Soubor | Zmeny |
-|--------|-------|
-| `src/pages/admin/SchedulePage.tsx` | Redesign gridu, presun portalu nahore, expand boxy, edit materialu |
-| `src/pages/portal/SchedulePortalPage.tsx` | Podpora bez-hesla, vizualni update boxu |
-| Migrace SQL | RPCs pro bez-hesla pristup k harmonogramu |
 
-## 5. Poradi implementace
+| Soubor                                        | Zmeny                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| `src/components/admin/DocumentEditDialog.tsx` | Fullscreen toggle, accordion pro metadata                           |
+| `src/components/ui/rich-text-editor.tsx`      | FontFamily extension, pt velikosti, clear formatting, font dropdown |
 
-1. DB migrace - RPCs pro passwordless harmonogram
-2. Admin SchedulePage - portal nahore + hesla
-3. Admin SchedulePage - vizualni redesign gridu (slot height, barvy, kompaktni boxy)
-4. Admin SchedulePage - expandovatelne boxy s edit tlacitky
-5. SchedulePortalPage - passwordless + vizualni update
-6. Testovani - overeni DnD, expand/collapse, edit scen a materialu
+
+Zadne DB zmeny nejsou potreba.
