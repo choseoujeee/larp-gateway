@@ -582,7 +582,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        "flex flex-col rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden",
         className
       )}
       style={{ minHeight }}

@@ -271,7 +271,10 @@ export function DocumentEditDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 px-6 py-4 pr-4">
+        <div className={cn(
+          "flex-1 min-h-0 space-y-4 px-6 py-4 pr-4",
+          isFullscreen ? "flex flex-col overflow-hidden" : "overflow-y-auto"
+        )}>
           {/* Název – vždy viditelný */}
           <div className="space-y-2">
             <Label>Název</Label>
@@ -531,21 +534,21 @@ export function DocumentEditDialog({
           </Accordion>
 
           {/* WYSIWYG editor – vždy viditelný */}
-          <div className="space-y-2 flex-1">
+          <div className={cn(
+            "space-y-2",
+            isFullscreen ? "flex-1 flex flex-col min-h-0" : ""
+          )}>
             <Label>Obsah (WYSIWYG)</Label>
-            <div className={cn(
-              "overflow-y-auto rounded-md border border-input",
-              isFullscreen ? "flex-1" : "max-h-[50vh]"
-            )}>
-              <RichTextEditor
-                key={document?.id ?? "new"}
-                value={formData.content}
-                onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
-                placeholder="Napište obsah dokumentu…"
-                minHeight={isFullscreen ? "400px" : "240px"}
-                className="border-0"
-              />
-            </div>
+            <RichTextEditor
+              key={document?.id ?? "new"}
+              value={formData.content}
+              onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
+              placeholder="Napište obsah dokumentu…"
+              minHeight={isFullscreen ? "100%" : "240px"}
+              className={cn(
+                isFullscreen ? "flex-1 min-h-0" : "max-h-[50vh]"
+              )}
+            />
           </div>
         </div>
 
