@@ -588,7 +588,7 @@ export function RichTextEditor({
       style={{ minHeight }}
     >
       {/* Toolbar */}
-      <div className="flex-shrink-0 flex flex-wrap items-center gap-0.5 border-b border-border bg-background px-1 py-1 rounded-t-md shadow-[0_1px_0_0_hsl(var(--border))]">
+      <div className="flex-shrink-0 flex flex-wrap items-center gap-0.5 border-b border-border bg-background px-1 py-1 rounded-t-md shadow-[0_1px_0_0_hsl(var(--border))] sticky top-0 z-10">
         {/* Undo/Redo */}
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Zpět (Ctrl+Z)">
           <Undo2 className="h-4 w-4" />
