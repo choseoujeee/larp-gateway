@@ -19,20 +19,10 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocBadge } from "@/components/ui/doc-badge";
 import { SortableDocumentItem } from "@/components/admin/SortableDocumentItem";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DocumentEditDialog } from "@/components/admin/DocumentEditDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,12 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DOCUMENT_TYPES, DOCUMENT_TARGET_OPTIONS } from "@/lib/constants";
-import type { DocumentTargetOptionKey } from "@/lib/constants";
-import {
-  getDocumentTargetOptionKey,
-  applyTargetOptionToForm,
-} from "@/lib/documentTargetOptions";
+import { DOCUMENT_TYPES } from "@/lib/constants";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
 import { sortDocuments, updateDocumentOrder } from "@/lib/documentUtils";
@@ -108,23 +93,7 @@ export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"type" | "blocks">("type");
   const [blockSearch, setBlockSearch] = useState("");
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    doc_type: "organizacni" as keyof typeof DOCUMENT_TYPES,
-    target_type: "vsichni" as "vsichni" | "skupina" | "osoba",
-    target_group: "",
-    target_person_id: "",
-    sort_order: 0,
-    priority: 2,
-    run_id: "__all__" as string,
-    visibility_mode: "immediate" as string,
-    visible_days_before: 7,
-    visible_to_cp: false,
-  });
-  const [hiddenFromPersonIds, setHiddenFromPersonIds] = useState<string[]>([]);
-  const [hiddenFromGroupNames, setHiddenFromGroupNames] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  
 
   // DnD sensors
   const sensors = useSensors(
@@ -200,121 +169,12 @@ export default function DocumentsPage() {
 
   const openCreateDialog = () => {
     setSelectedDoc(null);
-    setFormData({
-      title: "",
-      content: "",
-      doc_type: "organizacni",
-      target_type: "vsichni",
-      target_group: "",
-      target_person_id: "",
-      sort_order: 0,
-      priority: 2,
-      run_id: "__all__",
-      visibility_mode: "immediate",
-      visible_days_before: 7,
-      visible_to_cp: false,
-    });
-    setHiddenFromPersonIds([]);
-    setHiddenFromGroupNames([]);
     setDialogOpen(true);
   };
 
-  const openEditDialog = async (doc: Document) => {
+  const openEditDialog = (doc: Document) => {
     setSelectedDoc(doc);
-    setFormData({
-      title: doc.title,
-      content: doc.content || "",
-      doc_type: doc.doc_type,
-      target_type: doc.target_type,
-      target_group: doc.target_group || "",
-      target_person_id: doc.target_person_id || "",
-      sort_order: doc.sort_order,
-      priority: doc.priority ?? 2,
-      run_id: doc.run_id || "__all__",
-      visibility_mode: doc.visibility_mode || "immediate",
-      visible_days_before: doc.visible_days_before ?? 7,
-      visible_to_cp: doc.visible_to_cp ?? false,
-    });
-    const [hd, hdg] = await Promise.all([
-      supabase.from("hidden_documents").select("person_id").eq("document_id", doc.id),
-      supabase.from("hidden_document_groups").select("group_name").eq("document_id", doc.id),
-    ]);
-    setHiddenFromPersonIds((hd.data ?? []).map((r) => r.person_id));
-    setHiddenFromGroupNames((hdg.data ?? []).map((r) => r.group_name));
     setDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.title) {
-      toast.error("Vyplňte název dokumentu");
-      return;
-    }
-
-    setSaving(true);
-
-    const payload = {
-      larp_id: currentLarpId,
-      run_id: formData.run_id === "__all__" ? null : formData.run_id,
-      title: formData.title,
-      content: formData.content || null,
-      doc_type: formData.doc_type,
-      target_type: formData.target_type,
-      target_group: formData.target_type === "skupina" ? formData.target_group : null,
-      target_person_id: formData.target_type === "osoba" ? formData.target_person_id : null,
-      sort_order: formData.sort_order,
-      priority: formData.priority,
-      visibility_mode: formData.visibility_mode,
-      visible_days_before: formData.visibility_mode === "delayed" ? formData.visible_days_before : null,
-      visible_to_cp: formData.target_type === "vsichni" ? formData.visible_to_cp : false,
-    };
-
-    let documentId: string;
-
-    if (selectedDoc) {
-      const { error } = await supabase
-        .from("documents")
-        .update(payload)
-        .eq("id", selectedDoc.id);
-
-      if (error) {
-        toast.error("Chyba při ukládání");
-        setSaving(false);
-        return;
-      }
-      documentId = selectedDoc.id;
-      toast.success("Dokument upraven");
-    } else {
-      const { data: inserted, error } = await supabase
-        .from("documents")
-        .insert(payload as never)
-        .select("id")
-        .single();
-
-      if (error) {
-        toast.error("Chyba při vytváření");
-        setSaving(false);
-        return;
-      }
-      documentId = inserted.id;
-      toast.success("Dokument vytvořen");
-    }
-
-    await supabase.from("hidden_documents").delete().eq("document_id", documentId);
-    if (hiddenFromPersonIds.length > 0) {
-      await supabase.from("hidden_documents").insert(
-        hiddenFromPersonIds.map((person_id) => ({ document_id: documentId, person_id }))
-      );
-    }
-    await supabase.from("hidden_document_groups").delete().eq("document_id", documentId);
-    if (hiddenFromGroupNames.length > 0) {
-      await supabase.from("hidden_document_groups").insert(
-        hiddenFromGroupNames.map((group_name) => ({ document_id: documentId, group_name }))
-      );
-    }
-
-    setSaving(false);
-    setDialogOpen(false);
-    fetchDocuments();
   };
 
   const handleDelete = async () => {
@@ -764,328 +624,21 @@ export default function DocumentsPage() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="paper-card max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="font-typewriter">
-              {selectedDoc ? "Upravit dokument" : "Nový dokument"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
-            <div className="space-y-2">
-              <Label>Název</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Název dokumentu"
-                className="input-vintage"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Typ dokumentu</Label>
-                <Select
-                  value={formData.doc_type}
-                  onValueChange={(v) => setFormData({ ...formData, doc_type: v as keyof typeof DOCUMENT_TYPES })}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DOCUMENT_TYPES).map(([key, { label }]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Cílení</Label>
-                <Select
-                  value={getDocumentTargetOptionKey(formData, persons)}
-                  onValueChange={(v) => {
-                    const next = applyTargetOptionToForm(
-                      v as DocumentTargetOptionKey,
-                      formData,
-                      persons
-                    );
-                    setFormData({ ...formData, ...next });
-                  }}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DOCUMENT_TARGET_OPTIONS).map(([key, { label }]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {getDocumentTargetOptionKey(formData, persons) === "skupina" && (
-              <div className="space-y-2">
-                <Label>Skupina</Label>
-                <Select
-                  value={formData.target_group}
-                  onValueChange={(v) => setFormData({ ...formData, target_group: v })}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue placeholder="Vyberte skupinu" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.filter((g) => g !== "CP").map((group) => (
-                      <SelectItem key={group} value={group}>
-                        {group}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {(getDocumentTargetOptionKey(formData, persons) === "osoba_postava" ||
-              getDocumentTargetOptionKey(formData, persons) === "osoba_cp") && (
-              <div className="space-y-2">
-                <Label>Osoba</Label>
-                <Select
-                  value={formData.target_person_id}
-                  onValueChange={(v) => setFormData({ ...formData, target_person_id: v })}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue placeholder="Vyberte osobu" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(getDocumentTargetOptionKey(formData, persons) === "osoba_cp"
-                      ? persons.filter((p) => p.type === "cp")
-                      : persons.filter((p) => p.type === "postava")
-                    ).map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.name} {person.group_name ? `(${person.group_name})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Priorita</Label>
-                <Select
-                  value={String(formData.priority)}
-                  onValueChange={(v) => setFormData({ ...formData, priority: parseInt(v) })}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Prioritní</SelectItem>
-                    <SelectItem value="2">Normální</SelectItem>
-                    <SelectItem value="3">Volitelné</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Pořadí</Label>
-                <Input
-                  type="number"
-                  value={formData.sort_order}
-                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className="input-vintage w-24"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Pro běh</Label>
-                <Select
-                  value={formData.run_id}
-                  onValueChange={(v) => setFormData({ ...formData, run_id: v })}
-                >
-                  <SelectTrigger className="input-vintage">
-                    <SelectValue placeholder="Všechny běhy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Všechny běhy</SelectItem>
-                    {runs.map((run) => (
-                      <SelectItem key={run.id} value={run.id}>
-                        {run.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Visibility mode */}
-            <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
-              <Label className="font-medium">Zobrazení na portálu hráče</Label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="visibility_mode"
-                    value="immediate"
-                    checked={formData.visibility_mode === "immediate"}
-                    onChange={() => setFormData({ ...formData, visibility_mode: "immediate" })}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">Zobrazit ihned</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="visibility_mode"
-                    value="delayed"
-                    checked={formData.visibility_mode === "delayed"}
-                    onChange={() => setFormData({ ...formData, visibility_mode: "delayed" })}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">Zobrazit až</span>
-                </label>
-                {formData.visibility_mode === "delayed" && (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={365}
-                      value={formData.visible_days_before}
-                      onChange={(e) => setFormData({ ...formData, visible_days_before: parseInt(e.target.value) || 7 })}
-                      className="input-vintage w-20"
-                    />
-                    <span className="text-sm text-muted-foreground">dní před začátkem běhu</span>
-                  </div>
-                )}
-              </div>
-              {formData.visibility_mode === "delayed" && (
-                <p className="text-xs text-muted-foreground">
-                  Dokument se na portálu zobrazí až {formData.visible_days_before} dní před datem začátku aktivního běhu.
-                </p>
-              )}
-            </div>
-
-            {formData.target_type !== "osoba" && (
-              <div className="space-y-2">
-                <Label>Skrýt před (dokument se nezobrazí vybraným osobám resp. celé skupině)</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Skrýt před osobami</p>
-                    <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
-                      <div className="space-y-2">
-                        {persons.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Žádné osoby.</p>
-                        ) : (
-                          persons.map((person) => (
-                            <label
-                              key={person.id}
-                              className="flex items-center gap-2 cursor-pointer text-sm"
-                            >
-                              <Checkbox
-                                checked={hiddenFromPersonIds.includes(person.id)}
-                                onCheckedChange={(checked) => {
-                                  setHiddenFromPersonIds((prev) =>
-                                    checked
-                                      ? [...prev, person.id]
-                                      : prev.filter((id) => id !== person.id)
-                                  );
-                                }}
-                              />
-                              <span>
-                                {person.name}
-                                {person.group_name ? ` (${person.group_name})` : ""}
-                              </span>
-                            </label>
-                          ))
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Skrýt před skupinami</p>
-                    <ScrollArea className="h-32 rounded-md border border-input bg-muted/30 p-2">
-                      <div className="space-y-2">
-                        {(() => {
-                          const groupNames = [
-                            ...new Set(
-                              persons.map((p) => p.group_name).filter((g): g is string => g != null && g !== "")
-                            ),
-                          ].sort();
-                          if (groupNames.length === 0) {
-                            return <p className="text-xs text-muted-foreground">Žádné skupiny.</p>;
-                          }
-                          return groupNames.map((groupName) => (
-                            <label
-                              key={groupName}
-                              className="flex items-center gap-2 cursor-pointer text-sm"
-                            >
-                              <Checkbox
-                                checked={hiddenFromGroupNames.includes(groupName)}
-                                onCheckedChange={(checked) => {
-                                  setHiddenFromGroupNames((prev) =>
-                                    checked
-                                      ? [...prev, groupName]
-                                      : prev.filter((g) => g !== groupName)
-                                  );
-                                }}
-                              />
-                              <span>{groupName}</span>
-                            </label>
-                          ));
-                        })()}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Obsah (WYSIWYG)</Label>
-              <RichTextEditor
-                key={selectedDoc?.id ?? "new"}
-                value={formData.content}
-                onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
-                placeholder="Napište obsah dokumentu…"
-                minHeight="240px"
-                className="border-input"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-2 flex-row flex-wrap gap-2 sm:justify-between">
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Zrušit
-              </Button>
-              {selectedDoc && (
-                <Button
-                  variant="outline"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    setDialogOpen(false);
-                    setDeleteDialogOpen(true);
-                  }}
-                >
-                  Smazat
-                </Button>
-              )}
-            </div>
-            <Button onClick={handleSave} disabled={saving} className="btn-vintage">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Uložit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Create/Edit Dialog – shared component */}
+      <DocumentEditDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        document={selectedDoc}
+        larpId={currentLarpId || ""}
+        persons={persons}
+        groups={groups}
+        runs={runs}
+        onSaved={fetchDocuments}
+        defaultValues={{
+          doc_type: "organizacni",
+          target_type: "vsichni",
+        }}
+      />
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
