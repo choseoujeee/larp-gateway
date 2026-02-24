@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { FileText, Loader2, FileStack, ListChecks, Music, Video, FileQuestion, LogOut, ExternalLink, ChevronRight, ChevronDown, FoldVertical } from "lucide-react";
+import { FileText, Loader2, FileStack, ListChecks, Music, Video, FileQuestion, LogOut, ExternalLink, ChevronRight, ChevronDown, FoldVertical, Download } from "lucide-react";
+import { generatePdf, buildDocumentsHtml } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -384,7 +385,7 @@ export default function ProductionPortalPage() {
                               ) : (
                                 <p className="text-sm text-muted-foreground">Bez obsahu.</p>
                               )}
-                              <div className="border-t border-border mt-4 pt-3 text-center no-print">
+                              <div className="border-t border-border mt-4 pt-3 text-center no-print flex items-center justify-center gap-2">
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -397,6 +398,22 @@ export default function ProductionPortalPage() {
                                 >
                                   <FoldVertical className="h-3.5 w-3.5 mr-1.5" />
                                   Sbalit
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    generatePdf(
+                                      buildDocumentsHtml([{ title: doc.title, content: doc.content }]),
+                                      doc.title
+                                    );
+                                  }}
+                                  className="text-xs uppercase tracking-wider"
+                                >
+                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  PDF
                                 </Button>
                               </div>
                             </div>
@@ -471,10 +488,27 @@ export default function ProductionPortalPage() {
 
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3">
         <p>Produkční portál · {session.larp_name}</p>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Odhlásit
-        </Button>
+        <div className="flex items-center justify-center gap-3">
+          {documents.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                generatePdf(
+                  buildDocumentsHtml(documents, `${session.larp_name} – Produkce`),
+                  `${session.larp_name}-produkce`
+                );
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Stáhnout PDF
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Odhlásit
+          </Button>
+        </div>
       </footer>
     </div>
   );

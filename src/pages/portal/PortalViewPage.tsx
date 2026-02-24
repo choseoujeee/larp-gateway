@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft } from "lucide-react";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
+import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
@@ -423,6 +424,21 @@ export default function PortalViewPage() {
                       Moje scény
                     </span>
                     <span className="text-sm text-muted-foreground">({cpScenes.length})</span>
+                    <span
+                      className="ml-auto no-print"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        generatePdf(
+                          buildScenesHtml(cpScenes, `${session.personName} – Scény`),
+                          `${session.personName}-sceny`
+                        );
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Stáhnout PDF scén"
+                    >
+                      <Download className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                    </span>
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -598,11 +614,24 @@ export default function PortalViewPage() {
         ) : (
           <p>Kliknutím na název dokumentu rozbalíte jeho obsah.</p>
         )}
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Tisk
           </Button>
+          {documents.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const allHtml = buildDocumentsHtml(documents, `${session.larpName} – ${session.personName}`);
+                generatePdf(allHtml, `${session.larpName}-${session.personName}`);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Stáhnout PDF
+            </Button>
+          )}
           {session.personType === "cp" && session.larpSlug ? (
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/cp/${session.larpSlug}`}>
@@ -809,6 +838,18 @@ function DocumentCategory({
               {title}
             </span>
             <span className="text-sm text-muted-foreground">({count})</span>
+            <span
+              className="ml-auto no-print"
+              onClick={(e) => {
+                e.stopPropagation();
+                generatePdf(buildDocumentsHtml(documents, title), title);
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Stáhnout PDF kategorie ${title}`}
+            >
+              <Download className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </span>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -869,7 +910,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(document.content) }}
             />
           )}
-          <div className="border-t border-border mt-4 pt-3 text-center no-print">
+          <div className="border-t border-border mt-4 pt-3 text-center no-print flex items-center justify-center gap-2">
             <Button 
               type="button"
               variant="outline" 
@@ -883,6 +924,23 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
             >
               <FoldVertical className="h-3.5 w-3.5 mr-1.5" />
               Sbalit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                generatePdf(
+                  buildDocumentsHtml([{ title: document.title, content: document.content }]),
+                  document.title
+                );
+              }}
+              className="text-xs uppercase tracking-wider"
+              aria-label="Stáhnout PDF"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              PDF
             </Button>
           </div>
         </div>

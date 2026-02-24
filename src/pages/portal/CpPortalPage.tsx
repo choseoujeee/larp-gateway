@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2, Clock, Theater } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2, Clock, Theater, Download } from "lucide-react";
+import { generatePdf, buildDocumentsHtml } from "@/lib/pdf-export";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -544,6 +545,23 @@ export default function CpPortalPage() {
                       Dokumenty pro všechny CP
                     </span>
                     <span className="text-sm text-muted-foreground">({cpDocuments.length})</span>
+                    {cpDocuments.length > 0 && (
+                      <span
+                        className="ml-auto no-print"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generatePdf(
+                            buildDocumentsHtml(cpDocuments, "Společné dokumenty pro CP"),
+                            `CP-dokumenty-${larpInfo?.name || "larp"}`
+                          );
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Stáhnout PDF všech CP dokumentů"
+                      >
+                        <Download className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                      </span>
+                    )}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -587,6 +605,24 @@ export default function CpPortalPage() {
                                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
                                 />
                               )}
+                              <div className="border-t border-border mt-4 pt-3 text-center no-print">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    generatePdf(
+                                      buildDocumentsHtml([{ title: doc.title, content: doc.content }]),
+                                      doc.title
+                                    );
+                                  }}
+                                  className="text-xs uppercase tracking-wider"
+                                >
+                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  PDF
+                                </Button>
+                              </div>
                             </div>
                           </CollapsibleContent>
                         </Collapsible>
