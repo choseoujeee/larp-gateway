@@ -305,32 +305,8 @@ export default function PortalViewPage() {
                   />
                 )}
 
-                {/* Platební sekce */}
-                {session.paymentMode === "custom" && session.paymentInstructions ? (
-                  <div className="mt-4 pt-4 border-t border-border space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
-                      <CreditCard className="h-4 w-4" />
-                      Informace o platbě
-                    </div>
-                    <div
-                      className="prose max-w-none text-sm leading-relaxed text-muted-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:mt-3 [&_h2]:mb-1 [&_p]:mb-2 [&_p:last-child]:mb-0"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.paymentInstructions) }}
-                    />
-                    <div className="mt-2">
-                      {session.personPaidAt ? (
-                        <div className="flex items-center gap-2 text-green-600 text-sm">
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="font-medium">Máš zaplaceno</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-amber-600 text-sm">
-                          <Clock className="h-4 w-4" />
-                          <span className="font-medium">Ještě neevidujeme tvou platbu</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : session.runPaymentAccount ? (
+                {/* Platební sekce – vždy jen tlačítko, info v dialogu */}
+                {(session.paymentMode === "custom" && session.paymentInstructions) || session.runPaymentAccount ? (
                   <div className="mt-4 pt-4 border-t border-border no-print">
                     <Button
                       variant="outline"
@@ -658,70 +634,94 @@ export default function PortalViewPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {session.runPaymentAccount && (
-              <div className="flex">
-                <span className="font-semibold w-28 text-foreground">Účet:</span>
-                <span className="text-muted-foreground font-mono">{session.runPaymentAccount}</span>
-              </div>
-            )}
-            {session.runPaymentAmount && (
-              <div className="flex">
-                <span className="font-semibold w-28 text-foreground">Částka:</span>
-                <span className="text-muted-foreground">{session.runPaymentAmount}</span>
-              </div>
-            )}
-            {session.runPaymentDueDate && (
-              <div className="flex">
-                <span className="font-semibold w-28 text-foreground">Splatnost:</span>
-                <span className="text-muted-foreground">
-                  {format(new Date(session.runPaymentDueDate), "d. MMMM yyyy", { locale: cs })}
-                </span>
-              </div>
-            )}
-            
-            <div className="border-t border-border pt-4 mt-4">
-              {session.personPaidAt ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">Máš zaplaceno</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-amber-600">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-medium">Ještě neevidujeme tvou platbu</span>
-                </div>
-              )}
-            </div>
-            
-            {!showQrCode && session.runPaymentAccount && session.runPaymentAmount && (
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowQrCode(true)}
-                  className="btn-vintage w-full"
-                >
-                  <QrCode className="h-4 w-4 mr-2" />
-                  Vygenerovat QR kód
-                </Button>
-              </div>
-            )}
-            
-            {showQrCode && session.runPaymentAccount && (
-              <div className="flex flex-col items-center gap-2 pt-2">
-                <QRCodeSVG
-                  value={generateQrPaymentString(
-                    session.runPaymentAccount,
-                    session.runPaymentAmount || "",
-                    session.playerName || session.personName,
-                    session.runName || ""
-                  )}
-                  size={180}
-                  level="M"
-                  includeMargin
+            {session.paymentMode === "custom" && session.paymentInstructions ? (
+              <>
+                <div
+                  className="prose max-w-none text-sm leading-relaxed text-muted-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:mt-3 [&_h2]:mb-1 [&_p]:mb-2 [&_p:last-child]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.paymentInstructions) }}
                 />
-                <p className="text-xs text-muted-foreground">Naskenuj v bankovní aplikaci</p>
-              </div>
+                <div className="border-t border-border pt-4 mt-4">
+                  {session.personPaidAt ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Máš zaplaceno</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <Clock className="h-5 w-5" />
+                      <span className="font-medium">Ještě neevidujeme tvou platbu</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {session.runPaymentAccount && (
+                  <div className="flex">
+                    <span className="font-semibold w-28 text-foreground">Účet:</span>
+                    <span className="text-muted-foreground font-mono">{session.runPaymentAccount}</span>
+                  </div>
+                )}
+                {session.runPaymentAmount && (
+                  <div className="flex">
+                    <span className="font-semibold w-28 text-foreground">Částka:</span>
+                    <span className="text-muted-foreground">{session.runPaymentAmount}</span>
+                  </div>
+                )}
+                {session.runPaymentDueDate && (
+                  <div className="flex">
+                    <span className="font-semibold w-28 text-foreground">Splatnost:</span>
+                    <span className="text-muted-foreground">
+                      {format(new Date(session.runPaymentDueDate), "d. MMMM yyyy", { locale: cs })}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="border-t border-border pt-4 mt-4">
+                  {session.personPaidAt ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Máš zaplaceno</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <Clock className="h-5 w-5" />
+                      <span className="font-medium">Ještě neevidujeme tvou platbu</span>
+                    </div>
+                  )}
+                </div>
+                
+                {!showQrCode && session.runPaymentAccount && session.runPaymentAmount && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowQrCode(true)}
+                      className="btn-vintage w-full"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Vygenerovat QR kód
+                    </Button>
+                  </div>
+                )}
+                
+                {showQrCode && session.runPaymentAccount && (
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <QRCodeSVG
+                      value={generateQrPaymentString(
+                        session.runPaymentAccount,
+                        session.runPaymentAmount || "",
+                        session.playerName || session.personName,
+                        session.runName || ""
+                      )}
+                      size={180}
+                      level="M"
+                      includeMargin
+                    />
+                    <p className="text-xs text-muted-foreground">Naskenuj v bankovní aplikaci</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </DialogContent>
