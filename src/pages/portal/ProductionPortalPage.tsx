@@ -10,6 +10,7 @@ import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -225,7 +226,7 @@ export default function ProductionPortalPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
         <div className="absolute top-4 right-4">
-          <FloatingThemeToggle />
+          <ThemeToggle />
         </div>
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
