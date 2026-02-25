@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FileText, Loader2, ArrowLeft, Users, User, ChevronRight, ChevronDown, Gamepad2, Clock, Theater, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml } from "@/lib/pdf-export";
+import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -875,13 +876,24 @@ export default function CpPortalPage() {
         </div>
       </main>
 
-      <footer className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3">
+      <footer className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3 no-print">
         {larpInfo?.footer_text ? (
           <p className="whitespace-pre-line">{larpInfo.footer_text}</p>
         ) : null}
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          Odhlásit se z CP portálu
-        </Button>
+        <div className="flex items-center justify-center gap-3">
+          {(() => {
+            const pdfSections: PdfSection[] = [
+              ...(cpDocuments.length > 0 ? [{
+                key: "cp-docs", label: "Společné dokumenty", count: cpDocuments.length,
+                buildHtml: () => buildDocumentsHtml(cpDocuments, "Společné dokumenty pro CP"),
+              }] : []),
+            ];
+            return <PdfDownloadMenu sections={pdfSections} filename={`CP-dokumenty-${larpInfo?.name || "larp"}`} title={`${larpInfo?.name || "LARP"} – CP dokumenty`} />;
+          })()}
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            Odhlásit se z CP portálu
+          </Button>
+        </div>
       </footer>
     </div>
   );

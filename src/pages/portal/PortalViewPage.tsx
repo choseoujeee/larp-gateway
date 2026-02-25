@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
+import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
 import { Button } from "@/components/ui/button";
 import { PaperCard, PaperCardHeader, PaperCardTitle, PaperCardContent } from "@/components/ui/paper-card";
 import { Badge } from "@/components/ui/badge";
@@ -595,19 +596,31 @@ export default function PortalViewPage() {
             <Printer className="h-4 w-4 mr-2" />
             Tisk
           </Button>
-          {documents.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const allHtml = buildDocumentsHtml(documents, `${session.larpName} – ${session.personName}`);
-                generatePdf(allHtml, `${session.larpName}-${session.personName}`);
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Stáhnout PDF
-            </Button>
-          )}
+          {(() => {
+            const pdfSections: PdfSection[] = [
+              ...(groupedDocs.organizacni.length > 0 ? [{
+                key: "organizacni", label: "Organizační", count: groupedDocs.organizacni.length,
+                buildHtml: () => buildDocumentsHtml(groupedDocs.organizacni, "Organizační dokumenty"),
+              }] : []),
+              ...(groupedDocs.herni.length > 0 ? [{
+                key: "herni", label: "Herní", count: groupedDocs.herni.length,
+                buildHtml: () => buildDocumentsHtml(groupedDocs.herni, "Herní dokumenty"),
+              }] : []),
+              ...(groupedDocs.osobni.length > 0 ? [{
+                key: "osobni", label: "Osobní", count: groupedDocs.osobni.length,
+                buildHtml: () => buildDocumentsHtml(groupedDocs.osobni, "Osobní dokumenty"),
+              }] : []),
+              ...(groupedDocs.cp.length > 0 ? [{
+                key: "cp", label: "CP materiály", count: groupedDocs.cp.length,
+                buildHtml: () => buildDocumentsHtml(groupedDocs.cp, "CP materiály"),
+              }] : []),
+              ...(cpScenes.length > 0 ? [{
+                key: "scenes", label: "Moje scény", count: cpScenes.length,
+                buildHtml: () => buildScenesHtml(cpScenes, `${session.personName} – Scény`),
+              }] : []),
+            ];
+            return <PdfDownloadMenu sections={pdfSections} filename={`${session.larpName}-${session.personName}`} title={`${session.larpName} – ${session.personName}`} />;
+          })()}
           {session.personType === "cp" && session.larpSlug ? (
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/cp/${session.larpSlug}`}>

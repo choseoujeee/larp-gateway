@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FileText, Loader2, FileStack, ListChecks, Music, Video, FileQuestion, LogOut, ExternalLink, ChevronRight, ChevronDown, FoldVertical, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml } from "@/lib/pdf-export";
+import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -489,21 +490,22 @@ export default function ProductionPortalPage() {
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-3">
         <p>Produkční portál · {session.larp_name}</p>
         <div className="flex items-center justify-center gap-3">
-          {documents.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                generatePdf(
-                  buildDocumentsHtml(documents, `${session.larp_name} – Produkce`),
-                  `${session.larp_name}-produkce`
-                );
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Stáhnout PDF
-            </Button>
-          )}
+          {(() => {
+            const pdfSections: PdfSection[] = [
+              ...(documents.length > 0 ? [{
+                key: "docs", label: "Dokumenty", count: documents.length,
+                buildHtml: () => buildDocumentsHtml(documents, "Dokumenty"),
+              }] : []),
+              ...(materials.length > 0 ? [{
+                key: "materials", label: "Materiály", count: materials.length,
+                buildHtml: () => {
+                  const items = materials.map(m => `<li><strong>${m.title}</strong>${m.note ? ` – ${m.note}` : ""}${m.url ? ` <a href="${m.url}">${m.url}</a>` : ""}</li>`);
+                  return `<h1 style="font-size:22px;margin-bottom:16px;border-bottom:2px solid #333;padding-bottom:8px;">Materiály</h1><ul>${items.join("")}</ul>`;
+                },
+              }] : []),
+            ];
+            return <PdfDownloadMenu sections={pdfSections} filename={`${session.larp_name}-produkce`} title={`${session.larp_name} – Produkce`} />;
+          })()}
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Odhlásit
