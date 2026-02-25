@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download, Sun, Moon } from "lucide-react";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
 import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { supabase } from "@/integrations/supabase/client";
 import { DOCUMENT_TYPES } from "@/lib/constants";
