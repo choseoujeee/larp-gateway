@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
+import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download, Sun, Moon } from "lucide-react";
 import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
 import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
 import { Button } from "@/components/ui/button";
@@ -880,7 +880,7 @@ function DocumentCategory({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="divide-y divide-border">
+          <div>
             {documents.map((doc, index) => (
               <DocumentItem
                 key={doc.id}
