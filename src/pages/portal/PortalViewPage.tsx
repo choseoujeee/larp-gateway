@@ -246,8 +246,8 @@ export default function PortalViewPage() {
                   </Badge>
                 )}
                 {session.medailonek && (
-                  <div 
-                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                   <div 
+                    className="prose max-w-none text-base leading-relaxed text-foreground/80 mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.medailonek) }}
                   />
                 )}
@@ -301,7 +301,7 @@ export default function PortalViewPage() {
                 </div>
                 {session.missionBriefing && (
                   <div
-                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                    className="prose max-w-none text-base leading-relaxed text-foreground/80 mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
                 )}
@@ -580,8 +580,22 @@ export default function PortalViewPage() {
       </main>
 
       {/* Floating ThemeToggle bottom-right */}
-      <div className="fixed bottom-4 right-20 z-50 no-print">
-        <ThemeToggle />
+      <div className="fixed bottom-14 right-4 z-50 no-print">
+        <Button
+          variant="outline"
+          size="sm"
+          className="shadow-lg bg-background hover:bg-accent gap-2"
+          onClick={() => {
+            const current = document.documentElement.classList.contains("dark") ? "dark" : "light";
+            const next = current === "dark" ? "light" : "dark";
+            document.documentElement.classList.toggle("dark");
+            localStorage.setItem("theme", next);
+          }}
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="hidden sm:inline">Vizuál</span>
+        </Button>
       </div>
 
       {/* Footer */}
@@ -898,9 +912,9 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
-        <button 
-          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/40 transition-colors sticky top-0 z-10 bg-background border-b border-border ${
-            isEven && !isOpen ? "bg-muted/20" : ""
+       <button 
+          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-accent/20 transition-colors sticky top-0 z-10 border-b-2 border-border/60 ${
+            isEven && !isOpen ? "bg-muted/40" : "bg-muted/20"
           }`}
         >
           <ChevronRight 
@@ -916,7 +930,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="px-5 py-5 bg-background">
+        <div className="px-5 py-5 bg-card">
           {document.content && (
             <div
               className="prose max-w-none text-base leading-relaxed text-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
