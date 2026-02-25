@@ -580,23 +580,7 @@ export default function PortalViewPage() {
       </main>
 
       {/* Floating ThemeToggle bottom-right */}
-      <div className="fixed bottom-14 right-4 z-50 no-print">
-        <Button
-          variant="outline"
-          size="sm"
-          className="shadow-lg bg-background hover:bg-accent gap-2"
-          onClick={() => {
-            const current = document.documentElement.classList.contains("dark") ? "dark" : "light";
-            const next = current === "dark" ? "light" : "dark";
-            document.documentElement.classList.toggle("dark");
-            localStorage.setItem("theme", next);
-          }}
-        >
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="hidden sm:inline">Vizuál</span>
-        </Button>
-      </div>
+      <FloatingThemeToggle />
 
       {/* Footer */}
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-4">
