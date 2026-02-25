@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
 import { usePortalSession } from "@/hooks/usePortalSession";
 import { supabase } from "@/integrations/supabase/client";
 import { DOCUMENT_TYPES } from "@/lib/constants";
@@ -246,8 +246,8 @@ export default function PortalViewPage() {
                   </Badge>
                 )}
                 {session.medailonek && (
-                  <div 
-                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                   <div 
+                    className="prose max-w-none text-base leading-relaxed text-foreground/80 mt-4 text-left [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.medailonek) }}
                   />
                 )}
@@ -301,7 +301,7 @@ export default function PortalViewPage() {
                 </div>
                 {session.missionBriefing && (
                   <div
-                    className="prose max-w-none text-base leading-relaxed text-muted-foreground mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
+                    className="prose max-w-none text-base leading-relaxed text-foreground/80 mt-4 pt-4 border-t border-border whitespace-pre-line [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(session.missionBriefing) }}
                   />
                 )}
@@ -580,9 +580,7 @@ export default function PortalViewPage() {
       </main>
 
       {/* Floating ThemeToggle bottom-right */}
-      <div className="fixed bottom-4 right-20 z-50 no-print">
-        <ThemeToggle />
-      </div>
+      <FloatingThemeToggle />
 
       {/* Footer */}
       <footer className="no-print container mx-auto px-4 py-8 text-center text-sm text-muted-foreground border-t border-border space-y-4">
@@ -866,7 +864,7 @@ function DocumentCategory({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="divide-y divide-border">
+          <div>
             {documents.map((doc, index) => (
               <DocumentItem
                 key={doc.id}
@@ -898,9 +896,9 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
-        <button 
-          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/40 transition-colors sticky top-0 z-10 bg-background border-b border-border ${
-            isEven && !isOpen ? "bg-muted/20" : ""
+       <button 
+          className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-accent/20 transition-colors sticky top-0 z-10 border-b-2 border-border/60 ${
+            isEven && !isOpen ? "bg-muted/40" : "bg-muted/20"
           }`}
         >
           <ChevronRight 
@@ -916,7 +914,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="px-5 py-5 bg-background">
+        <div className="px-5 py-5 bg-card">
           {document.content && (
             <div
               className="prose max-w-none text-base leading-relaxed text-foreground [&_h1]:mt-6 [&_h1]:mb-3 [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2:first-child]:mt-0 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0"

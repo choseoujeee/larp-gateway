@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -286,9 +287,7 @@ export default function ProductionPortalPage() {
       </header>
 
       {/* Floating ThemeToggle */}
-      <div className="fixed bottom-4 right-20 z-50 no-print">
-        <ThemeToggle />
-      </div>
+      <FloatingThemeToggle />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto space-y-6">
