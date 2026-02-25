@@ -225,7 +225,7 @@ export default function ProductionPortalPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
         <div className="absolute top-4 right-4">
-          <ThemeToggle />
+          <FloatingThemeToggle />
         </div>
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
