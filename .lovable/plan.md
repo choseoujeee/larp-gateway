@@ -1,27 +1,55 @@
 
-# Oprava editacniho dialogu na strance Dokumenty
 
-## Problem
+# Oprava prazdnych PDF a pridani download menu
 
-Stranka `/admin/dokumenty` (`DocumentsPage.tsx`) pouziva vlastni inline dialog pro editaci dokumentu (radky 768-1088), ktery je **kopie** logiky z `DocumentEditDialog.tsx`. Zmeny (fullscreen tlacitko, accordion metadata) byly provedeny jen v `DocumentEditDialog.tsx`, ale `DocumentsPage.tsx` stale pouziva starou inline verzi bez techto vylepseni.
+## Problem 1: Prazdne (bile) PDF
 
-## Reseni
+Pricina je v `src/lib/pdf-export.ts` na radku 74. Kontejner ma `opacity:0`, coz zpusobi, ze `html2canvas` vykresli pruhledne pixely = prazdna stranka. Kontejner je sice ve viewportu (fixed, left:0, top:0), ale nulova opacity = nic neni viditelne pro screenshot engine.
 
-Refaktorovat `DocumentsPage.tsx` tak, aby pouzivala sdileny komponent `DocumentEditDialog` (stejne jako to uz delaji `CpDetailPage`, `ProductionPage`, `GroupsPage`, `PersonsPage`).
+**Oprava:** Odstranit `opacity:0` z CSS kontejneru. Element je uz na `z-index:-1` a `pointer-events:none`, takze nebude videt ani klikatelny. Pripadne pouzit `clip: rect(0,0,0,0); overflow:hidden;` misto opacity pro plne skryti.
 
-### Co se zmeni
+## Problem 2: Tlacitka PDF na jednotlivych dokumentech
 
-**Soubor: `src/pages/admin/DocumentsPage.tsx`**
+Kod uz tlacitka na jednotlivych dokumentech obsahuje (radky 928-944 v `PortalViewPage.tsx`). Jsou uvnitr `CollapsibleContent` - zobrazi se az kdyz uzivatel dokument rozbalí. Tlacitko "PDF" je vedle tlacitka "Sbalit". Toto uz funguje spravne - uzivatel je mozna nevidel kvuli tomu ze PDF bylo prazdne a myslel si ze tlacitko nefunguje.
 
-1. Pridat import `DocumentEditDialog` z `@/components/admin/DocumentEditDialog`
-2. Nahradit cely inline dialog (radky 768-1088) za `<DocumentEditDialog>` komponent s prislusnymi props
-3. Odstranit nepotrebne importy (`Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogFooter`, `RichTextEditor`, `Checkbox`, `ScrollArea`) pokud se uz jinde nepouzivaji
-4. Upravit state management - `formData`, `hiddenFromPersonIds`, `hiddenFromGroupNames`, `saving` logiku predat do `DocumentEditDialog` (ktera uz to vse resi)
-5. Ponechat `AlertDialog` pro smazani (nebo vyuzit delete z `DocumentEditDialog`)
+## Problem 3: Download menu na konci (vyber co stahnout)
 
-### Vysledek
+Nahradit jednoduche tlacitko "Stahnout PDF" v paticce za dropdown menu s checkboxy. Uzivatel si vybere ktere kategorie/sekce chce zahrnout do PDF a pak klikne "Stahnout".
 
-- Dialog pro editaci/vytvareni dokumentu na `/admin/dokumenty` bude mit fullscreen tlacitko
-- Metadata budou v accordeonu
-- WYSIWYG editor bude mit vsechny nove funkce (fonty, velikosti v pt, vymazani formatovani, radkovani)
-- Vsechny stranky budou pouzivat jediny sdileny komponent = konzistentni UX a snazsi udrzba
+### Zmeny v souborech
+
+**`src/lib/pdf-export.ts`** (radek 74)
+- Odstranit `opacity:0` z `container.style.cssText`
+- Pouzit misto toho skryti pres `clip:rect(0,0,0,0);overflow:hidden;` nebo jednoduche odstraneni opacity (z-index:-1 staci)
+
+**`src/pages/portal/PortalViewPage.tsx`** (radky 593-610)
+- Nahradit jednoduche tlacitko "Stahnout PDF" za komponent s Popover/DropdownMenu
+- Menu bude obsahovat checkboxy pro: Organizacni, Herni, Osobni, CP materialy, Moje sceny (pokud CP)
+- Vychozi stav: vse zaskrtnute
+- Tlacitko "Stahnout" na konci menu vygeneruje PDF z vybranych sekci
+
+**`src/pages/portal/ProductionPortalPage.tsx`** a **`src/pages/portal/CpPortalPage.tsx`**
+- Stejna uprava download menu v paticce (pridat checkboxy pro vyber obsahu)
+
+### Technicke detaily
+
+Oprava blank PDF v `generatePdf`:
+```text
+Aktualni: opacity:0; pointer-events:none; z-index:-1;
+Oprava:   pointer-events:none; z-index:-1; (bez opacity)
+```
+
+Download menu struktura:
+```text
+[Stahnout PDF v]
+  ┌─────────────────────────┐
+  │ [x] Organizacni (3)     │
+  │ [x] Herni (5)           │
+  │ [x] Osobni (2)          │
+  │ [x] CP materialy (1)    │
+  │ [x] Moje sceny (4)      │
+  │─────────────────────────│
+  │   [ Stahnout vyber ]    │
+  └─────────────────────────┘
+```
+
