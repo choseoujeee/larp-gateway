@@ -1,55 +1,55 @@
 
 
-# Oprava prazdnych PDF a pridani download menu
+# Dva problémy: Sbalitelná admin lišta + Prázdné PDF
 
-## Problem 1: Prazdne (bile) PDF
+## 1. Prázdné PDF – oprava v `src/lib/pdf-export.ts`
 
-Pricina je v `src/lib/pdf-export.ts` na radku 74. Kontejner ma `opacity:0`, coz zpusobi, ze `html2canvas` vykresli pruhledne pixely = prazdna stranka. Kontejner je sice ve viewportu (fixed, left:0, top:0), ale nulova opacity = nic neni viditelne pro screenshot engine.
+Problém: Na řádku 74 kontejner používá `clip:rect(0,0,0,0);overflow:hidden;` — toto CSS ořízne element na nulovou velikost, takže `html2canvas` nemá co vykreslit → prázdné stránky.
 
-**Oprava:** Odstranit `opacity:0` z CSS kontejneru. Element je uz na `z-index:-1` a `pointer-events:none`, takze nebude videt ani klikatelny. Pripadne pouzit `clip: rect(0,0,0,0); overflow:hidden;` misto opacity pro plne skryti.
+**Oprava:** Odstranit `clip` a `overflow:hidden`. Kontejner zůstane na `position:fixed; z-index:-1; pointer-events:none;` — je pod vším ostatním a neklikatelný, ale html2canvas ho vidí a vykreslí. Přidat `left:-9999px` aby nebyl vidět na obrazovce, ale ponechat ho v DOM s plnou velikostí.
 
-## Problem 2: Tlacitka PDF na jednotlivych dokumentech
+Nový styl:
+```
+position:fixed;left:0;top:0;width:210mm;max-width:100%;
+font-family:Georgia,serif;font-size:14px;line-height:1.6;
+color:#000;background:#fff;padding:20px;
+pointer-events:none;z-index:9999;
+```
+Klíčová změna: `z-index:9999` (aby byl nahoře, html2canvas to potřebuje), ale přidat `opacity:1` a po vygenerování PDF element odebrat. Kontejner bude chvilku viditelný — to je bohužel nutné pro html2canvas. Alternativně ho umístit přesně v body s visibility, ale nejspolehlivější je ho nechat renderovat normálně a po save() ihned smazat.
 
-Kod uz tlacitka na jednotlivych dokumentech obsahuje (radky 928-944 v `PortalViewPage.tsx`). Jsou uvnitr `CollapsibleContent` - zobrazi se az kdyz uzivatel dokument rozbalí. Tlacitko "PDF" je vedle tlacitka "Sbalit". Toto uz funguje spravne - uzivatel je mozna nevidel kvuli tomu ze PDF bylo prazdne a myslel si ze tlacitko nefunguje.
+Vlastně nejlepší řešení: nechat kontejner viditelný (bez clip, bez opacity:0), ale na `position:fixed; left:0; top:0; z-index:-1` — html2canvas by ho měl vidět, protože je „v layoutu" i když pod ostatními elementy.
 
-## Problem 3: Download menu na konci (vyber co stahnout)
+## 2. Sbalitelná boční lišta v administraci – `src/components/layout/AdminLayout.tsx`
 
-Nahradit jednoduche tlacitko "Stahnout PDF" v paticce za dropdown menu s checkboxy. Uzivatel si vybere ktere kategorie/sekce chce zahrnout do PDF a pak klikne "Stahnout".
+Přidat stav `collapsed` řízený pomocí `useIsMobile()` hooku + toggle tlačítko.
 
-### Zmeny v souborech
+**Chování:**
+- Desktop (>768px): sidebar plně rozbalený (w-64), s možností sbalit na ikonový pruh (w-14)
+- Tablet/mobil (≤768px): sidebar defaultně sbalený (w-14, jen ikony), po kliknutí na hamburger/toggle se rozbalí jako overlay přes obsah
+- Toggle tlačítko (Menu/ChevronLeft ikona) vždy viditelné
 
-**`src/lib/pdf-export.ts`** (radek 74)
-- Odstranit `opacity:0` z `container.style.cssText`
-- Pouzit misto toho skryti pres `clip:rect(0,0,0,0);overflow:hidden;` nebo jednoduche odstraneni opacity (z-index:-1 staci)
+**Změny v `AdminLayout.tsx`:**
+- Import `useIsMobile` z `@/hooks/use-mobile`
+- Import `Menu, PanelLeftClose` z lucide-react
+- Přidat `const [collapsed, setCollapsed] = useState(false)` + auto-collapse na mobilním breakpointu
+- `aside` dynamicky: `collapsed ? "w-14" : "w-64"`, na mobilu přidat overlay pozadí
+- V collapsed stavu skrýt texty (názvy položek, section labels, email) a zobrazit jen ikony
+- Přidat toggle tlačítko v horní části sidebaru
+- Na mobilu: sidebar jako absolutní/fixed overlay přes hlavní obsah, s tmavým pozadím na kliknutí mimo
 
-**`src/pages/portal/PortalViewPage.tsx`** (radky 593-610)
-- Nahradit jednoduche tlacitko "Stahnout PDF" za komponent s Popover/DropdownMenu
-- Menu bude obsahovat checkboxy pro: Organizacni, Herni, Osobni, CP materialy, Moje sceny (pokud CP)
-- Vychozi stav: vse zaskrtnute
-- Tlacitko "Stahnout" na konci menu vygeneruje PDF z vybranych sekci
-
-**`src/pages/portal/ProductionPortalPage.tsx`** a **`src/pages/portal/CpPortalPage.tsx`**
-- Stejna uprava download menu v paticce (pridat checkboxy pro vyber obsahu)
-
-### Technicke detaily
-
-Oprava blank PDF v `generatePdf`:
-```text
-Aktualni: opacity:0; pointer-events:none; z-index:-1;
-Oprava:   pointer-events:none; z-index:-1; (bez opacity)
+**Struktura:**
+```
+[aside]
+  ├── toggle tlačítko (vždy viditelné)
+  ├── logo (collapsed = jen ikona)
+  ├── nav (collapsed = jen ikony, bez textů)
+  └── user info (collapsed = jen logout ikona)
+[/aside]
+[overlay backdrop] (jen na mobilu, když rozbaleno)
+[main content]
 ```
 
-Download menu struktura:
-```text
-[Stahnout PDF v]
-  ┌─────────────────────────┐
-  │ [x] Organizacni (3)     │
-  │ [x] Herni (5)           │
-  │ [x] Osobni (2)          │
-  │ [x] CP materialy (1)    │
-  │ [x] Moje sceny (4)      │
-  │─────────────────────────│
-  │   [ Stahnout vyber ]    │
-  └─────────────────────────┘
-```
+### Soubory ke změně:
+1. **`src/lib/pdf-export.ts`** — řádek 74: odstranit `clip:rect(0,0,0,0);overflow:hidden;`
+2. **`src/components/layout/AdminLayout.tsx`** — přidat collapsed stav, responsive sidebar
 
