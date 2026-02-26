@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, Navigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -14,7 +14,9 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowLeft,
-  MessageSquare
+  MessageSquare,
+  Menu,
+  PanelLeftClose
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,18 +26,14 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { useRunContext } from "@/hooks/useRunContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-// Úvodní stránka adminu – výběr / přepnutí LARPu
 const dashboardItem = { name: "Přehled LARPů", href: "/admin", icon: LayoutDashboard };
 
-// Sekce 1: Organizace běhů – Běhy jako rozbalovací seznam (dynamicky z RunContext)
-// Harmonogram je v Obsah LARPu za Cizí postavy
-
-// Sekce 2: Obsah LARPu (Harmonogram přesunut za Cizí postavy)
 const larpContentNavigation = [
   { name: "Dokumenty", href: "/admin/dokumenty", icon: FileText },
   { name: "Postavy", href: "/admin/osoby", icon: Users },
@@ -45,7 +43,6 @@ const larpContentNavigation = [
   { name: "Produkce", href: "/admin/produkce", icon: LinkIcon },
 ];
 
-// Sekce 3: Správa (globální) – Organizátoři jen pro super admina
 const larpManagement = [
   { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
   { name: "Organizátoři", href: "/admin/organizatori", icon: Users, superAdminOnly: true },
@@ -59,51 +56,66 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { runs } = useRunContext();
   const location = useLocation();
   const runsExpanded = location.pathname.startsWith("/admin/behy");
+  const isMobile = useIsMobile();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Auto-collapse on mobile
+  useEffect(() => {
+    setCollapsed(isMobile);
+  }, [isMobile]);
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="font-typewriter text-xl text-muted-foreground animate-pulse">
-            Načítání...
-          </div>
-        </div>
+        <div className="font-typewriter text-xl text-muted-foreground animate-pulse">Načítání...</div>
       </div>
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
-  // Plný loading jen při prvním načtení (nemáme výběr). Při refetchi (token refresh) layout neskrývat.
   if (larpsLoading && !currentLarpId) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="font-typewriter text-xl text-muted-foreground animate-pulse">
-            Načítání...
-          </div>
-        </div>
+        <div className="font-typewriter text-xl text-muted-foreground animate-pulse">Načítání...</div>
       </div>
     );
   }
 
-  // Bez vybraného LARPu: přesměrovat na Přehled LARPů (/admin)
-  if (!currentLarpId) {
-    return <Navigate to="/admin" replace />;
-  }
+  if (!currentLarpId) return <Navigate to="/admin" replace />;
+
+  const isOpen = !collapsed;
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Mobile overlay backdrop */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={() => setCollapsed(true)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="no-print w-64 flex-shrink-0 border-r border-sidebar-border bg-sidebar">
-        <div className="flex h-full flex-col">
-          {/* Logo + aktuální LARP (přepnutí jen přes Přehled LARPů) */}
-          <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-sidebar-primary">
-              <FileText className="h-5 w-5 text-sidebar-primary-foreground" />
-            </div>
+      <aside
+        className={cn(
+          "no-print flex-shrink-0 border-r border-sidebar-border bg-sidebar transition-all duration-200 flex flex-col",
+          isMobile
+            ? cn("fixed inset-y-0 left-0 z-50", isOpen ? "w-64" : "w-14")
+            : cn(isOpen ? "w-64" : "w-14")
+        )}
+      >
+        {/* Toggle + Logo */}
+        <div className={cn("flex h-16 items-center border-b border-sidebar-border", isOpen ? "px-4 gap-3" : "justify-center px-1")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 flex-shrink-0"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {isOpen ? <PanelLeftClose className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          {isOpen && (
             <div className="min-w-0 flex-1">
               <h1 className="font-typewriter text-sm tracking-wider text-sidebar-foreground truncate">
                 {currentLarp?.name ?? "LARP"}
@@ -116,52 +128,40 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 Přehled LARPů
               </Link>
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-            {/* Přehled - samostatně */}
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
+          {/* Dashboard */}
+          <NavItem item={dashboardItem} isOpen={isOpen} location={location} />
+
+          <Divider />
+
+          {isOpen && <SectionLabel>Organizace běhů</SectionLabel>}
+
+          {/* Runs collapsible */}
+          <Collapsible open={runsExpanded}>
             <Link
-              to={dashboardItem.href}
+              to="/admin/behy"
               className={cn(
-                "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
-                location.pathname === dashboardItem.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
+                runsExpanded
+                  ? "bg-sidebar-accent/50 text-sidebar-foreground"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                !isOpen && "justify-center px-0"
               )}
+              title="Běhy"
             >
-              <dashboardItem.icon className="h-4 w-4" />
-              <span className="font-mono">{dashboardItem.name}</span>
-              {location.pathname === dashboardItem.href && <ChevronRight className="ml-auto h-4 w-4" />}
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              {isOpen && (
+                <>
+                  <span className="font-mono">Běhy</span>
+                  {runsExpanded ? <ChevronDown className="ml-auto h-4 w-4" /> : <ChevronRight className="ml-auto h-4 w-4" />}
+                </>
+              )}
             </Link>
-
-            {/* Divider */}
-            <div className="py-2">
-              <div className="border-t border-sidebar-border" />
-            </div>
-
-            {/* Organizace běhů – Běhy jako rozbalovací seznam */}
-            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
-              Organizace běhů
-            </div>
-            <Collapsible open={runsExpanded}>
-              <Link
-                to="/admin/behy"
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
-                  runsExpanded
-                    ? "bg-sidebar-accent/50 text-sidebar-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                )}
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="font-mono">Běhy</span>
-                {runsExpanded ? (
-                  <ChevronDown className="ml-auto h-4 w-4" />
-                ) : (
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                )}
-              </Link>
+            {isOpen && (
               <CollapsibleContent>
                 <div className="pl-7 pr-3 py-1 space-y-0.5">
                   {runs.map((run) => {
@@ -185,95 +185,99 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   })}
                 </div>
               </CollapsibleContent>
-            </Collapsible>
+            )}
+          </Collapsible>
 
-            {/* Divider */}
-            <div className="py-2">
-              <div className="border-t border-sidebar-border" />
-            </div>
+          <Divider />
 
-            {/* Obsah LARPu */}
-            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
-              Obsah LARPu
-            </div>
-            {larpContentNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="font-mono">{item.name}</span>
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              );
-            })}
+          {isOpen && <SectionLabel>Obsah LARPu</SectionLabel>}
+          {larpContentNavigation.map((item) => (
+            <NavItem key={item.name} item={item} isOpen={isOpen} location={location} />
+          ))}
 
-            {/* Divider */}
-            <div className="py-2">
-              <div className="border-t border-sidebar-border" />
-            </div>
+          <Divider />
 
-            {/* Správa */}
-            <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">
-              Správa
-            </div>
-            {larpManagement.map((item) => {
-              if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin) return null;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="font-mono">{item.name}</span>
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              );
-            })}
-          </nav>
+          {isOpen && <SectionLabel>Správa</SectionLabel>}
+          {larpManagement.map((item) => {
+            if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin) return null;
+            return <NavItem key={item.name} item={item} isOpen={isOpen} location={location} />;
+          })}
+        </nav>
 
-          {/* User info */}
-          <div className="border-t border-sidebar-border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs text-sidebar-foreground/60 truncate">
-                {user.email}
-              </span>
+        {/* User info */}
+        <div className="border-t border-sidebar-border p-2">
+          {isOpen ? (
+            <>
+              <div className="mb-2 flex items-center justify-between px-2">
+                <span className="text-xs text-sidebar-foreground/60 truncate">{user.email}</span>
+                <ThemeToggle />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+                className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Odhlásit se
+              </Button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
               <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="h-8 w-8 text-sidebar-foreground/80 hover:text-sidebar-foreground"
+                title="Odhlásit se"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost" 
-              size="sm" 
-              onClick={signOut}
-              className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Odhlásit se
-            </Button>
-          </div>
+          )}
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-6">
-          {children}
-        </div>
+      {/* Main content - add left margin on mobile when collapsed */}
+      <main className={cn("flex-1 overflow-auto", isMobile && "ml-14")}>
+        <div className="p-6">{children}</div>
       </main>
     </div>
   );
+}
+
+/* ---------- Small helper components ---------- */
+
+function NavItem({ item, isOpen, location }: { item: { name: string; href: string; icon: any }; isOpen: boolean; location: { pathname: string } }) {
+  const isActive = location.pathname === item.href;
+  return (
+    <Link
+      to={item.href}
+      title={item.name}
+      className={cn(
+        "flex items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors",
+        isActive
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        !isOpen && "justify-center px-0"
+      )}
+    >
+      <item.icon className="h-4 w-4 flex-shrink-0" />
+      {isOpen && (
+        <>
+          <span className="font-mono">{item.name}</span>
+          {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+        </>
+      )}
+    </Link>
+  );
+}
+
+function Divider() {
+  return <div className="py-2"><div className="border-t border-sidebar-border" /></div>;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest px-3 py-1">{children}</div>;
 }
