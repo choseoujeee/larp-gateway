@@ -67,11 +67,19 @@ export async function generatePdf(
     const html2pdfModule = await import("html2pdf.js");
     const html2pdf = html2pdfModule.default;
 
-    // Kontejner musí být ve viewportu, jinak html2canvas vykreslí prázdný obsah (off-screen = blank).
-    // Skryjeme ho vizuálně: fixed, opacity 0, z-index -1, pointer-events none.
+    // Kontejner necháme mimo viewport, ale plně renderovatelný pro html2canvas.
     const container = document.createElement("div");
     container.style.cssText =
-      "position:fixed;left:0;top:0;width:210mm;max-width:100%;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#000;background:#fff;padding:20px;pointer-events:none;z-index:9999;";
+      "position:fixed;left:-10000px;top:0;width:210mm;max-width:none;min-height:297mm;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#111;background:#fff;padding:20px;pointer-events:none;z-index:-1;";
+
+    // Vynucení tiskového kontrastu (v dark módu by jinak mohl být text příliš světlý na bílé stránce).
+    const printStyle = document.createElement("style");
+    printStyle.textContent = `
+      * { color: #111 !important; }
+      a { color: #111 !important; text-decoration: none !important; }
+      img, svg { max-width: 100% !important; height: auto !important; }
+    `;
+    container.appendChild(printStyle);
 
     if (title) {
       const h1 = document.createElement("h1");
@@ -86,6 +94,11 @@ export async function generatePdf(
 
     document.body.appendChild(container);
 
+    // Počkej na domalování layoutu před html2canvas capture.
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+
     const safeName = filename
       .replace(/[^a-zA-Z0-9áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ _-]/g, "")
       .replace(/\s+/g, "-")
@@ -97,7 +110,16 @@ export async function generatePdf(
         margin: [15, 15, 15, 15],
         filename: `${safeName}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          backgroundColor: "#ffffff",
+          windowWidth: container.scrollWidth,
+          windowHeight: container.scrollHeight,
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["avoid-all", "css"] },
       } as any)
