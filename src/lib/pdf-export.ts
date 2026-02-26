@@ -71,7 +71,7 @@ export async function generatePdf(
     // Skryjeme ho vizuálně: fixed, opacity 0, z-index -1, pointer-events none.
     const container = document.createElement("div");
     container.style.cssText =
-      "position:fixed;left:0;top:0;width:210mm;max-width:100%;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#000;background:#fff;padding:20px;pointer-events:none;z-index:-1;clip:rect(0,0,0,0);overflow:hidden;";
+      "position:fixed;left:0;top:0;width:210mm;max-width:100%;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#000;background:#fff;padding:20px;pointer-events:none;z-index:9999;";
 
     if (title) {
       const h1 = document.createElement("h1");
