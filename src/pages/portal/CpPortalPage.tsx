@@ -589,10 +589,10 @@ export default function CpPortalPage() {
                                   openDocuments.has(doc.id) ? "rotate-90" : ""
                                 }`} 
                               />
-                              {doc.priority === 1 && (
-                                <span className="text-xs font-bold text-accent uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
-                              )}
                               <span className="text-base text-foreground">{doc.title}</span>
+                              {doc.priority === 1 && (
+                                <span className="text-xs font-bold text-destructive uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
+                              )}
                               {doc.priority === 3 && (
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
                               )}

@@ -102,10 +102,9 @@ export default function PortalAccessPage() {
 
         <PaperCard>
           <PaperCardHeader className="text-center">
-            <Stamp variant="red" className="mb-4">
+            <Stamp variant="red" className="mb-6 text-xl px-5 py-2">
               Přísně tajné
             </Stamp>
-            <PaperCardTitle>Ověření přístupu</PaperCardTitle>
           </PaperCardHeader>
           <PaperCardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

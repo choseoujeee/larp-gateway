@@ -904,10 +904,10 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
           <ChevronRight 
             className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? "rotate-90" : ""}`} 
           />
-          {isPriority && (
-            <span className="text-xs font-bold text-accent uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
-          )}
           <span className="text-base text-foreground">{document.title}</span>
+          {isPriority && (
+            <span className="text-xs font-bold text-destructive uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
+          )}
           {isOptional && (
             <span className="text-xs text-muted-foreground uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
           )}
