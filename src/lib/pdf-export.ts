@@ -81,7 +81,7 @@ export function generatePdf(
       color: #000;
       background: #fff;
       margin: 0;
-      padding: 0;
+      padding: 15mm;
     }
     h1 { font-size: 22px; margin: 0 0 16px; border-bottom: 2px solid #333; padding-bottom: 8px; }
     h2 { font-size: 17px; margin: 24px 0 8px; }
