@@ -1,5 +1,4 @@
 import { sanitizeHtml } from "@/lib/sanitize";
-import { toast } from "sonner";
 
 /**
  * Sestaví HTML string z pole dokumentů s nadpisy.
@@ -53,82 +52,69 @@ export function buildScenesHtml(
 }
 
 /**
- * Generuje PDF ze zadaného HTML obsahu a stáhne ho.
+ * Generuje PDF ze zadaného HTML obsahu pomocí skrytého iframe + nativního print dialogu.
+ * Uživatel v dialogu zvolí "Uložit jako PDF".
  */
-export async function generatePdf(
+export function generatePdf(
   htmlContent: string,
   filename: string,
   title?: string
-): Promise<void> {
-  const toastId = toast.loading("Generuji PDF…");
+): void {
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;";
+  document.body.appendChild(iframe);
 
-  try {
-    // Dynamic import html2pdf.js
-    const html2pdfModule = await import("html2pdf.js");
-    const html2pdf = html2pdfModule.default;
-
-    // Kontejner necháme mimo viewport, ale plně renderovatelný pro html2canvas.
-    const container = document.createElement("div");
-    container.style.cssText =
-      "position:fixed;left:-10000px;top:0;width:210mm;max-width:none;min-height:297mm;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#111;background:#fff;padding:20px;pointer-events:none;z-index:-1;";
-
-    // Vynucení tiskového kontrastu (v dark módu by jinak mohl být text příliš světlý na bílé stránce).
-    const printStyle = document.createElement("style");
-    printStyle.textContent = `
-      * { color: #111 !important; }
-      a { color: #111 !important; text-decoration: none !important; }
-      img, svg { max-width: 100% !important; height: auto !important; }
-    `;
-    container.appendChild(printStyle);
-
-    if (title) {
-      const h1 = document.createElement("h1");
-      h1.style.cssText = "font-size:24px;margin-bottom:20px;text-align:center;border-bottom:2px solid #333;padding-bottom:12px;";
-      h1.textContent = title;
-      container.appendChild(h1);
+  const doc = iframe.contentDocument!;
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${filename}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #000;
+      background: #fff;
+      margin: 0;
+      padding: 0;
     }
+    h1 { font-size: 22px; margin: 0 0 16px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+    h2 { font-size: 17px; margin: 24px 0 8px; }
+    h3 { font-size: 15px; margin: 20px 0 6px; }
+    p { margin: 0 0 8px; }
+    hr { border: none; border-top: 1px solid #ccc; margin: 20px 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+    img { max-width: 100%; height: auto; }
+    a { color: #333; text-decoration: underline; }
+    blockquote { border-left: 3px solid #ccc; margin: 12px 0; padding: 8px 16px; color: #555; }
+    ul, ol { padding-left: 24px; }
+    .page-title { font-size: 24px; text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 24px; }
+    h1, h2, h3 { page-break-after: avoid; }
+    .doc-section { page-break-inside: avoid; }
+  </style>
+</head>
+<body>
+  ${title ? `<div class="page-title">${title}</div>` : ""}
+  ${htmlContent}
+</body>
+</html>`);
+  doc.close();
 
-    const content = document.createElement("div");
-    content.innerHTML = htmlContent;
-    container.appendChild(content);
+  iframe.contentWindow!.onafterprint = () => {
+    if (iframe.parentNode) document.body.removeChild(iframe);
+  };
 
-    document.body.appendChild(container);
-
-    // Počkej na domalování layoutu před html2canvas capture.
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-    });
-
-    const safeName = filename
-      .replace(/[^a-zA-Z0-9áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ _-]/g, "")
-      .replace(/\s+/g, "-")
-      .substring(0, 80);
-
-    await (html2pdf() as any)
-      .from(container)
-      .set({
-        margin: [15, 15, 15, 15],
-        filename: `${safeName}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          backgroundColor: "#ffffff",
-          windowWidth: container.scrollWidth,
-          windowHeight: container.scrollHeight,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["avoid-all", "css"] },
-      } as any)
-      .save();
-
-    document.body.removeChild(container);
-    toast.success("PDF staženo", { id: toastId });
-  } catch (err) {
-    console.error("PDF generation error:", err);
-    toast.error("Chyba při generování PDF", { id: toastId });
-  }
+  setTimeout(() => {
+    iframe.contentWindow!.print();
+    // Fallback cleanup po 60s pokud onafterprint nefunguje
+    setTimeout(() => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    }, 60000);
+  }, 300);
 }
