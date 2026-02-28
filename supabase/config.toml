@@ -1,1 +1,4 @@
 project_id = "uhlmwmagflzowlqxxqrp"
+
+[functions.sync-fio-payments]
+verify_jwt = false
