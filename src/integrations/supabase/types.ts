@@ -383,6 +383,63 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_sync_log: {
+        Row: {
+          amount: number
+          assignment_id: string | null
+          created_at: string
+          id: string
+          matched: boolean
+          matched_player_name: string | null
+          message: string | null
+          run_id: string
+          sender_name: string | null
+          transaction_date: string
+          vs: string | null
+        }
+        Insert: {
+          amount: number
+          assignment_id?: string | null
+          created_at?: string
+          id?: string
+          matched?: boolean
+          matched_player_name?: string | null
+          message?: string | null
+          run_id: string
+          sender_name?: string | null
+          transaction_date: string
+          vs?: string | null
+        }
+        Update: {
+          amount?: number
+          assignment_id?: string | null
+          created_at?: string
+          id?: string
+          matched?: boolean
+          matched_player_name?: string | null
+          message?: string | null
+          run_id?: string
+          sender_name?: string | null
+          transaction_date?: string
+          vs?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_sync_log_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "run_person_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_sync_log_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persons: {
         Row: {
           access_token: string

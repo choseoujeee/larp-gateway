@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, Calendar, ArrowLeft, Users, Copy, CheckCircle, Circle, Mail, Phone } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Calendar, ArrowLeft, Users, Copy, CheckCircle, Circle, Mail, Phone, CreditCard, ChevronDown, ChevronRight, UserCheck } from "lucide-react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLarpContext } from "@/hooks/useLarpContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -125,6 +126,91 @@ export default function RunsPage() {
   const [assignMode, setAssignMode] = useState<"postava" | "cp">("postava");
   /** Lidé z minulých běhů téhož LARPu – pro výběr při přiřazování hráče/performeru */
   const [pastRunPeople, setPastRunPeople] = useState<PastRunPerson[]>([]);
+  /** Payment sync state */
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [unmatchedPayments, setUnmatchedPayments] = useState<Array<{ date: string; amount: number; sender: string; message: string }>>([]);
+  const [unmatchedOpen, setUnmatchedOpen] = useState(false);
+  const [syncLog, setSyncLog] = useState<Array<{ id: string; transaction_date: string; amount: number; sender_name: string; message: string; matched: boolean; matched_player_name: string | null; assignment_id: string | null }>>([]);
+
+  /** Fetch existing unmatched from payment_sync_log */
+  const fetchUnmatchedLog = async (runId: string) => {
+    const { data } = await supabase
+      .from("payment_sync_log" as any)
+      .select("*")
+      .eq("run_id", runId)
+      .eq("matched", false)
+      .order("transaction_date", { ascending: false });
+    setSyncLog((data as any[]) || []);
+  };
+
+  /** Sync payments from Fio */
+  const handleSyncPayments = async () => {
+    if (!detailRun) return;
+    setSyncLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-fio-payments", {
+        body: { run_id: detailRun.id },
+      });
+
+      if (error) {
+        toast.error("Chyba při synchronizaci plateb", { description: error.message });
+        setSyncLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        toast.error("Chyba", { description: data?.error || "Neznámá chyba" });
+        setSyncLoading(false);
+        return;
+      }
+
+      if (data.matched > 0 || data.unmatched > 0) {
+        toast.success(`Spárováno ${data.matched} plateb`, {
+          description: data.unmatched > 0 ? `${data.unmatched} nespárovaných` : undefined,
+        });
+      } else {
+        toast.info("Žádné nové platby k párování");
+      }
+
+      if (data.unmatched_list?.length > 0) {
+        setUnmatchedPayments(data.unmatched_list);
+        setUnmatchedOpen(true);
+      }
+
+      // Refresh assignments and unmatched log
+      fetchAssignments(detailRun.id);
+      fetchUnmatchedLog(detailRun.id);
+    } catch (err) {
+      toast.error("Chyba při volání funkce");
+    }
+    setSyncLoading(false);
+  };
+
+  /** Manually match an unmatched payment to a player */
+  const handleManualMatch = async (logEntry: typeof syncLog[0], assignmentId: string) => {
+    if (!detailRun) return;
+    // Update the assignment as paid
+    await supabase
+      .from("run_person_assignments")
+      .update({ paid_at: new Date().toISOString() })
+      .eq("id", assignmentId);
+
+    // Update the log entry
+    const assignment = assignments.find((a) => a.id === assignmentId);
+    await supabase
+      .from("payment_sync_log" as any)
+      .update({
+        matched: true,
+        assignment_id: assignmentId,
+        matched_player_name: assignment?.player_name || null,
+      } as any)
+      .eq("id", logEntry.id);
+
+    toast.success("Platba přiřazena");
+    fetchAssignments(detailRun.id);
+    fetchUnmatchedLog(detailRun.id);
+  };
+
 
   const [formData, setFormData] = useState({
     larp_id: "",
@@ -245,6 +331,7 @@ export default function RunsPage() {
       if (run) {
         setDetailRun(run);
         fetchAssignments(run.id);
+        fetchUnmatchedLog(run.id);
       } else {
         navigate("/admin/behy", { replace: true });
       }
@@ -783,6 +870,94 @@ export default function RunsPage() {
                       <p className="text-sm text-muted-foreground py-4">Žádné CP přiřazeny</p>
                     )}
                   </div>
+
+                  {/* Payment sync section */}
+                  {detailRun.payment_amount && (
+                    <div className="border-t pt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-typewriter text-lg flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Kontrola plateb
+                        </h3>
+                        <Button
+                          onClick={handleSyncPayments}
+                          disabled={syncLoading}
+                          size="sm"
+                          variant="outline"
+                        >
+                          {syncLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                          Zkontrolovat platby
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Porovná platby z transparentního účtu Fio s nezaplacenými hráči podle jména a částky.
+                      </p>
+
+                      {syncLog.length > 0 && (
+                        <Collapsible open={unmatchedOpen} onOpenChange={setUnmatchedOpen}>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2">
+                            {unmatchedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            Nespárované platby ({syncLog.length})
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <PaperCard>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Datum</TableHead>
+                                    <TableHead>Částka</TableHead>
+                                    <TableHead>Odesílatel</TableHead>
+                                    <TableHead>Poznámka</TableHead>
+                                    <TableHead className="w-48">Přiřadit</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {syncLog.map((entry) => (
+                                    <TableRow key={entry.id}>
+                                      <TableCell className="text-sm">
+                                        {new Date(entry.transaction_date).toLocaleDateString("cs-CZ")}
+                                      </TableCell>
+                                      <TableCell className="text-sm font-mono">
+                                        {entry.amount} Kč
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {entry.sender_name || "-"}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-muted-foreground">
+                                        {entry.message || "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Select
+                                          value=""
+                                          onValueChange={(assignmentId) => handleManualMatch(entry, assignmentId)}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue placeholder="Vybrat hráče…" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {assignments
+                                              .filter((a) => !a.paid_at)
+                                              .map((a) => (
+                                                <SelectItem key={a.id} value={a.id}>
+                                                  <span className="flex items-center gap-1">
+                                                    <UserCheck className="h-3 w-3" />
+                                                    {a.player_name || a.persons?.name || "?"}
+                                                  </span>
+                                                </SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </PaperCard>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
