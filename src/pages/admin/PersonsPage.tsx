@@ -425,17 +425,12 @@ export default function PersonsPage() {
   const openEditDialog = async (person: Person, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setSelectedPerson(person);
-    // Load current password_hash from DB to show in edit dialog
-    const { data: personData } = await supabase
-      .from("persons")
-      .select("password_hash")
-      .eq("id", person.id)
-      .single();
+    // Password hash is not fetched for security - admin sets new password on edit
     setFormData({
       name: person.name,
       slug: person.slug,
       group_name: person.group_name || "",
-      password: personData?.password_hash || "",
+      password: "",
     });
     setDialogOpen(true);
   };
