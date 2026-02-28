@@ -154,7 +154,7 @@ export default function CpDetailPage() {
     setFetchError(null);
     const { data, error } = await supabase
       .from("persons")
-      .select("*")
+      .select("id, larp_id, run_id, slug, name, type, group_name, performer, performance_times, medailonek, mission_briefing, act_info, schedule_color, access_token, created_at, updated_at, paid_at")
       .eq("larp_id", currentLarpId)
       .eq("slug", requestedSlug)
       .eq("type", "cp")

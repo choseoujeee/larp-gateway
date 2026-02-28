@@ -143,6 +143,32 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate the caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Verify JWT and get user
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { run_id } = await req.json();
     if (!run_id) {
       return new Response(
@@ -151,9 +177,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create admin client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Verify the user owns this run using their auth context
+    const { data: ownerCheck } = await userClient.rpc("is_run_owner", { run_id });
+    if (!ownerCheck) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden: not run owner" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create admin client for data operations
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Get run info
