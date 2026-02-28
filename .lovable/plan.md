@@ -1,55 +1,74 @@
 
 
-# Dva problémy: Sbalitelná admin lišta + Prázdné PDF
+# Automatické párování plateb z Fio transparentního účtu
 
-## 1. Prázdné PDF – oprava v `src/lib/pdf-export.ts`
+## Jak to bude fungovat
 
-Problém: Na řádku 74 kontejner používá `clip:rect(0,0,0,0);overflow:hidden;` — toto CSS ořízne element na nulovou velikost, takže `html2canvas` nemá co vykreslit → prázdné stránky.
+Edge function stáhne veřejnou HTML stránku transparentního účtu, naparsuje tabulku transakcí a porovná je s hráči v databázi. Žádný API token není potřeba — transparentní účet je veřejný.
 
-**Oprava:** Odstranit `clip` a `overflow:hidden`. Kontejner zůstane na `position:fixed; z-index:-1; pointer-events:none;` — je pod vším ostatním a neklikatelný, ale html2canvas ho vidí a vykreslí. Přidat `left:-9999px` aby nebyl vidět na obrazovce, ale ponechat ho v DOM s plnou velikostí.
+## Matching logika
 
-Nový styl:
-```
-position:fixed;left:0;top:0;width:210mm;max-width:100%;
-font-family:Georgia,serif;font-size:14px;line-height:1.6;
-color:#000;background:#fff;padding:20px;
-pointer-events:none;z-index:9999;
-```
-Klíčová změna: `z-index:9999` (aby byl nahoře, html2canvas to potřebuje), ale přidat `opacity:1` a po vygenerování PDF element odebrat. Kontejner bude chvilku viditelný — to je bohužel nutné pro html2canvas. Alternativně ho umístit přesně v body s visibility, ale nejspolehlivější je ho nechat renderovat normálně a po save() ihned smazat.
+Z HTML tabulky se vytáhnou sloupce: **Datum, Částka, Název protiúčtu, Zpráva pro příjemce, VS, Poznámka**. Pro každou příchozí platbu (kladná částka):
 
-Vlastně nejlepší řešení: nechat kontejner viditelný (bez clip, bez opacity:0), ale na `position:fixed; left:0; top:0; z-index:-1` — html2canvas by ho měl vidět, protože je „v layoutu" i když pod ostatními elementy.
+1. Filtruj platby, které odpovídají `payment_amount` daného běhu
+2. V polích "Název protiúčtu" a "Zpráva pro příjemce" hledej shodu s `player_name` z `run_person_assignments` (normalize: lowercase, bez diakritiky, substring match obou směrů)
+3. Pokud match → nastav `paid_at`
+4. Pokud ne → zobraz v admin UI jako "nespárovaná platba"
 
-## 2. Sbalitelná boční lišta v administraci – `src/components/layout/AdminLayout.tsx`
+## Implementace
 
-Přidat stav `collapsed` řízený pomocí `useIsMobile()` hooku + toggle tlačítko.
+### 1. Nová tabulka `payment_sync_log`
 
-**Chování:**
-- Desktop (>768px): sidebar plně rozbalený (w-64), s možností sbalit na ikonový pruh (w-14)
-- Tablet/mobil (≤768px): sidebar defaultně sbalený (w-14, jen ikony), po kliknutí na hamburger/toggle se rozbalí jako overlay přes obsah
-- Toggle tlačítko (Menu/ChevronLeft ikona) vždy viditelné
+Eviduje zpracované transakce (deduplikace podle datum+částka+název):
 
-**Změny v `AdminLayout.tsx`:**
-- Import `useIsMobile` z `@/hooks/use-mobile`
-- Import `Menu, PanelLeftClose` z lucide-react
-- Přidat `const [collapsed, setCollapsed] = useState(false)` + auto-collapse na mobilním breakpointu
-- `aside` dynamicky: `collapsed ? "w-14" : "w-64"`, na mobilu přidat overlay pozadí
-- V collapsed stavu skrýt texty (názvy položek, section labels, email) a zobrazit jen ikony
-- Přidat toggle tlačítko v horní části sidebaru
-- Na mobilu: sidebar jako absolutní/fixed overlay přes hlavní obsah, s tmavým pozadím na kliknutí mimo
-
-**Struktura:**
-```
-[aside]
-  ├── toggle tlačítko (vždy viditelné)
-  ├── logo (collapsed = jen ikona)
-  ├── nav (collapsed = jen ikony, bez textů)
-  └── user info (collapsed = jen logout ikona)
-[/aside]
-[overlay backdrop] (jen na mobilu, když rozbaleno)
-[main content]
+```sql
+CREATE TABLE payment_sync_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id uuid REFERENCES runs(id) ON DELETE CASCADE,
+  assignment_id uuid REFERENCES run_person_assignments(id) ON DELETE SET NULL,
+  transaction_date date NOT NULL,
+  amount numeric NOT NULL,
+  sender_name text,
+  message text,
+  vs text,
+  matched boolean NOT NULL DEFAULT false,
+  matched_player_name text,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(run_id, transaction_date, amount, sender_name)
+);
 ```
 
-### Soubory ke změně:
-1. **`src/lib/pdf-export.ts`** — řádek 74: odstranit `clip:rect(0,0,0,0);overflow:hidden;`
-2. **`src/components/layout/AdminLayout.tsx`** — přidat collapsed stav, responsive sidebar
+RLS: pouze vlastník běhu (`is_run_owner(run_id)`).
+
+### 2. Edge function `sync-fio-payments`
+
+- Přijme `run_id` jako parametr
+- Načte z DB: `payment_amount` běhu, `run_person_assignments` kde `paid_at IS NULL`
+- Fetch `https://ib.fio.cz/ib/transparent?a=2601234979` (account number uložený v `runs.payment_account`)
+- Parse HTML tabulku, extrahuj řádky
+- Pro každou příchozí platbu odpovídající částce: fuzzy match jména → pokud match, UPDATE `paid_at`
+- Zapíše výsledky do `payment_sync_log`
+- Vrátí JSON se statistikou (matched/unmatched)
+
+### 3. Admin UI — tlačítko v detailu běhu
+
+Žádná nová stránka, žádný cron. Jen **jedno tlačítko "Zkontrolovat platby"** v existující stránce detailu běhu (RunsPage), vedle sekce s hráči:
+
+- Kliknutí zavolá edge function
+- Zobrazí toast: "Spárováno 5 plateb, 2 nespárované"
+- Nespárované platby se zobrazí v malém collapsible seznamu pod tlačítkem (datum, částka, jméno odesílatele) s možností ručně přiřadit ke hráči
+
+### Soubory
+
+| Soubor | Akce |
+|--------|------|
+| DB migrace | `payment_sync_log` tabulka + RLS |
+| `supabase/functions/sync-fio-payments/index.ts` | Nová edge function |
+| `src/pages/admin/RunsPage.tsx` | Tlačítko "Zkontrolovat platby" + seznam nespárovaných |
+
+### Omezení
+
+- Fio transparentní stránka zobrazuje jen **poslední měsíc** (default). Pro starší data by bylo potřeba scrapovat s parametry data, ale měsíc by měl stačit
+- Fuzzy matching není 100% — hráči píšou přezdívky, zkratky. Nespárované platby se zobrazí k ručnímu přiřazení
+- Účet je sdílený pro více LARPů — párování filtruje podle částky běhu, ale pokud dva běhy mají stejnou cenu, může dojít k nejednoznačnosti
 
