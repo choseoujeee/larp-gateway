@@ -6,32 +6,32 @@ import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Stamp } from "@/components/ui/stamp";
 
 const features = [
-  {
-    icon: FileText,
-    title: "Správa dokumentů",
-    description: "Organizační, herní a osobní dokumenty s WYSIWYG editorem. Cílení na skupiny nebo jednotlivce.",
-  },
-  {
-    icon: Users,
-    title: "Postavy a CP",
-    description: "Evidence postav a cizích postav. Generování unikátních přístupových odkazů s heslem.",
-  },
-  {
-    icon: Clock,
-    title: "Harmonogram",
-    description: "Timeline událostí s live zobrazením aktuálního bloku. Vazba na cizí postavy.",
-  },
-  {
-    icon: Shield,
-    title: "Bezpečný přístup",
-    description: "Hráči vidí jen své materiály. CP má přístup ke všemu potřebnému pro hraní.",
-  },
-  {
-    icon: Printer,
-    title: "Tisk a export",
-    description: "Optimalizovaný tisk dokumentů. Možnost tisku po kategoriích nebo vše najednou.",
-  },
-];
+{
+  icon: FileText,
+  title: "Správa dokumentů",
+  description: "Organizační, herní a osobní dokumenty s WYSIWYG editorem. Cílení na skupiny nebo jednotlivce."
+},
+{
+  icon: Users,
+  title: "Postavy a CP",
+  description: "Evidence postav a cizích postav. Generování unikátních přístupových odkazů s heslem."
+},
+{
+  icon: Clock,
+  title: "Harmonogram",
+  description: "Timeline událostí s live zobrazením aktuálního bloku. Vazba na cizí postavy."
+},
+{
+  icon: Shield,
+  title: "Bezpečný přístup",
+  description: "Hráči vidí jen své materiály. CP má přístup ke všemu potřebnému pro hraní."
+},
+{
+  icon: Printer,
+  title: "Tisk a export",
+  description: "Optimalizovaný tisk dokumentů. Možnost tisku po kategoriích nebo vše najednou."
+}];
+
 
 export default function LandingPage() {
   return (
@@ -87,8 +87,8 @@ export default function LandingPage() {
           </h2>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {features.map((feature, index) => (
-              <PaperCard key={index} className="hover:shadow-lg transition-shadow">
+            {features.map((feature, index) =>
+            <PaperCard key={index} className="hover:shadow-lg transition-shadow">
                 <PaperCardContent>
                   <div className="flex items-start gap-4">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-primary/10">
@@ -101,57 +101,57 @@ export default function LandingPage() {
                   </div>
                 </PaperCardContent>
               </PaperCard>
-            ))}
+            )}
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="py-16 border-t border-border">
-        <div className="container mx-auto px-4">
-          <h2 className="font-typewriter text-2xl md:text-3xl text-center mb-12 tracking-wide">
-            Jak to funguje
-          </h2>
+      
 
-          <div className="max-w-3xl mx-auto space-y-8">
-            <div className="flex gap-6 items-start">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-typewriter text-lg">
-                1
-              </div>
-              <div>
-                <h3 className="font-typewriter text-lg mb-2">Vytvořte LARP a běh</h3>
-                <p className="text-muted-foreground">
-                  Založte si svůj LARP a nastavte jednotlivé běhy s datumy, lokací a dalšími informacemi.
-                </p>
-              </div>
-            </div>
 
-            <div className="flex gap-6 items-start">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-typewriter text-lg">
-                2
-              </div>
-              <div>
-                <h3 className="font-typewriter text-lg mb-2">Přidejte postavy a dokumenty</h3>
-                <p className="text-muted-foreground">
-                  Vytvořte postavy, přiřaďte je do skupin a napište dokumenty s cílením na konkrétní příjemce.
-                </p>
-              </div>
-            </div>
 
-            <div className="flex gap-6 items-start">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-typewriter text-lg">
-                3
-              </div>
-              <div>
-                <h3 className="font-typewriter text-lg mb-2">Sdílejte přístupové odkazy</h3>
-                <p className="text-muted-foreground">
-                  Každá postava dostane unikátní odkaz s heslem. Hráči se přihlásí a vidí jen své materiály.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       {/* Footer */}
       <footer className="border-t border-border py-8 bg-card">
@@ -161,6 +161,6 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
+
 }
