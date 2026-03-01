@@ -445,6 +445,8 @@ export function RichTextEditor({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [currentFontSize, setCurrentFontSize] = useState("");
+  const [currentFontFamily, setCurrentFontFamily] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -488,6 +490,16 @@ export function RichTextEditor({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    onSelectionUpdate: ({ editor }) => {
+      const attrs = editor.getAttributes("textStyle");
+      setCurrentFontSize(attrs.fontSize || "");
+      setCurrentFontFamily(attrs.fontFamily || "");
+    },
+    onTransaction: ({ editor }) => {
+      const attrs = editor.getAttributes("textStyle");
+      setCurrentFontSize(attrs.fontSize || "");
+      setCurrentFontFamily(attrs.fontFamily || "");
+    },
   });
 
   const updateContent = useCallback(() => {
@@ -518,17 +530,7 @@ export function RichTextEditor({
     setLinkPopoverOpen(true);
   };
 
-  const getCurrentFontSize = () => {
-    if (!editor) return "";
-    const attrs = editor.getAttributes("textStyle");
-    return attrs.fontSize || "";
-  };
-
-  const getCurrentFontFamily = () => {
-    if (!editor) return "";
-    const attrs = editor.getAttributes("textStyle");
-    return attrs.fontFamily || "";
-  };
+  // Font size and family are now tracked via state (onSelectionUpdate/onTransaction)
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -622,7 +624,8 @@ export function RichTextEditor({
 
         {/* Font Family */}
         <Select
-          value={getCurrentFontFamily()}
+          key={`ff-${currentFontFamily}`}
+          value={currentFontFamily || "default"}
           onValueChange={(val) => {
             if (val === "default") editor.chain().focus().unsetFontFamily().run();
             else editor.chain().focus().setFontFamily(val).run();
@@ -643,7 +646,8 @@ export function RichTextEditor({
 
         {/* Font Size */}
         <Select
-          value={getCurrentFontSize()}
+          key={`fs-${currentFontSize}`}
+          value={currentFontSize || "default"}
           onValueChange={(val) => {
             if (val === "default") editor.chain().focus().unsetFontSize().run();
             else editor.chain().focus().setFontSize(val).run();
