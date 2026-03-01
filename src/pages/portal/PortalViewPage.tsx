@@ -909,7 +909,7 @@ function DocumentItem({ document, isOpen, onToggle, isEven }: DocumentItemProps)
             <span className="text-xs font-bold text-destructive uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
           )}
           {isOptional && (
-            <span className="text-xs text-muted-foreground uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
+            <span className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
           )}
         </button>
       </CollapsibleTrigger>
