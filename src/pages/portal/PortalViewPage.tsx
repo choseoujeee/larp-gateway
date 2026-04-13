@@ -743,6 +743,7 @@ export default function PortalViewPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </LarpThemeProvider>
   );
 }
 
