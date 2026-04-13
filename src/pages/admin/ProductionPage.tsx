@@ -366,7 +366,7 @@ export default function ProductionPage() {
   };
 
   const portalUrl = portalAccess?.token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/produkce-portal/${portalAccess.token}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/${currentLarp?.slug || "~"}/produkce/${portalAccess.token}`
     : "";
 
   const copyPortalUrl = () => {

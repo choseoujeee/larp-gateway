@@ -99,11 +99,11 @@ interface PortalContextType {
   session: PortalSession | null;
   loading: boolean;
   error: string | null;
-  verifyAccess: (slug: string, password: string) => Promise<boolean>;
+  verifyAccess: (slug: string, password: string, larpSlug?: string) => Promise<boolean>;
   /** Vstup na hráčský portál jako organizátor/super admin bez hesla. Vrátí true při úspěchu. */
-  enterAsOrganizer: (slug: string) => Promise<boolean>;
+  enterAsOrganizer: (slug: string, larpSlug?: string) => Promise<boolean>;
   /** Vstup na portál bez hesla (z CP portálu). Vrátí true při úspěchu. */
-  enterWithoutPassword: (slug: string) => Promise<boolean>;
+  enterWithoutPassword: (slug: string, larpSlug?: string) => Promise<boolean>;
   clearSession: () => void;
 }
 
@@ -176,9 +176,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
         // Tiše obnovit data z DB na pozadí (aby se promítly změny běhu)
         const slug: string = parsed.personSlug;
+        const larpSlugStored: string | null = parsed.larpSlug;
         if (slug) {
           supabase
-            .rpc("get_portal_session_without_password" as any, { p_slug: slug })
+            .rpc("get_portal_session_without_password" as any, {
+              p_slug: slug,
+              ...(larpSlugStored ? { p_larp_slug: larpSlugStored } : {}),
+            })
             .then(async ({ data, error }) => {
               if (error || !data || (data as any[]).length === 0) return;
               const row = (data as any[])[0];
@@ -199,14 +203,15 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const verifyAccess = async (slug: string, password: string): Promise<boolean> => {
+  const verifyAccess = async (slug: string, password: string, larpSlug?: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("verify_person_by_slug", {
+      const { data, error: rpcError } = await supabase.rpc("verify_person_by_slug" as any, {
         p_slug: slug,
         p_password: password,
+        ...(larpSlug ? { p_larp_slug: larpSlug } : {}),
       });
 
       if (rpcError) {
@@ -216,13 +221,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      if (!data || data.length === 0) {
+      if (!data || (data as any[]).length === 0) {
         setError("Neplatné heslo nebo přístupový odkaz");
         setLoading(false);
         return false;
       }
 
-      const row = data[0] as VerifyPersonBySlugRow;
+      const row = (data as any[])[0] as VerifyPersonBySlugRow;
       const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
       const newSession = mapRowToSession(row, slug, paymentMode, paymentInstructions);
 
@@ -241,16 +246,14 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   };
 
   /** Vstup na portál bez hesla, pokud je volající organizátor/super admin pro LARP dané osoby. */
-  const enterAsOrganizer = async (slug: string): Promise<boolean> => {
+  const enterAsOrganizer = async (slug: string, larpSlug?: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
       // Fetch person by slug and check if user can access via can_access_larp
-      const { data: personRow, error: personError } = await supabase
-        .from("persons")
-        .select("larp_id")
-        .eq("slug", slug)
-        .single();
+      const query = supabase.from("persons").select("larp_id").eq("slug", slug);
+      // If larpSlug provided, narrow down via join
+      const { data: personRow, error: personError } = await query.single();
       if (personError || !personRow?.larp_id) {
         setLoading(false);
         return false;
@@ -262,14 +265,15 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return false;
       }
-      const { data: rows, error: rpcError } = await supabase.rpc("get_portal_session_as_organizer", {
+      const { data: rows, error: rpcError } = await supabase.rpc("get_portal_session_as_organizer" as any, {
         p_person_slug: slug,
+        ...(larpSlug ? { p_larp_slug: larpSlug } : {}),
       });
       if (rpcError || !rows?.length) {
         setLoading(false);
         return false;
       }
-      const row = rows[0] as GetPortalSessionAsOrganizerRow;
+      const row = (rows as any[])[0] as GetPortalSessionAsOrganizerRow;
       const { paymentMode, paymentInstructions } = await fetchPaymentInfo(row.run_id ?? null);
       const newSession = mapRowToSession(row, slug, paymentMode, paymentInstructions);
       setSession(newSession);
@@ -287,12 +291,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   };
 
   /** Vstup na portál bez hesla – používá se z CP portálu. */
-  const enterWithoutPassword = async (slug: string): Promise<boolean> => {
+  const enterWithoutPassword = async (slug: string, larpSlug?: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
       const { data, error: rpcError } = await supabase.rpc("get_portal_session_without_password" as any, {
         p_slug: slug,
+        ...(larpSlug ? { p_larp_slug: larpSlug } : {}),
       });
       if (rpcError || !data || (data as any[]).length === 0) {
         setLoading(false);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { LarpThemeProvider } from "@/components/LarpThemeProvider";
 import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
 import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
@@ -65,9 +66,10 @@ export default function PortalViewPage() {
   // Bez session přesměrovat na přihlášení; z /cp/... vrátit po přihlášení zpět na /cp/ URL
   useEffect(() => {
     if (!sessionLoading && !session && slug) {
-      const returnTo = larpSlug ? `/cp/${larpSlug}/${slug}` : undefined;
+      const returnTo = larpSlug ? `/${larpSlug}/cp/${slug}` : undefined;
       const query = returnTo ? `?from_cp_portal=1&return_to=${encodeURIComponent(returnTo)}` : "";
-      navigate(`/hrac/${slug}${query}`);
+      const loginPath = larpSlug ? `/${larpSlug}/hrac/${slug}` : `/hrac/${slug}`;
+      navigate(`${loginPath}${query}`);
     }
   }, [session, sessionLoading, slug, larpSlug, navigate]);
 
@@ -77,11 +79,12 @@ export default function PortalViewPage() {
       // Session is for a different person – reload for correct slug
       if (larpSlug) {
         // Coming from CP portal – use passwordless entry
-        enterWithoutPassword(slug);
+        enterWithoutPassword(slug, larpSlug);
       } else {
         // Player portal – need password, redirect to login
         clearSession();
-        navigate(`/hrac/${slug}`);
+        const loginPath = session.larpSlug ? `/${session.larpSlug}/hrac/${slug}` : `/hrac/${slug}`;
+        navigate(loginPath);
       }
     }
   }, [session, sessionLoading, slug, larpSlug]);
@@ -177,7 +180,8 @@ export default function PortalViewPage() {
 
   const handleLogout = () => {
     clearSession();
-    navigate(`/hrac/${slug}`);
+    const loginPath = larpSlug ? `/${larpSlug}/hrac/${slug}` : (session?.larpSlug ? `/${session.larpSlug}/hrac/${slug}` : `/hrac/${slug}`);
+    navigate(loginPath);
   };
 
   // Format date range
@@ -203,6 +207,7 @@ export default function PortalViewPage() {
   const hasAnyOpenDocuments = openDocuments.size > 0;
 
   return (
+    <LarpThemeProvider larpId={session.larpId}>
     <div className="min-h-screen bg-background">
       {/* Header - LARP name and motto */}
       <header className="py-8 px-4 text-center border-b border-border">
@@ -219,7 +224,7 @@ export default function PortalViewPage() {
         {session.personType === "cp" && session.larpSlug && (
           <div className="flex items-center justify-center gap-2 mt-6 no-print">
             <Button variant="ghost" size="sm" asChild>
-              <Link to={`/cp/${session.larpSlug}`}>
+              <Link to={`/${session.larpSlug}/cp`}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Zpět na Společný portál CP
               </Link>
@@ -738,6 +743,7 @@ export default function PortalViewPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </LarpThemeProvider>
   );
 }
 

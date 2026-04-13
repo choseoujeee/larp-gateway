@@ -528,7 +528,7 @@ export default function CpDetailPage() {
               <>
                 <Button variant="outline" asChild>
                   <a
-                    href={`${window.location.origin}/cp/${currentLarp.slug}`}
+                    href={`${window.location.origin}/${currentLarp.slug}/cp`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -538,7 +538,7 @@ export default function CpDetailPage() {
                 </Button>
                 <Button variant="outline" asChild>
                   <a
-                    href={`${window.location.origin}/hrac/${cp.slug}`}
+                    href={`${window.location.origin}/${currentLarp.slug}/hrac/${cp.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

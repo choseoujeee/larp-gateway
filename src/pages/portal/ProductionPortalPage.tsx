@@ -278,7 +278,7 @@ export default function ProductionPortalPage() {
         {session.larp_slug && (
           <div className="flex items-center justify-center gap-2 mt-4 no-print">
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/cp/${session.larp_slug}`}>
+              <Link to={`/${session.larp_slug}/cp`}>
                 CP portál
               </Link>
             </Button>

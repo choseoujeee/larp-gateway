@@ -11,7 +11,7 @@ import { usePortalSession } from "@/hooks/usePortalSession";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function PortalAccessPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, larpSlug } = useParams<{ slug: string; larpSlug: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -21,6 +21,10 @@ export default function PortalAccessPage() {
 
   const returnTo = searchParams.get("return_to");
   const fromCpPortal = searchParams.get("from_cp_portal") === "1";
+
+  const portalViewPath = larpSlug && slug
+    ? `/${larpSlug}/hrac/${slug}/view`
+    : `/hrac/${slug}/view`;
 
   // Přihlášený organizátor/super admin: vstup bez hesla. from_cp_portal: vstup bez hesla přes RPC.
   useEffect(() => {
@@ -33,18 +37,18 @@ export default function PortalAccessPage() {
     (async () => {
       try {
         if (user) {
-          const success = await enterAsOrganizer(slug);
+          const success = await enterAsOrganizer(slug, larpSlug);
           if (cancelled) return;
           if (success) {
-            navigate(returnTo || `/hrac/${slug}/view`, { replace: true });
+            navigate(returnTo || portalViewPath, { replace: true });
             return;
           }
         }
         if (fromCpPortal) {
-          const success = await enterWithoutPassword(slug);
+          const success = await enterWithoutPassword(slug, larpSlug);
           if (cancelled) return;
           if (success) {
-            navigate(returnTo || `/hrac/${slug}/view`, { replace: true });
+            navigate(returnTo || portalViewPath, { replace: true });
             return;
           }
         }
@@ -53,16 +57,16 @@ export default function PortalAccessPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [slug, authLoading, user, fromCpPortal, returnTo, navigate]);
+  }, [slug, larpSlug, authLoading, user, fromCpPortal, returnTo, navigate]);
   // Zobrazit "Ověřování..." i během načítání auth (ne přebliknout formulář)
   const showChecking = accessChecking || authLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug) return;
-    const success = await verifyAccess(slug, password);
+    const success = await verifyAccess(slug, password, larpSlug);
     if (success) {
-      navigate(returnTo || `/hrac/${slug}/view`);
+      navigate(returnTo || portalViewPath);
     }
   };
 

@@ -720,7 +720,7 @@ export default function PersonsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`/hrac/${detailPerson.slug}`, "_blank")}
+              onClick={() => window.open(currentLarp?.slug ? `/${currentLarp.slug}/hrac/${detailPerson.slug}` : `/hrac/${detailPerson.slug}`, "_blank")}
               title="Otevře portál hráče v novém okně"
             >
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />

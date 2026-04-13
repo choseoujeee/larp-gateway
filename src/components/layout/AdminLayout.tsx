@@ -16,7 +16,8 @@ import {
   ArrowLeft,
   MessageSquare,
   Menu,
-  PanelLeftClose
+  PanelLeftClose,
+  Palette
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const larpContentNavigation = [
 
 const larpManagement = [
   { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
+  { name: "Vzhled portálu", href: "/admin/design", icon: Palette },
   { name: "Organizátoři", href: "/admin/organizatori", icon: Users, superAdminOnly: true },
   { name: "Portál", href: "/admin/portal", icon: MessageSquare },
 ];
