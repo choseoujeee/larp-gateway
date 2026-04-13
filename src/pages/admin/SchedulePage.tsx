@@ -1159,7 +1159,7 @@ export default function SchedulePage() {
   );
 
   const schedulePortalUrl = schedulePortalAccess?.token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/harmonogram-portal/${schedulePortalAccess.token}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/${currentLarp?.slug || "~"}/harmonogram/${schedulePortalAccess.token}`
     : "";
 
   const handleCreateSchedulePortalAccessNoPassword = async () => {

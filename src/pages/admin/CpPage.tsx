@@ -362,7 +362,7 @@ export default function CpPage() {
                 asChild
               >
                 <a
-                  href={`${window.location.origin}/cp/${currentLarp.slug}`}
+                  href={`${window.location.origin}/${currentLarp.slug}/cp`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
