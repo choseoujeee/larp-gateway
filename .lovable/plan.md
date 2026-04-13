@@ -1,115 +1,79 @@
 
 
-# Plan: URL restructuring + per-LARP design customization
+# Plan: Fix and polish the Schedule (Harmonogram)
 
-## Part 1: URL Restructuring
+## Identified Issues
 
-### Current structure
-```text
-/admin/*                        (admin, larp from context/localStorage)
-/hrac/:slug                     (player portal login)
-/hrac/:slug/view                (player portal view)
-/cp/:larpSlug                   (CP portal)
-/cp/:larpSlug/:slug             (CP detail)
-/produkce-portal/:token         (production portal)
-/harmonogram-portal/:token      (schedule portal)
+1. **Console error**: `GridSlotDroppable` is a function component receiving refs from dnd-kit but lacks `forwardRef` -- causes React warnings and potentially broken drag-drop behavior
+2. **ScheduleEventBox** also lacks `forwardRef` -- same issue with `useDraggable` passing refs
+3. **2000-line monolithic file** -- extremely hard to maintain, slow to render due to everything re-rendering together
+4. **Grid DnD conflicts with click-to-expand** -- dragging and clicking share the same handler, causing accidental drags or missed clicks
+5. **Expanded event boxes use `height: auto`** which can overflow and overlap other events without proper z-index management
+6. **No visual feedback** during drag (ghost/overlay missing)
+7. **Portal page duplicates** all grid logic (~200 lines of identical code) instead of sharing components
+
+## Plan
+
+### Step 1: Extract shared schedule components
+Create `src/components/schedule/` directory with:
+- `ScheduleGrid.tsx` -- shared grid rendering (time labels, grid lines, event positioning) used by both admin and portal
+- `ScheduleEventBox.tsx` -- event box component with forwardRef, used by admin (with edit/delete actions) and portal (read-only)
+- `GridSlotDroppable.tsx` -- fix forwardRef issue, extract from SchedulePage
+- `scheduleConstants.ts` -- shared constants (PX_PER_MINUTE, SLOT_HEIGHT_PX, EVENT_TYPE_LABELS, colors)
+- `scheduleTypes.ts` -- shared TypeScript interfaces
+
+### Step 2: Fix DnD issues
+- Add `forwardRef` to `GridSlotDroppable` and `ScheduleEventBox`
+- Add `DragOverlay` from dnd-kit for visual drag feedback (ghost preview)
+- Increase PointerSensor activation distance to 12px to prevent accidental drags when clicking to expand
+- Add proper z-index layering: base events z-1, expanded z-20, dragging z-30, overlay z-40
+
+### Step 3: Improve grid UX
+- Add smooth CSS transitions for expand/collapse
+- Make expanded boxes render in a portal/overlay so they don't push other elements
+- Add "current time" indicator with a pulsing dot on the red line
+- Better color contrast for event type differentiation
+- Add subtle hover effects (scale + shadow) before click
+
+### Step 4: Refactor SchedulePage.tsx
+- Extract dialog forms into `ScheduleEventDialog.tsx`
+- Extract portal access section into `SchedulePortalSection.tsx`
+- Keep main page as orchestrator (~500 lines instead of 2000)
+
+### Step 5: Update tests
+- Add tests for the new shared components
+- Test `assignLanes` edge cases (already covered in scheduleGridUtils.test.ts)
+- Test event box expand/collapse behavior
+- Test forwardRef works without console warnings
+
+### Step 6: Sync portal page
+- Update `SchedulePortalPage.tsx` to use shared `ScheduleGrid` and `ScheduleEventBox` components
+- Remove ~200 lines of duplicated code
+
+## Technical Details
+
+**forwardRef fix** (critical bug):
+```tsx
+const GridSlotDroppable = forwardRef<HTMLDivElement, Props>((props, ref) => {
+  const { setNodeRef, isOver } = useDroppable({ id, data });
+  // merge refs
+});
 ```
 
-### New structure
-```text
-/admin/*                        (unchanged - larp from context)
-/:larpSlug/hrac/:personSlug     (player portal login)
-/:larpSlug/hrac/:personSlug/view (player portal view)
-/:larpSlug/cp                   (CP portal)
-/:larpSlug/cp/:personSlug       (CP detail)
-/:larpSlug/produkce/:token      (production portal)
-/:larpSlug/harmonogram/:token   (schedule portal)
+**DragOverlay** for visual feedback:
+```tsx
+<DndContext>
+  {/* ... */}
+  <DragOverlay>
+    {activeEvent && <ScheduleEventBoxPreview event={activeEvent} />}
+  </DragOverlay>
+</DndContext>
 ```
 
-### Changes required
-
-1. **App.tsx** -- Update all portal routes to new `/:larpSlug/...` pattern. Add redirects from old URLs (`/hrac/:slug` -> lookup larp slug and redirect, `/cp/:larpSlug` -> `/:larpSlug/cp`, etc.)
-
-2. **Database RPC `verify_person_by_slug`** -- Add `p_larp_slug` parameter to disambiguate persons across LARPs. Join on `larps.slug = p_larp_slug`.
-
-3. **Database RPC `get_portal_session_without_password`** -- Same: add `p_larp_slug` parameter.
-
-4. **Database RPC `get_portal_session_as_organizer`** -- Same: add `p_larp_slug` parameter.
-
-5. **`usePortalSession.tsx`** -- Update all RPC calls to pass `larpSlug`. Update `verifyAccess`, `enterAsOrganizer`, `enterWithoutPassword` signatures.
-
-6. **`PortalAccessPage.tsx`** -- Read `larpSlug` from params, pass to session hooks. Update all `navigate()` calls to `/${larpSlug}/hrac/${slug}/view`.
-
-7. **`PortalViewPage.tsx`** -- Read `larpSlug` from params, update all navigation URLs.
-
-8. **`CpPortalPage.tsx`** -- Update from `/cp/:larpSlug` to `/:larpSlug/cp`, update internal links to `/:larpSlug/cp/:slug` and `/:larpSlug/hrac/:slug`.
-
-9. **Admin link generation** (6 locations):
-   - `RunsPage.tsx` line 590: `/portal/${token}` -> `/${larpSlug}/hrac/${personSlug}`
-   - `CpDetailPage.tsx` lines 531, 541: update CP and person portal URLs
-   - `CpPage.tsx` line 365: update CP portal URL
-   - `ProductionPage.tsx` line 369: update production portal URL
-   - `SchedulePage.tsx` line 1162: update schedule portal URL
-   - `PersonsPage.tsx` line 723: update person portal URL
-
-10. **Backward compatibility redirects** in App.tsx for old `/hrac/:slug`, `/cp/:larpSlug`, `/produkce-portal/:token`, `/harmonogram-portal/:token` URLs.
-
----
-
-## Part 2: Per-LARP Design Customization
-
-### Database
-
-New table `larp_design_settings` with columns:
-- `id` (uuid, PK)
-- `larp_id` (uuid, unique, references larps)
-- `primary_color` (text) -- HSL value
-- `primary_foreground` (text)
-- `secondary_color` (text)
-- `accent_color` (text)
-- `background_color` (text)
-- `foreground_color` (text)
-- `card_color` (text)
-- `border_color` (text)
-- `font_heading` (text) -- Google Font name
-- `font_body` (text)
-- `button_radius` (text) -- e.g. "0.25rem"
-- `sidebar_background` (text)
-- `sidebar_foreground` (text)
-- `custom_css` (text, nullable) -- advanced override
-- RLS: same `can_access_larp(larp_id)` pattern
-
-### Admin UI
-
-New page/section in LARP settings (accessible from AdminDashboard or sidebar under "Správa"):
-- Color pickers for each design token (primary, secondary, accent, background, foreground, card, border, sidebar colors)
-- Font selectors (dropdown with popular Google Fonts)
-- Border radius slider
-- Live preview panel showing how portal will look
-- "Reset to defaults" button
-
-### Runtime application
-
-- `useLarpContext` fetches `larp_design_settings` alongside larp data
-- A `LarpThemeProvider` component applies CSS custom properties (`--primary`, `--background`, etc.) as inline styles on a wrapper div
-- Portal pages wrap content in `LarpThemeProvider` which overrides the global CSS variables
-- Admin pages use the global theme (not per-larp customization)
-- Google Fonts loaded dynamically via `<link>` tag injection
-
-### Files to create/modify
-- Migration: `larp_design_settings` table + RLS
-- `src/pages/admin/LarpDesignPage.tsx` -- design settings editor
-- `src/components/LarpThemeProvider.tsx` -- applies CSS vars from DB
-- `src/hooks/useLarpContext.tsx` -- fetch design settings
-- `AdminLayout.tsx` -- add nav item for design settings
-- Portal pages -- wrap in `LarpThemeProvider`
-
----
-
-## Implementation order
-
-1. Database migration (new RPC functions + design table)
-2. URL restructuring (routes, hooks, pages, links)
-3. Design settings admin UI
-4. LarpThemeProvider + portal integration
+**File changes summary**:
+- Create: `src/components/schedule/ScheduleGrid.tsx`, `ScheduleEventBox.tsx`, `GridSlotDroppable.tsx`, `scheduleConstants.ts`, `scheduleTypes.ts`, `ScheduleEventDialog.tsx`, `SchedulePortalSection.tsx`
+- Modify: `src/pages/admin/SchedulePage.tsx` (major refactor, ~500 lines)
+- Modify: `src/pages/portal/SchedulePortalPage.tsx` (use shared components, ~300 lines)
+- Update: `src/pages/admin/SchedulePage.test.tsx` (adapt to new structure)
+- Create: `src/components/schedule/ScheduleEventBox.test.tsx`
 
