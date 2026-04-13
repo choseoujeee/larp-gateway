@@ -722,7 +722,7 @@ export default function CpPortalPage() {
                 return (
                   <Link
                     key={cp.id}
-                    to={larpSlug ? `/cp/${larpSlug}/${cp.slug}` : `/hrac/${cp.slug}?from_cp_portal=1`}
+                    to={larpSlug ? `/${larpSlug}/cp/${cp.slug}` : `/hrac/${cp.slug}?from_cp_portal=1`}
                     className="group"
                   >
                     <PaperCard className="p-4 hover:shadow-md transition-all cursor-pointer">
@@ -834,7 +834,7 @@ export default function CpPortalPage() {
                     {players.map((player) => (
                       <Link
                         key={player.id}
-                        to={`/hrac/${player.slug}?from_cp_portal=1`}
+                        to={larpSlug ? `/${larpSlug}/hrac/${player.slug}?from_cp_portal=1` : `/hrac/${player.slug}?from_cp_portal=1`}
                         className="group"
                       >
                         <div className="p-3 rounded border bg-card hover:bg-muted/50 transition-colors">
@@ -852,7 +852,7 @@ export default function CpPortalPage() {
                 {filteredPlayerPersons.map((player) => (
                   <Link
                     key={player.id}
-                    to={`/hrac/${player.slug}?from_cp_portal=1`}
+                    to={larpSlug ? `/${larpSlug}/hrac/${player.slug}?from_cp_portal=1` : `/hrac/${player.slug}?from_cp_portal=1`}
                     className="group"
                   >
                     <div className="p-3 rounded border bg-card hover:bg-muted/50 transition-colors">
