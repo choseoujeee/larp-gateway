@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { LarpThemeProvider } from "@/components/LarpThemeProvider";
 import { ChevronRight, ChevronDown, Printer, LogOut, Loader2, FoldVertical, CreditCard, CheckCircle, Clock, QrCode, FileText, Gamepad2, User, Users, Theater, MapPin, Package, ArrowLeft, Download } from "lucide-react";
 import { generatePdf, buildDocumentsHtml, buildScenesHtml } from "@/lib/pdf-export";
 import { PdfDownloadMenu, type PdfSection } from "@/components/portal/PdfDownloadMenu";
@@ -206,6 +207,7 @@ export default function PortalViewPage() {
   const hasAnyOpenDocuments = openDocuments.size > 0;
 
   return (
+    <LarpThemeProvider larpId={session.larpId}>
     <div className="min-h-screen bg-background">
       {/* Header - LARP name and motto */}
       <header className="py-8 px-4 text-center border-b border-border">
