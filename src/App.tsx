@@ -40,8 +40,33 @@ const queryClient = new QueryClient();
 /** Redirect /portal/:token → /hrac/:slug (zpětná kompatibilita se starým portálem) */
 function RedirectPortalToHrac() {
   const { token } = useParams<{ token: string }>();
-  // Token je nyní slug, přesměrujeme na novou URL
   return <Navigate to={token ? `/hrac/${token}` : "/"} replace />;
+}
+
+/** Redirect old /cp/:larpSlug → /:larpSlug/cp */
+function RedirectCpPortal() {
+  const { larpSlug } = useParams<{ larpSlug: string }>();
+  return <Navigate to={larpSlug ? `/${larpSlug}/cp` : "/"} replace />;
+}
+
+/** Redirect old /cp/:larpSlug/:slug → /:larpSlug/cp/:slug */
+function RedirectCpPortalDetail() {
+  const { larpSlug, slug } = useParams<{ larpSlug: string; slug: string }>();
+  return <Navigate to={larpSlug && slug ? `/${larpSlug}/cp/${slug}` : "/"} replace />;
+}
+
+/** Redirect old /produkce-portal/:token → need larpSlug; can't easily determine, redirect to NotFound or keep as-is */
+function RedirectProductionPortal() {
+  const { token } = useParams<{ token: string }>();
+  // We can't determine larpSlug from just the token on the client side,
+  // so we keep a catch-all route for old production portal URLs
+  return <Navigate to={token ? `/~/produkce/${token}` : "/"} replace />;
+}
+
+/** Redirect old /harmonogram-portal/:token */
+function RedirectSchedulePortal() {
+  const { token } = useParams<{ token: string }>();
+  return <Navigate to={token ? `/~/harmonogram/${token}` : "/"} replace />;
 }
 
 const App = () => (
@@ -64,10 +89,19 @@ const App = () => (
                   <Route path="/reset-heslo" element={<ResetPasswordPage />} />
                   <Route path="/register" element={<Navigate to="/login" replace />} />
 
-                  {/* Alias: staré URL → nové (zpětná kompatibilita) */}
+                  {/* Backward compatibility redirects */}
                   <Route path="/orgove/skryta" element={<Navigate to="/admin" replace />} />
                   <Route path="/portal/:token" element={<RedirectPortalToHrac />} />
                   <Route path="/portal/:token/view" element={<RedirectPortalToHrac />} />
+                  {/* Old /hrac/:slug → we can't determine larpSlug, keep as fallback route */}
+                  <Route path="/hrac/:slug" element={<PortalAccessPage />} />
+                  <Route path="/hrac/:slug/view" element={<PortalViewPage />} />
+                  {/* Old /cp/:larpSlug → redirect to new /:larpSlug/cp */}
+                  <Route path="/cp/:larpSlug" element={<RedirectCpPortal />} />
+                  <Route path="/cp/:larpSlug/:slug" element={<RedirectCpPortalDetail />} />
+                  {/* Old production/schedule portal URLs */}
+                  <Route path="/produkce-portal/:token" element={<RedirectProductionPortal />} />
+                  <Route path="/harmonogram-portal/:token" element={<RedirectSchedulePortal />} />
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminDashboard />} />
@@ -94,20 +128,16 @@ const App = () => (
                   <Route path="/admin/portal" element={<PortalFeedbackPage />} />
                   <Route path="/admin/organizatori" element={<OrganizersPage />} />
 
-                  {/* Portal - hráčský portál */}
-                  <Route path="/hrac/:slug" element={<PortalAccessPage />} />
-                  <Route path="/hrac/:slug/view" element={<PortalViewPage />} />
-                  
-                  {/* CP Portal - rozcestník pro všechny CP */}
-                  <Route path="/cp/:larpSlug" element={<CpPortalPage />} />
-                  {/* CP Portal - konkrétní CP (stejný obsah jako /hrac/:slug/view) */}
-                  <Route path="/cp/:larpSlug/:slug" element={<PortalViewPage />} />
-
-                  {/* Produkční portál – tým produkce (token + heslo) */}
-                  <Route path="/produkce-portal/:token" element={<ProductionPortalPage />} />
-
-                  {/* Portál harmonogramu – read-only harmonogram běhu (token + heslo) */}
-                  <Route path="/harmonogram-portal/:token" element={<SchedulePortalPage />} />
+                  {/* New portal routes: /:larpSlug/... */}
+                  <Route path="/:larpSlug/hrac/:slug" element={<PortalAccessPage />} />
+                  <Route path="/:larpSlug/hrac/:slug/view" element={<PortalViewPage />} />
+                  <Route path="/:larpSlug/cp" element={<CpPortalPage />} />
+                  <Route path="/:larpSlug/cp/:slug" element={<PortalViewPage />} />
+                  <Route path="/:larpSlug/produkce/:token" element={<ProductionPortalPage />} />
+                  <Route path="/:larpSlug/harmonogram/:token" element={<SchedulePortalPage />} />
+                  {/* Fallback for production/schedule portals without known larpSlug */}
+                  <Route path="/~/produkce/:token" element={<ProductionPortalPage />} />
+                  <Route path="/~/harmonogram/:token" element={<SchedulePortalPage />} />
 
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />
