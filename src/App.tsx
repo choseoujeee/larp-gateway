@@ -22,6 +22,7 @@ import CpDetailPage from "./pages/admin/CpDetailPage";
 import GroupsPage from "./pages/admin/GroupsPage";
 import DocumentsPage from "./pages/admin/DocumentsPage";
 import SchedulePage from "./pages/admin/SchedulePage";
+import LarpDesignPage from "./pages/admin/LarpDesignPage";
 import ProductionPage from "./pages/admin/ProductionPage";
 
 import PortalAccessPage from "./pages/portal/PortalAccessPage";
@@ -124,6 +125,7 @@ const App = () => (
                   <Route path="/admin/dokumenty" element={<DocumentsPage />} />
                   <Route path="/admin/harmonogram" element={<SchedulePage />} />
                   <Route path="/admin/produkce" element={<ProductionPage />} />
+                  <Route path="/admin/design" element={<LarpDesignPage />} />
                   <Route path="/admin/tiskoviny" element={<Navigate to="/admin/produkce" replace />} />
                   <Route path="/admin/portal" element={<PortalFeedbackPage />} />
                   <Route path="/admin/organizatori" element={<OrganizersPage />} />
