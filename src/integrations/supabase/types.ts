@@ -279,6 +279,98 @@ export type Database = {
           },
         ]
       }
+      larp_design_settings: {
+        Row: {
+          accent_color: string | null
+          accent_foreground: string | null
+          background_color: string | null
+          border_color: string | null
+          button_radius: string | null
+          card_color: string | null
+          card_foreground: string | null
+          created_at: string
+          custom_css: string | null
+          destructive_color: string | null
+          destructive_foreground: string | null
+          font_body: string | null
+          font_heading: string | null
+          foreground_color: string | null
+          id: string
+          larp_id: string
+          muted_color: string | null
+          muted_foreground: string | null
+          primary_color: string | null
+          primary_foreground: string | null
+          secondary_color: string | null
+          secondary_foreground: string | null
+          sidebar_background: string | null
+          sidebar_foreground: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          accent_foreground?: string | null
+          background_color?: string | null
+          border_color?: string | null
+          button_radius?: string | null
+          card_color?: string | null
+          card_foreground?: string | null
+          created_at?: string
+          custom_css?: string | null
+          destructive_color?: string | null
+          destructive_foreground?: string | null
+          font_body?: string | null
+          font_heading?: string | null
+          foreground_color?: string | null
+          id?: string
+          larp_id: string
+          muted_color?: string | null
+          muted_foreground?: string | null
+          primary_color?: string | null
+          primary_foreground?: string | null
+          secondary_color?: string | null
+          secondary_foreground?: string | null
+          sidebar_background?: string | null
+          sidebar_foreground?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          accent_foreground?: string | null
+          background_color?: string | null
+          border_color?: string | null
+          button_radius?: string | null
+          card_color?: string | null
+          card_foreground?: string | null
+          created_at?: string
+          custom_css?: string | null
+          destructive_color?: string | null
+          destructive_foreground?: string | null
+          font_body?: string | null
+          font_heading?: string | null
+          foreground_color?: string | null
+          id?: string
+          larp_id?: string
+          muted_color?: string | null
+          muted_foreground?: string | null
+          primary_color?: string | null
+          primary_foreground?: string | null
+          secondary_color?: string | null
+          secondary_foreground?: string | null
+          sidebar_background?: string | null
+          sidebar_foreground?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "larp_design_settings_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: true
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       larp_organizers: {
         Row: {
           created_at: string
@@ -1136,68 +1228,132 @@ export type Database = {
           title: string
         }[]
       }
-      get_portal_session_as_organizer: {
-        Args: { p_person_slug: string }
-        Returns: {
-          group_name: string
-          larp_id: string
-          larp_motto: string
-          larp_name: string
-          larp_slug: string
-          larp_theme: string
-          mission_briefing: string
-          performance_times: string
-          performer: string
-          person_id: string
-          person_medailonek: string
-          person_name: string
-          person_paid_at: string
-          person_type: Database["public"]["Enums"]["person_type"]
-          player_name: string
-          run_address: string
-          run_contact: string
-          run_date_from: string
-          run_date_to: string
-          run_footer_text: string
-          run_id: string
-          run_location: string
-          run_name: string
-          run_payment_account: string
-          run_payment_amount: string
-          run_payment_due_date: string
-        }[]
-      }
-      get_portal_session_without_password: {
-        Args: { p_slug: string }
-        Returns: {
-          group_name: string
-          larp_id: string
-          larp_motto: string
-          larp_name: string
-          larp_slug: string
-          larp_theme: string
-          mission_briefing: string
-          performance_times: string
-          performer: string
-          person_id: string
-          person_medailonek: string
-          person_name: string
-          person_paid_at: string
-          person_type: Database["public"]["Enums"]["person_type"]
-          player_name: string
-          run_address: string
-          run_contact: string
-          run_date_from: string
-          run_date_to: string
-          run_footer_text: string
-          run_id: string
-          run_location: string
-          run_name: string
-          run_payment_account: string
-          run_payment_amount: string
-          run_payment_due_date: string
-        }[]
-      }
+      get_portal_session_as_organizer:
+        | {
+            Args: { p_person_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
+        | {
+            Args: { p_larp_slug?: string; p_person_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
+      get_portal_session_without_password:
+        | {
+            Args: { p_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
+        | {
+            Args: { p_larp_slug?: string; p_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
       get_production_portal_data: { Args: { p_token: string }; Returns: Json }
       get_run_payment_info: {
         Args: { p_run_id: string }
@@ -1276,37 +1432,69 @@ export type Database = {
           run_payment_due_date: string
         }[]
       }
-      verify_person_by_slug: {
-        Args: { p_password: string; p_slug: string }
-        Returns: {
-          group_name: string
-          larp_id: string
-          larp_motto: string
-          larp_name: string
-          larp_slug: string
-          larp_theme: string
-          mission_briefing: string
-          performance_times: string
-          performer: string
-          person_id: string
-          person_medailonek: string
-          person_name: string
-          person_paid_at: string
-          person_type: Database["public"]["Enums"]["person_type"]
-          player_name: string
-          run_address: string
-          run_contact: string
-          run_date_from: string
-          run_date_to: string
-          run_footer_text: string
-          run_id: string
-          run_location: string
-          run_name: string
-          run_payment_account: string
-          run_payment_amount: string
-          run_payment_due_date: string
-        }[]
-      }
+      verify_person_by_slug:
+        | {
+            Args: { p_password: string; p_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
+        | {
+            Args: { p_larp_slug?: string; p_password: string; p_slug: string }
+            Returns: {
+              group_name: string
+              larp_id: string
+              larp_motto: string
+              larp_name: string
+              larp_slug: string
+              larp_theme: string
+              mission_briefing: string
+              performance_times: string
+              performer: string
+              person_id: string
+              person_medailonek: string
+              person_name: string
+              person_paid_at: string
+              person_type: Database["public"]["Enums"]["person_type"]
+              player_name: string
+              run_address: string
+              run_contact: string
+              run_date_from: string
+              run_date_to: string
+              run_footer_text: string
+              run_id: string
+              run_location: string
+              run_name: string
+              run_payment_account: string
+              run_payment_amount: string
+              run_payment_due_date: string
+            }[]
+          }
       verify_production_portal_access: {
         Args: { p_password: string; p_token: string }
         Returns: {
