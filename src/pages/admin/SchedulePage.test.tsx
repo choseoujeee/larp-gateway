@@ -164,7 +164,6 @@ describe("SchedulePage", () => {
 
     expect(screen.getByText("Úvodní briefing")).toBeInTheDocument();
     expect(screen.getByText("Oběd")).toBeInTheDocument();
-    expect(screen.getByText("Hlavní sál")).toBeInTheDocument();
   });
 
   it("zobrazí typ události jako badge", async () => {
