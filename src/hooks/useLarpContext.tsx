@@ -7,6 +7,7 @@ export interface LarpOption {
   name: string;
   slug: string;
   theme: string | null;
+  visual_mode: string;
 }
 
 interface LarpContextType {
@@ -32,7 +33,7 @@ export function LarpProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("larps")
-        .select("id, name, slug, theme")
+        .select("id, name, slug, theme, visual_mode")
         .order("name");
       if (error) {
         console.error("fetchLarps error:", error);

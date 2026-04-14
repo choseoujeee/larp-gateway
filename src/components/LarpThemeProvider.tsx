@@ -21,6 +21,34 @@ interface LarpDesignSettings {
   font_body?: string | null;
   button_radius?: string | null;
   custom_css?: string | null;
+  logo_url?: string | null;
+  favicon_url?: string | null;
+  // Typography H1-H5
+  h1_font_size?: string | null;
+  h1_font_weight?: string | null;
+  h1_letter_spacing?: string | null;
+  h1_line_height?: string | null;
+  h1_margin_bottom?: string | null;
+  h2_font_size?: string | null;
+  h2_font_weight?: string | null;
+  h2_letter_spacing?: string | null;
+  h2_line_height?: string | null;
+  h2_margin_bottom?: string | null;
+  h3_font_size?: string | null;
+  h3_font_weight?: string | null;
+  h3_letter_spacing?: string | null;
+  h3_line_height?: string | null;
+  h3_margin_bottom?: string | null;
+  h4_font_size?: string | null;
+  h4_font_weight?: string | null;
+  h4_letter_spacing?: string | null;
+  h4_line_height?: string | null;
+  h4_margin_bottom?: string | null;
+  h5_font_size?: string | null;
+  h5_font_weight?: string | null;
+  h5_letter_spacing?: string | null;
+  h5_line_height?: string | null;
+  h5_margin_bottom?: string | null;
 }
 
 interface LarpThemeProviderProps {
@@ -45,6 +73,29 @@ const CSS_VAR_MAP: Record<string, string> = {
   destructive_color: "--destructive",
   destructive_foreground: "--destructive-foreground",
 };
+
+/** Build H1-H5 typography CSS rules from settings */
+function buildTypographyCss(s: LarpDesignSettings): string {
+  const rules: string[] = [];
+  for (let level = 1; level <= 5; level++) {
+    const prefix = `h${level}_`;
+    const fontSize = (s as any)[`${prefix}font_size`];
+    const fontWeight = (s as any)[`${prefix}font_weight`];
+    const letterSpacing = (s as any)[`${prefix}letter_spacing`];
+    const lineHeight = (s as any)[`${prefix}line_height`];
+    const marginBottom = (s as any)[`${prefix}margin_bottom`];
+    const props: string[] = [];
+    if (fontSize) props.push(`font-size: ${fontSize}`);
+    if (fontWeight && fontWeight !== "__default") props.push(`font-weight: ${fontWeight}`);
+    if (letterSpacing) props.push(`letter-spacing: ${letterSpacing}`);
+    if (lineHeight) props.push(`line-height: ${lineHeight}`);
+    if (marginBottom) props.push(`margin-bottom: ${marginBottom}`);
+    if (props.length > 0) {
+      rules.push(`h${level} { ${props.join("; ")}; }`);
+    }
+  }
+  return rules.join("\n");
+}
 
 /**
  * LarpThemeProvider loads design settings for a given larpId
@@ -87,6 +138,23 @@ export function LarpThemeProvider({ larpId, children }: LarpThemeProviderProps) 
     setFontsLoaded(prev => new Set([...prev, ...uniqueFonts]));
   }, [settings?.font_heading, settings?.font_body]);
 
+  // Apply favicon override
+  useEffect(() => {
+    if (!settings?.favicon_url) return;
+    let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    const originalHref = link.href;
+    link.href = settings.favicon_url;
+    // Cleanup: restore original on unmount
+    return () => {
+      if (link) link.href = originalHref;
+    };
+  }, [settings?.favicon_url]);
+
   if (!settings) {
     return <>{children}</>;
   }
@@ -111,14 +179,26 @@ export function LarpThemeProvider({ larpId, children }: LarpThemeProviderProps) 
     cssVars["--radius"] = settings.button_radius;
   }
 
+  // Logo URL as CSS custom property
+  if (settings.logo_url) {
+    cssVars["--larp-logo-url"] = `url(${settings.logo_url})`;
+  }
+
+  // Typography CSS
+  const typographyCss = buildTypographyCss(settings);
+
   const hasOverrides = Object.keys(cssVars).length > 0 || Object.keys(fontStyle).length > 0;
 
-  if (!hasOverrides && !settings.custom_css) {
+  if (!hasOverrides && !settings.custom_css && !typographyCss) {
     return <>{children}</>;
   }
 
   return (
     <div style={{ ...cssVars as any, ...fontStyle }}>
+      {/* Typography overrides */}
+      {typographyCss && (
+        <style dangerouslySetInnerHTML={{ __html: typographyCss }} />
+      )}
       {settings.custom_css && (
         <style dangerouslySetInnerHTML={{ __html: settings.custom_css }} />
       )}

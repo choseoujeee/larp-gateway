@@ -292,11 +292,38 @@ export type Database = {
           custom_css: string | null
           destructive_color: string | null
           destructive_foreground: string | null
+          favicon_url: string | null
           font_body: string | null
           font_heading: string | null
           foreground_color: string | null
+          h1_font_size: string | null
+          h1_font_weight: string | null
+          h1_letter_spacing: string | null
+          h1_line_height: string | null
+          h1_margin_bottom: string | null
+          h2_font_size: string | null
+          h2_font_weight: string | null
+          h2_letter_spacing: string | null
+          h2_line_height: string | null
+          h2_margin_bottom: string | null
+          h3_font_size: string | null
+          h3_font_weight: string | null
+          h3_letter_spacing: string | null
+          h3_line_height: string | null
+          h3_margin_bottom: string | null
+          h4_font_size: string | null
+          h4_font_weight: string | null
+          h4_letter_spacing: string | null
+          h4_line_height: string | null
+          h4_margin_bottom: string | null
+          h5_font_size: string | null
+          h5_font_weight: string | null
+          h5_letter_spacing: string | null
+          h5_line_height: string | null
+          h5_margin_bottom: string | null
           id: string
           larp_id: string
+          logo_url: string | null
           muted_color: string | null
           muted_foreground: string | null
           primary_color: string | null
@@ -319,11 +346,38 @@ export type Database = {
           custom_css?: string | null
           destructive_color?: string | null
           destructive_foreground?: string | null
+          favicon_url?: string | null
           font_body?: string | null
           font_heading?: string | null
           foreground_color?: string | null
+          h1_font_size?: string | null
+          h1_font_weight?: string | null
+          h1_letter_spacing?: string | null
+          h1_line_height?: string | null
+          h1_margin_bottom?: string | null
+          h2_font_size?: string | null
+          h2_font_weight?: string | null
+          h2_letter_spacing?: string | null
+          h2_line_height?: string | null
+          h2_margin_bottom?: string | null
+          h3_font_size?: string | null
+          h3_font_weight?: string | null
+          h3_letter_spacing?: string | null
+          h3_line_height?: string | null
+          h3_margin_bottom?: string | null
+          h4_font_size?: string | null
+          h4_font_weight?: string | null
+          h4_letter_spacing?: string | null
+          h4_line_height?: string | null
+          h4_margin_bottom?: string | null
+          h5_font_size?: string | null
+          h5_font_weight?: string | null
+          h5_letter_spacing?: string | null
+          h5_line_height?: string | null
+          h5_margin_bottom?: string | null
           id?: string
           larp_id: string
+          logo_url?: string | null
           muted_color?: string | null
           muted_foreground?: string | null
           primary_color?: string | null
@@ -346,11 +400,38 @@ export type Database = {
           custom_css?: string | null
           destructive_color?: string | null
           destructive_foreground?: string | null
+          favicon_url?: string | null
           font_body?: string | null
           font_heading?: string | null
           foreground_color?: string | null
+          h1_font_size?: string | null
+          h1_font_weight?: string | null
+          h1_letter_spacing?: string | null
+          h1_line_height?: string | null
+          h1_margin_bottom?: string | null
+          h2_font_size?: string | null
+          h2_font_weight?: string | null
+          h2_letter_spacing?: string | null
+          h2_line_height?: string | null
+          h2_margin_bottom?: string | null
+          h3_font_size?: string | null
+          h3_font_weight?: string | null
+          h3_letter_spacing?: string | null
+          h3_line_height?: string | null
+          h3_margin_bottom?: string | null
+          h4_font_size?: string | null
+          h4_font_weight?: string | null
+          h4_letter_spacing?: string | null
+          h4_line_height?: string | null
+          h4_margin_bottom?: string | null
+          h5_font_size?: string | null
+          h5_font_weight?: string | null
+          h5_letter_spacing?: string | null
+          h5_line_height?: string | null
+          h5_margin_bottom?: string | null
           id?: string
           larp_id?: string
+          logo_url?: string | null
           muted_color?: string | null
           muted_foreground?: string | null
           primary_color?: string | null
@@ -412,6 +493,7 @@ export type Database = {
           slug: string
           theme: string | null
           updated_at: string
+          visual_mode: string
         }
         Insert: {
           created_at?: string
@@ -424,6 +506,7 @@ export type Database = {
           slug: string
           theme?: string | null
           updated_at?: string
+          visual_mode?: string
         }
         Update: {
           created_at?: string
@@ -436,6 +519,7 @@ export type Database = {
           slug?: string
           theme?: string | null
           updated_at?: string
+          visual_mode?: string
         }
         Relationships: []
       }
