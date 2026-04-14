@@ -93,7 +93,7 @@ export function ScheduleGridDay({
             )}
 
             {/* Event boxes */}
-            <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="relative w-full h-full pointer-events-auto">
                 {renderEvents()}
               </div>
