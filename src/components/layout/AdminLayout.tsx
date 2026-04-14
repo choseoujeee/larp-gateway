@@ -46,7 +46,7 @@ const larpContentNavigation = [
 
 const larpManagement = [
   { name: "LARPy", href: "/admin/larpy", icon: Gamepad2 },
-  { name: "Vzhled portálu", href: "/admin/design", icon: Palette },
+  { name: "Vzhled portálu", href: "/admin/design", icon: Palette, hideWhenFixedVisual: true },
   { name: "Organizátoři", href: "/admin/organizatori", icon: Users, superAdminOnly: true },
   { name: "Portál", href: "/admin/portal", icon: MessageSquare },
 ];
@@ -202,6 +202,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {isOpen && <SectionLabel>Správa</SectionLabel>}
           {larpManagement.map((item) => {
             if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin) return null;
+            if ("hideWhenFixedVisual" in item && item.hideWhenFixedVisual && currentLarp?.visual_mode === 'vizual_fix') return null;
             return <NavItem key={item.name} item={item} isOpen={isOpen} location={location} />;
           })}
         </nav>
