@@ -1,75 +1,64 @@
 
 
-# Plan: Redesign Schedule Grid -- Sexy, Clean, Overlap-Aware
+# Plan: Visual Mode Decision (`vizual_fix` / `vizual_variabil`)
 
-## Problems Identified
+## Current State
+- `larp_design_settings` table already exists with colors, fonts, border radius, custom CSS
+- `LarpDesignPage.tsx` admin page already exists with color pickers, font selectors, preview
+- `LarpThemeProvider.tsx` applies CSS vars on portal pages
+- Missing: visual mode flag, logo/favicon uploads, H1-H5 typography, light/dark preview toggle
 
-1. **Text overflow/overlap**: Event descriptions contain full HTML (from WYSIWYG editor) -- rendered as raw HTML text in compact boxes, causing massive visual overflow
-2. **Expanded boxes overlap everything**: When expanded, `height: auto` makes boxes hundreds of pixels tall, covering other events
-3. **Lane algorithm works but visual result is messy**: Events with long content bleed out of their pixel height
-4. **No visual distinction by event type**: All boxes look similar, need distinct pastel colors per type
-5. **Raw HTML in descriptions**: Description field contains `<p><span style="...">` etc. -- needs to be rendered as HTML or stripped for compact view
-6. **Buttons and UI not polished**: Need rounded, smooth, pastel styling
+## Implementation Plan (10 steps)
 
-## Design Vision
+1. **DB migration**: Add `visual_mode` column (`text`, default `'vizual_fix'`) to `larps` table. Add typography columns to `larp_design_settings`: `h1_font_size`, `h1_font_weight`, `h1_letter_spacing`, `h1_line_height`, `h1_margin_bottom` (repeat for h2-h5). Add `logo_url` and `favicon_url` columns to `larp_design_settings`.
 
-Think of it like a Google Calendar / Excel grid (Y=time, top-to-bottom), with:
-- Clean pastel color-coded blocks per event type
-- Overlapping events side-by-side in lanes (already working via `assignLanes`)
-- Compact view: just name + type icon, text strictly clipped to box height
-- Click to expand: show details in a **floating popover/tooltip** instead of stretching the box itself
-- Smooth rounded corners, subtle shadows, no raw HTML
+2. **Storage bucket**: Create `larp-assets` public bucket for logo/favicon uploads with RLS policies allowing authenticated users to upload to their LARP's folder.
 
-## Changes
+3. **LarpDesignPage.tsx -- gate by visual_mode**: Read `currentLarp.visual_mode`. If `vizual_fix`, show a read-only info page ("Tento LARP používá pevný vizuální styl"). If `vizual_variabil`, show the full editor.
 
-### 1. `scheduleUtils.ts` -- New pastel color palette
-Replace current `eventBoxStyle` with distinct, smooth pastel colors:
-- **CP vstup**: warm coral/salmon pastel (`bg-rose-100 border-rose-300`)
-- **Materiál**: lavender (`bg-violet-50 border-violet-200`)
-- **Organizační**: soft blue (`bg-sky-50 border-sky-200`)
-- **Jídlo**: mint green (`bg-emerald-50 border-emerald-200`)
-- **Přesun**: warm gray (`bg-stone-100 border-stone-200`)
-- **Informace**: soft amber (`bg-amber-50 border-amber-200`)
-- **Programový blok**: soft indigo (`bg-indigo-50 border-indigo-200`)
-- All with `rounded-xl` for smooth look
-- Dark mode variants using `/20` opacity backgrounds
+4. **LarpDesignPage.tsx -- add logo/favicon upload**: Add file upload sections with validation (max 2MB, image/* only, hex color validation for existing fields). Upload to `larp-assets/{larpId}/logo.png` and `favicon.png`. Store public URL in `larp_design_settings`.
 
-### 2. `ScheduleEventBox.tsx` -- Complete rewrite
-**Compact view** (default):
-- Strictly clipped to calculated `heightPx` -- no overflow, `overflow-hidden`
-- Show: icon + title (truncated), optional 1-line subtitle
-- No raw HTML -- strip HTML tags for compact display with a `stripHtml()` utility
-- Smooth `rounded-xl`, subtle `shadow-sm`, pastel background
+5. **LarpDesignPage.tsx -- add H1-H5 typography section**: For each heading level, add controls for fontSize (text input, e.g. "2rem"), fontWeight (select: 400-900), letterSpacing (text), lineHeight (text), marginBottom (text). Store as JSON-compatible columns in DB.
 
-**Expanded view** -- Replace in-place expansion with a **floating popover**:
-- On click, show a positioned popover/card floating above the grid (using absolute positioning or Radix Popover)
-- Popover renders description as **sanitized HTML** (using `dangerouslySetInnerHTML` with the existing sanitize utility)
-- Shows all details: type, CP name, scene, location, performer, description
-- Action buttons (Upravit, Scéna, Odebrat) with `rounded-full` pill-style buttons
-- Click outside or X to close
-- This prevents the box from growing and overlapping other events
+6. **LarpDesignPage.tsx -- improve preview panel**: Add light/dark toggle switch in preview. Render live H1-H5 headings with applied typography tokens. Show primary + secondary buttons with current colors/radius. Preview updates in real-time from form state.
 
-### 3. `ScheduleGrid.tsx` -- Minor polish
-- Add `overflow-hidden` to the events container to prevent any bleed
-- Ensure grid lines are crisp and subtle
+7. **LarpThemeProvider.tsx -- extend**: Apply H1-H5 typography via injected `<style>` tag. Apply favicon via `document.querySelector('link[rel="icon"]')` override. Apply logo URL via CSS custom property `--larp-logo-url`.
 
-### 4. `ReadOnlyScheduleEventBox` -- Same treatment
-- Compact: clipped, no HTML, icon + title
-- Click: floating popover with rendered HTML description
-- Same pastel colors
+8. **AdminLayout.tsx -- conditional nav**: Hide "Vzhled portálu" nav item when `currentLarp.visual_mode === 'vizual_fix'`.
 
-### 5. HTML stripping utility
-- Add `stripHtml(html: string): string` function to `scheduleUtils.ts`
-- Used in compact view to show plain text preview of description
+9. **useLarpContext.tsx -- extend**: Fetch `visual_mode` from larps table alongside existing fields so it's available app-wide.
 
-### 6. Portal page sync
-- `SchedulePortalPage.tsx` already uses shared components, so changes propagate automatically
+10. **LARPs admin (AdminDashboard or LarpsPage)**: Add `visual_mode` selector when creating/editing a LARP (radio: Pevný vzhled / Konfigurovatelný vzhled).
 
-## Files to modify
-- `src/components/schedule/scheduleUtils.ts` -- new colors, `stripHtml` utility
-- `src/components/schedule/ScheduleEventBox.tsx` -- rewrite both admin and readonly boxes
-- `src/components/schedule/ScheduleGrid.tsx` -- minor overflow fix
-- `src/components/schedule/scheduleConstants.ts` -- update `SCHEDULE_BOX_MIN_PX` if needed
+## Files to Create/Modify
 
-## No database changes needed
+### Create
+- `supabase/migrations/XXXX_visual_mode_and_typography.sql` -- migration
+
+### Modify
+- `src/pages/admin/LarpDesignPage.tsx` -- major: gate, logo/favicon upload, typography, improved preview
+- `src/components/LarpThemeProvider.tsx` -- extend with typography + favicon
+- `src/hooks/useLarpContext.tsx` -- add `visual_mode` to `LarpOption`
+- `src/components/layout/AdminLayout.tsx` -- conditional nav item
+- `src/pages/admin/AdminDashboard.tsx` -- visual_mode selector in LARP settings (or wherever LARP edit form lives)
+
+## Input Validation / Guardrails
+- Hex color regex: `/^#[0-9a-fA-F]{6}$/` before HSL conversion
+- File upload: max 2MB, accept `image/png,image/jpeg,image/svg+xml,image/x-icon`
+- Typography values: sanitize to allowed patterns (e.g. `\d+(\.\d+)?(rem|px|em|%)`)
+- Custom CSS: already exists, no change needed
+
+## Test Checklist
+1. LARP with `vizual_fix` -- design page shows info message, nav item hidden
+2. LARP with `vizual_variabil` -- full editor visible, save/load works
+3. Logo/favicon upload stores file and URL persists across page reload
+4. Typography H1-H5 changes reflect in preview panel immediately
+5. Light/dark toggle in preview shows correct color scheme
+6. Portal pages (player, CP, production, schedule) apply saved design tokens
+7. Existing LARPs default to `vizual_fix` (no breaking change)
+
+## Data Migration Notes
+- All existing LARPs get `visual_mode = 'vizual_fix'` by default (ALTER TABLE DEFAULT)
+- Existing `larp_design_settings` rows remain valid; new columns are nullable
+- No data loss or breaking changes to existing API contracts
 
