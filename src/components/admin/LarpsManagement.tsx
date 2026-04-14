@@ -37,6 +37,7 @@ export interface LarpRow {
   theme: string | null;
   motto: string | null;
   footer_text: string | null;
+  visual_mode: string;
   created_at: string;
 }
 
@@ -84,6 +85,7 @@ export function LarpsManagement({
     theme: "wwii",
     motto: "",
     footer_text: "",
+    visual_mode: "vizual_fix",
   });
   const [saving, setSaving] = useState(false);
 
@@ -106,7 +108,7 @@ export function LarpsManagement({
 
   const openCreateDialog = () => {
     setSelectedLarp(null);
-    setFormData({ name: "", slug: "", description: "", theme: "wwii", motto: "", footer_text: "" });
+    setFormData({ name: "", slug: "", description: "", theme: "wwii", motto: "", footer_text: "", visual_mode: "vizual_fix" });
     setDialogOpen(true);
   };
 
@@ -119,6 +121,7 @@ export function LarpsManagement({
       theme: larp.theme && ["wwii", "fantasy"].includes(larp.theme) ? larp.theme : "wwii",
       motto: larp.motto || "",
       footer_text: larp.footer_text || "",
+      visual_mode: larp.visual_mode || "vizual_fix",
     });
     setDialogOpen(true);
   };
@@ -148,7 +151,8 @@ export function LarpsManagement({
           theme: formData.theme || null,
           motto: formData.motto || null,
           footer_text: formData.footer_text.trim() || null,
-        })
+          visual_mode: formData.visual_mode,
+        } as any)
         .eq("id", selectedLarp.id);
       if (error) {
         toast.error("Chyba při ukládání", { description: error.message });
@@ -164,8 +168,9 @@ export function LarpsManagement({
         theme: formData.theme || null,
         motto: formData.motto || null,
         footer_text: formData.footer_text.trim() || null,
+        visual_mode: formData.visual_mode,
         owner_id: user?.id,
-      });
+      } as any);
       if (error) {
         if (error.code === "23505") toast.error("Slug už existuje", { description: "Zvolte jiný slug" });
         else toast.error("Chyba při vytváření", { description: error.message });
@@ -383,6 +388,26 @@ export function LarpsManagement({
               </Select>
               <p className="text-xs text-muted-foreground">
                 Určuje barvy a styl portálu a landingu pro tento LARP
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Režim vizuální identity</Label>
+              <Select
+                value={formData.visual_mode}
+                onValueChange={(v) => setFormData({ ...formData, visual_mode: v })}
+              >
+                <SelectTrigger className="input-vintage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vizual_fix">Pevný vzhled (bez admin konfigurace)</SelectItem>
+                  <SelectItem value="vizual_variabil">Konfigurovatelný vzhled (admin editor)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.visual_mode === "vizual_variabil"
+                  ? "Umožní konfiguraci barev, fontů, loga a typografie v sekci Vzhled portálu"
+                  : "Používá pevnou sadu vizuálních tokenů bez možnosti konfigurace"}
               </p>
             </div>
             <div className="space-y-2">
