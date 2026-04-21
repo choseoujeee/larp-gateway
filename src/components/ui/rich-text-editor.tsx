@@ -51,8 +51,10 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Custom FontSize extension
+// Custom extension command types
+// @ts-ignore — augmenting @tiptap/core Commands interface
 declare module "@tiptap/core" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Commands<ReturnType> {
     fontSize: {
       setFontSize: (size: string) => ReturnType;
@@ -70,6 +72,10 @@ declare module "@tiptap/core" {
       setParagraphSpacingBefore: (spacing: string) => ReturnType;
       setParagraphSpacingAfter: (spacing: string) => ReturnType;
       unsetParagraphSpacing: () => ReturnType;
+    };
+    indentation: {
+      indent: () => ReturnType;
+      outdent: () => ReturnType;
     };
   }
 }
