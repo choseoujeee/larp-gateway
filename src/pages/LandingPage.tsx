@@ -1,37 +1,63 @@
 import { Link } from "react-router-dom";
-import { FileText, Shield, Users, Clock, Printer, ChevronRight } from "lucide-react";
+import { FileText, Shield, Users, Clock, Printer, ChevronRight, KeyRound, Eye, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Stamp } from "@/components/ui/stamp";
 
 const features = [
-{
-  icon: FileText,
-  title: "Správa dokumentů",
-  description: "Organizační, herní a osobní dokumenty s WYSIWYG editorem. Cílení na skupiny nebo jednotlivce."
-},
-{
-  icon: Users,
-  title: "Postavy a CP",
-  description: "Evidence postav a cizích postav. Generování unikátních přístupových odkazů s heslem."
-},
-{
-  icon: Clock,
-  title: "Harmonogram",
-  description: "Timeline událostí s live zobrazením aktuálního bloku. Vazba na cizí postavy."
-},
-{
-  icon: Shield,
-  title: "Bezpečný přístup",
-  description: "Hráči vidí jen své materiály. CP má přístup ke všemu potřebnému pro hraní."
-},
-{
-  icon: Printer,
-  title: "Tisk a export",
-  description: "Optimalizovaný tisk dokumentů. Možnost tisku po kategoriích nebo vše najednou."
-}];
+  {
+    icon: FileText,
+    title: "Správa dokumentů",
+    description: "Organizační, herní a osobní dokumenty s WYSIWYG editorem. Cílení na skupiny nebo jednotlivce."
+  },
+  {
+    icon: Users,
+    title: "Postavy a CP",
+    description: "Evidence postav a cizích postav. Generování unikátních přístupových odkazů s heslem."
+  },
+  {
+    icon: Clock,
+    title: "Harmonogram",
+    description: "Timeline událostí s live zobrazením aktuálního bloku. Vazba na cizí postavy."
+  },
+  {
+    icon: Shield,
+    title: "Bezpečný přístup",
+    description: "Hráči vidí jen své materiály. CP má přístup ke všemu potřebnému pro hraní."
+  },
+  {
+    icon: Printer,
+    title: "Tisk a export",
+    description: "Optimalizovaný tisk dokumentů. Možnost tisku po kategoriích nebo vše najednou."
+  },
+  {
+    icon: Palette,
+    title: "Vizuální identita",
+    description: "Přizpůsobte barvy, fonty a vzhled portálu pro každý LARP zvlášť."
+  }
+];
 
+const steps = [
+  {
+    number: "01",
+    icon: KeyRound,
+    title: "Vytvořte LARP",
+    description: "Založte nový LARP v administraci, pojmenujte ho a zvolte vizuální téma."
+  },
+  {
+    number: "02",
+    icon: FileText,
+    title: "Přidejte obsah",
+    description: "Vytvořte dokumenty, postavy, harmonogram a další materiály pro vaši hru."
+  },
+  {
+    number: "03",
+    icon: Eye,
+    title: "Sdílejte s hráči",
+    description: "Vygenerujte přístupové odkazy a hesla. Hráči uvidí jen to, co mají."
+  }
+];
 
 export default function LandingPage() {
   return (
@@ -88,7 +114,7 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {features.map((feature, index) =>
-            <PaperCard key={index} className="hover:shadow-lg transition-shadow">
+              <PaperCard key={index} className="hover:shadow-lg transition-shadow">
                 <PaperCardContent>
                   <div className="flex items-start gap-4">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-primary/10">
@@ -107,51 +133,33 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      
+      <section className="py-16 border-t border-border">
+        <div className="container mx-auto px-4">
+          <h2 className="font-typewriter text-2xl md:text-3xl text-center mb-4 tracking-wide">
+            Jak to funguje
+          </h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto">
+            Tři jednoduché kroky k připravenému LARPu
+          </p>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {steps.map((step) => (
+              <div key={step.number} className="text-center">
+                <div className="relative inline-flex items-center justify-center mb-4">
+                  <span className="absolute -top-2 -right-2 font-typewriter text-xs text-primary font-bold bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center">
+                    {step.number}
+                  </span>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card border border-border shadow-sm">
+                    <step.icon className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <h3 className="font-typewriter text-lg mb-2">{step.title}</h3>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="border-t border-border py-8 bg-card">
@@ -161,6 +169,6 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
-    </div>);
-
+    </div>
+  );
 }

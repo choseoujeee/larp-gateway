@@ -176,16 +176,17 @@ function LarpOverviewContent() {
       </div>
 
       {larps.length === 0 && (
-        <PaperCard>
-          <PaperCardContent>
-            <p className="text-muted-foreground">
-              Zatím nemáte žádný LARP.
-              {isSuperAdmin
-                ? " Klikněte na „Nový LARP“ a vytvořte první."
-                : " Požádejte organizátora o přístup."}
-            </p>
-          </PaperCardContent>
-        </PaperCard>
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <Gamepad2 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="font-typewriter text-lg mb-1 text-foreground">Žádný LARP</h3>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            {isSuperAdmin
+              ? 'Klikněte na „Nový LARP" a vytvořte první.'
+              : 'Požádejte organizátora o přístup.'}
+          </p>
+        </div>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -51,8 +51,10 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Custom FontSize extension
+// Custom extension command types
+// @ts-ignore — augmenting @tiptap/core Commands interface
 declare module "@tiptap/core" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Commands<ReturnType> {
     fontSize: {
       setFontSize: (size: string) => ReturnType;
@@ -70,6 +72,10 @@ declare module "@tiptap/core" {
       setParagraphSpacingBefore: (spacing: string) => ReturnType;
       setParagraphSpacingAfter: (spacing: string) => ReturnType;
       unsetParagraphSpacing: () => ReturnType;
+    };
+    indentation: {
+      indent: () => ReturnType;
+      outdent: () => ReturnType;
     };
   }
 }
@@ -231,7 +237,7 @@ const ParagraphSpacing = Extension.create({
       },
     ];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       setParagraphSpacingBefore:
         (spacing: string) =>
@@ -312,7 +318,7 @@ const Indent = Extension.create({
       },
     ];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       indent:
         () =>
@@ -765,16 +771,16 @@ export function RichTextEditor({
               <div>
                 <p className="text-xs font-medium mb-1.5">Mezera před odstavcem</p>
                 <div className="flex flex-wrap gap-1">
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingBefore("0px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingBefore("0px").run()}>
                     Žádná
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingBefore("6px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingBefore("6px").run()}>
                     6px
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingBefore("12px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingBefore("12px").run()}>
                     12px
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingBefore("24px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingBefore("24px").run()}>
                     24px
                   </Button>
                 </div>
@@ -782,16 +788,16 @@ export function RichTextEditor({
               <div>
                 <p className="text-xs font-medium mb-1.5">Mezera za odstavcem</p>
                 <div className="flex flex-wrap gap-1">
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingAfter("0px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingAfter("0px").run()}>
                     Žádná
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingAfter("6px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingAfter("6px").run()}>
                     6px
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingAfter("12px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingAfter("12px").run()}>
                     12px
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => editor.chain().focus().setParagraphSpacingAfter("24px").run()}>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => (editor.chain().focus() as any).setParagraphSpacingAfter("24px").run()}>
                     24px
                   </Button>
                 </div>
@@ -801,10 +807,10 @@ export function RichTextEditor({
         </Popover>
 
         {/* Indent */}
-        <ToolbarButton onClick={() => editor.chain().focus().outdent().run()} title="Zmenšit odsazení">
+        <ToolbarButton onClick={() => (editor.chain().focus() as any).outdent().run()} title="Zmenšit odsazení">
           <IndentDecrease className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().indent().run()} title="Zvětšit odsazení">
+        <ToolbarButton onClick={() => (editor.chain().focus() as any).indent().run()} title="Zvětšit odsazení">
           <IndentIncrease className="h-4 w-4" />
         </ToolbarButton>
 
