@@ -237,9 +237,9 @@ const ParagraphSpacing = Extension.create({
       },
     ];
   },
+  // @ts-ignore — custom commands not recognized by tiptap types
   addCommands() {
     return {
-      setParagraphSpacingBefore:
         (spacing: string) =>
         ({ tr, state, dispatch }) => {
           const { selection } = state;
@@ -318,9 +318,9 @@ const Indent = Extension.create({
       },
     ];
   },
+  // @ts-ignore — custom commands not recognized by tiptap types
   addCommands() {
     return {
-      indent:
         () =>
         ({ tr, state, dispatch }) => {
           const { selection } = state;
