@@ -318,9 +318,9 @@ const Indent = Extension.create({
       },
     ];
   },
-  // @ts-ignore — custom commands not recognized by tiptap types
-  addCommands() {
+  addCommands(): any {
     return {
+      indent:
         () =>
         ({ tr, state, dispatch }) => {
           const { selection } = state;
