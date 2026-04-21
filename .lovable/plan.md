@@ -1,64 +1,109 @@
 
 
-# Plan: Visual Mode Decision (`vizual_fix` / `vizual_variabil`)
+# Comprehensive Project Review & Polish Plan
 
-## Current State
-- `larp_design_settings` table already exists with colors, fonts, border radius, custom CSS
-- `LarpDesignPage.tsx` admin page already exists with color pickers, font selectors, preview
-- `LarpThemeProvider.tsx` applies CSS vars on portal pages
-- Missing: visual mode flag, logo/favicon uploads, H1-H5 typography, light/dark preview toggle
+## Overview
+Full audit of the LARP Portal application covering functionality bugs, design inconsistencies, UX friction points, and code quality issues. The goal is to elevate the project to a professional, polished level.
 
-## Implementation Plan (10 steps)
+## Issues Found
 
-1. **DB migration**: Add `visual_mode` column (`text`, default `'vizual_fix'`) to `larps` table. Add typography columns to `larp_design_settings`: `h1_font_size`, `h1_font_weight`, `h1_letter_spacing`, `h1_line_height`, `h1_margin_bottom` (repeat for h2-h5). Add `logo_url` and `favicon_url` columns to `larp_design_settings`.
+### A. Functionality Bugs
 
-2. **Storage bucket**: Create `larp-assets` public bucket for logo/favicon uploads with RLS policies allowing authenticated users to upload to their LARP's folder.
+1. **ErrorBoundary hardcoded redirect**: The fallback button always navigates to `/admin/cp` regardless of where the error occurred. Should navigate to `/admin` or offer a generic "reload page" action.
 
-3. **LarpDesignPage.tsx -- gate by visual_mode**: Read `currentLarp.visual_mode`. If `vizual_fix`, show a read-only info page ("Tento LARP používá pevný vizuální styl"). If `vizual_variabil`, show the full editor.
+2. **LandingPage empty section**: Lines 110-155 of `LandingPage.tsx` contain a completely empty "How it works" section -- just whitespace. Either remove it or fill it with content.
 
-4. **LarpDesignPage.tsx -- add logo/favicon upload**: Add file upload sections with validation (max 2MB, image/* only, hex color validation for existing fields). Upload to `larp-assets/{larpId}/logo.png` and `favicon.png`. Store public URL in `larp_design_settings`.
+3. **LoginPage redirect during render**: `if (user) { navigate("/admin"); return null; }` is called during render, not inside a `useEffect`. This causes React warnings and potential infinite loops.
 
-5. **LarpDesignPage.tsx -- add H1-H5 typography section**: For each heading level, add controls for fontSize (text input, e.g. "2rem"), fontWeight (select: 400-900), letterSpacing (text), lineHeight (text), marginBottom (text). Store as JSON-compatible columns in DB.
+4. **PersonsPage monolith (1333 lines)**: Single file contains list view, detail view, medailonek editor, assignment dialog, document management, and more. Difficult to maintain and debug.
 
-6. **LarpDesignPage.tsx -- improve preview panel**: Add light/dark toggle switch in preview. Render live H1-H5 headings with applied typography tokens. Show primary + secondary buttons with current colors/radius. Preview updates in real-time from form state.
+5. **RunsPage monolith (1679 lines)**: Same problem, even larger.
 
-7. **LarpThemeProvider.tsx -- extend**: Apply H1-H5 typography via injected `<style>` tag. Apply favicon via `document.querySelector('link[rel="icon"]')` override. Apply logo URL via CSS custom property `--larp-logo-url`.
+6. **SchedulePage monolith (1029 lines)**: Significant but already partially decomposed.
 
-8. **AdminLayout.tsx -- conditional nav**: Hide "Vzhled portálu" nav item when `currentLarp.visual_mode === 'vizual_fix'`.
+7. **Missing loading states on navigation**: When clicking a LARP card in AdminDashboard, there is no immediate visual feedback that navigation is happening.
 
-9. **useLarpContext.tsx -- extend**: Fetch `visual_mode` from larps table alongside existing fields so it's available app-wide.
+### B. Design & Visual Issues
 
-10. **LARPs admin (AdminDashboard or LarpsPage)**: Add `visual_mode` selector when creating/editing a LARP (radio: Pevný vzhled / Konfigurovatelný vzhled).
+8. **Inconsistent border-radius**: The WWII theme uses `rounded-sm` (0.25rem) but many components use default Tailwind rounding or `rounded-lg` / `rounded-xl` (schedule boxes). Needs harmonization.
 
-## Files to Create/Modify
+9. **LandingPage feels sparse**: Only 5 feature cards and a footer. No social proof, no screenshots, no "How it works" section, no CTA to view a demo portal.
 
-### Create
-- `supabase/migrations/XXXX_visual_mode_and_typography.sql` -- migration
+10. **Portal login page lacks branding**: PortalAccessPage uses generic styling. Should feel immersive -- the player is entering a game world, not a SaaS login.
 
-### Modify
-- `src/pages/admin/LarpDesignPage.tsx` -- major: gate, logo/favicon upload, typography, improved preview
-- `src/components/LarpThemeProvider.tsx` -- extend with typography + favicon
-- `src/hooks/useLarpContext.tsx` -- add `visual_mode` to `LarpOption`
-- `src/components/layout/AdminLayout.tsx` -- conditional nav item
-- `src/pages/admin/AdminDashboard.tsx` -- visual_mode selector in LARP settings (or wherever LARP edit form lives)
+11. **Dark mode contrast issues**: Several `text-muted-foreground` values in dark mode may have insufficient contrast ratios against dark backgrounds.
 
-## Input Validation / Guardrails
-- Hex color regex: `/^#[0-9a-fA-F]{6}$/` before HSL conversion
-- File upload: max 2MB, accept `image/png,image/jpeg,image/svg+xml,image/x-icon`
-- Typography values: sanitize to allowed patterns (e.g. `\d+(\.\d+)?(rem|px|em|%)`)
-- Custom CSS: already exists, no change needed
+12. **Mobile sidebar**: The collapsed sidebar (w-14) pushes main content with `ml-14`, but on very narrow screens this still constrains the content area.
+
+### C. UX Improvements
+
+13. **No keyboard shortcuts**: Admin power users have no shortcuts for common actions (new document, save, navigate between sections).
+
+14. **No empty state illustrations**: Empty lists show plain text ("Zatim nemáte žádný LARP"). Should have illustrations or icons to feel less bare.
+
+15. **No breadcrumb navigation**: Deep pages (e.g., person detail) rely solely on back arrows. Breadcrumbs would improve orientation.
+
+16. **No confirmation before leaving unsaved forms**: Editing documents, persons, or design settings has no "unsaved changes" guard.
+
+17. **Search/filter UX**: PersonsPage and DocumentsPage have search but no debounce, and clearing the search requires clicking a small X.
+
+18. **Portal feedback not visible to players**: The FeedbackButton exists but the feedback loop (admin seeing and responding) could be more transparent.
+
+## Implementation Plan (Prioritized)
+
+### Phase 1: Critical Bug Fixes (Steps 1-4)
+1. Fix ErrorBoundary to use generic redirect (`window.location.reload()` or `/admin`)
+2. Fix LoginPage redirect to use `useEffect` instead of render-time navigation
+3. Fill or remove empty LandingPage section
+4. Add loading/transition feedback on LARP selection
+
+### Phase 2: Design Polish (Steps 5-8)
+5. Harmonize border-radius across all components to match theme (`rounded-sm` for WWII, `rounded-lg` for Fantasy)
+6. Improve LandingPage with "How it works" section, better hero, and demo CTA
+7. Enhance PortalAccessPage with immersive game-themed login
+8. Fix dark mode contrast for muted text values
+
+### Phase 3: UX Enhancements (Steps 9-12)
+9. Add empty state illustrations/icons for all list pages
+10. Add breadcrumb navigation to detail pages (PersonsPage detail, GroupsPage detail, CpDetailPage)
+11. Add unsaved changes guard to major edit forms (DocumentEditDialog, LarpDesignPage)
+12. Add debounce to search inputs and improve clear button visibility
+
+### Phase 4: Code Quality (Steps 13-14)
+13. Extract PersonsPage into sub-components: `PersonList`, `PersonDetail`, `PersonForm`, `MedailonekDialog`
+14. Extract RunsPage into sub-components: `RunList`, `RunDetail`, `RunAssignments`, `RunForm`
+
+## Files to Create
+- `src/components/admin/PersonList.tsx`
+- `src/components/admin/PersonDetail.tsx`
+- `src/components/admin/PersonForm.tsx`
+- `src/components/admin/MedailonekDialog.tsx`
+- `src/components/layout/Breadcrumbs.tsx`
+- `src/components/EmptyState.tsx`
+- `src/hooks/useUnsavedChangesGuard.ts`
+
+## Files to Modify
+- `src/components/ErrorBoundary.tsx` -- generic redirect
+- `src/pages/auth/LoginPage.tsx` -- useEffect for redirect
+- `src/pages/LandingPage.tsx` -- add content, remove empty section
+- `src/pages/admin/AdminDashboard.tsx` -- loading feedback
+- `src/pages/admin/PersonsPage.tsx` -- decompose, add breadcrumbs
+- `src/pages/portal/PortalAccessPage.tsx` -- immersive design
+- `src/index.css` -- dark mode contrast fixes
+- `src/components/admin/DocumentEditDialog.tsx` -- unsaved guard
+- `src/pages/admin/LarpDesignPage.tsx` -- unsaved guard
 
 ## Test Checklist
-1. LARP with `vizual_fix` -- design page shows info message, nav item hidden
-2. LARP with `vizual_variabil` -- full editor visible, save/load works
-3. Logo/favicon upload stores file and URL persists across page reload
-4. Typography H1-H5 changes reflect in preview panel immediately
-5. Light/dark toggle in preview shows correct color scheme
-6. Portal pages (player, CP, production, schedule) apply saved design tokens
-7. Existing LARPs default to `vizual_fix` (no breaking change)
+1. ErrorBoundary shows reload button, not hardcoded CP redirect
+2. LoginPage does not cause React render warnings when user is logged in
+3. LandingPage renders complete sections with no empty whitespace
+4. Dark mode text meets WCAG AA contrast ratio (4.5:1)
+5. PersonsPage detail shows breadcrumb and back navigation works
+6. Empty states display illustration/icon instead of plain text
+7. Unsaved changes prompt appears when navigating away from dirty forms
+8. Search inputs debounce properly (no jank on fast typing)
+9. Mobile sidebar does not cut off main content on 320px screens
 
-## Data Migration Notes
-- All existing LARPs get `visual_mode = 'vizual_fix'` by default (ALTER TABLE DEFAULT)
-- Existing `larp_design_settings` rows remain valid; new columns are nullable
-- No data loss or breaking changes to existing API contracts
+## Database Changes
+None required. All changes are frontend-only.
 
