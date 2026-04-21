@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Redirect if already logged in — inside useEffect to avoid render-time navigation
+  useEffect(() => {
+    if (user) {
+      navigate("/admin", { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
@@ -36,12 +43,6 @@ export default function LoginPage() {
       setGoogleLoading(false);
     }
   };
-
-  // Redirect if already logged in
-  if (user) {
-    navigate("/admin");
-    return null;
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +80,9 @@ export default function LoginPage() {
     toast.success("Přihlášení úspěšné");
     navigate("/admin");
   };
+
+  // Don't render the form while redirecting
+  if (user) return null;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

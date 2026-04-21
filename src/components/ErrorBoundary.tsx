@@ -37,13 +37,22 @@ export class ErrorBoundary extends Component<Props, State> {
             <pre className="mb-4 max-h-32 overflow-auto rounded bg-muted p-2 text-left text-xs">
               {this.state.error.stack}
             </pre>
-            <button
-              type="button"
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-              onClick={() => window.location.assign("/admin/cp")}
-            >
-              Zpět na přehled CP
-            </button>
+            <div className="flex gap-2 justify-center">
+              <button
+                type="button"
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                onClick={() => window.location.reload()}
+              >
+                Obnovit stránku
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-secondary px-4 py-2 text-sm text-secondary-foreground hover:bg-secondary/90"
+                onClick={() => window.location.assign("/admin")}
+              >
+                Zpět na přehled
+              </button>
+            </div>
           </div>
         </div>
       );
