@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle, Plus } from "lucide-react";
+import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle, Plus, MessageSquare } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { RunHeader } from "../components/RunHeader";
 import { RunEditDialog } from "../components/RunEditDialog";
@@ -97,6 +97,7 @@ export default function V2RunCockpit() {
               <Button asChild variant="outline" size="sm"><Link to={`${base}/cp`}><Theater className="mr-2 h-4 w-4" />CP performeři</Link></Button>
               <Button asChild variant="outline" size="sm"><Link to={`${base}/harmonogram`}><Calendar className="mr-2 h-4 w-4" />Harmonogram</Link></Button>
               <Button asChild variant="outline" size="sm"><Link to={`${base}/produkce`}><ClipboardCheck className="mr-2 h-4 w-4" />Produkce</Link></Button>
+              <Button asChild variant="outline" size="sm"><Link to={`${base}/komunikace`}><MessageSquare className="mr-2 h-4 w-4" />Komunikace</Link></Button>
             </div>
           </section>
 
