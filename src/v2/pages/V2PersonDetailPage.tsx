@@ -149,9 +149,8 @@ export default function V2PersonDetailPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs uppercase tracking-wider">Heslo do portálu:</span>
                     <InlineEditField
-                      value="•••"
+                      value={person.password_plain}
                       onSave={(v) => v.trim() ? updatePassword(v.trim()) : Promise.resolve()}
-                      type="password"
                       emptyText="nenastaveno"
                       ariaLabel="Heslo"
                     />
@@ -181,8 +180,8 @@ export default function V2PersonDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Medailonek</h3>
                 <InlineEditRich
+                  title="Medailonek"
                   value={person.medailonek}
                   onSave={(v) => updateField({ medailonek: v })}
                 />

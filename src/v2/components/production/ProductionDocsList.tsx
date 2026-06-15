@@ -18,9 +18,12 @@ export function ProductionDocsList({ larpId, larpSlug }: Props) {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      // Show both produkční-category and produkční-type docs so anything visible
+      // in the production portal also appears here in admin.
       const { data, error } = await supabase.from("documents")
         .select("id, title, updated_at")
-        .eq("larp_id", larpId).eq("doc_category", "produkcni")
+        .eq("larp_id", larpId)
+        .or("doc_category.eq.produkcni,doc_type.eq.produkční")
         .order("priority").order("sort_order");
       if (error) toast.error(error.message);
       setDocs((data ?? []) as Doc[]);

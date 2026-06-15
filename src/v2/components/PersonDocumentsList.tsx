@@ -52,13 +52,13 @@ function TargetBadge({ doc, personId, personType }: { doc: Doc; personId: string
   const hasPlayersAll = a.includes("players:all");
   const hasCpAll = a.includes("cp:all");
   if (hasPlayersAll && hasCpAll) {
-    return <Badge variant="outline" className="gap-1 border-violet-400/60 text-[10px] text-violet-600 dark:text-violet-300"><Share2 className="h-2.5 w-2.5" />sdílené</Badge>;
+    return <Badge variant="outline" className="gap-1 border-violet-400/60 text-[10px] text-violet-600 dark:text-violet-300"><Share2 className="h-2.5 w-2.5" />Všem</Badge>;
   }
   if (hasCpAll) {
-    return <Badge variant="outline" className="gap-1 border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"><Drama className="h-2.5 w-2.5" />všichni CP</Badge>;
+    return <Badge variant="outline" className="gap-1 border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"><Drama className="h-2.5 w-2.5" />Všem CP</Badge>;
   }
   if (hasPlayersAll) {
-    return <Badge variant="outline" className="gap-1 border-sky-400/60 text-[10px] text-sky-700 dark:text-sky-300"><UsersRound className="h-2.5 w-2.5" />všichni hráči</Badge>;
+    return <Badge variant="outline" className="gap-1 border-sky-400/60 text-[10px] text-sky-700 dark:text-sky-300"><UsersRound className="h-2.5 w-2.5" />Všem hráčům</Badge>;
   }
   if (a.some((t) => t.startsWith("players:group:") || t.startsWith("cp:group:")) || doc.target_type === "skupina") {
     return <Badge variant="outline" className="gap-1 text-[10px]"><Users className="h-2.5 w-2.5" />skupina</Badge>;
