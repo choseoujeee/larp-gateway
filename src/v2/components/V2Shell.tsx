@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
+import { useLarpPermissions, type SectionKey } from "../hooks/useLarpPermissions";
 
 interface V2ShellProps {
   children: ReactNode;
