@@ -1,9 +1,10 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut } from "lucide-react";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface V2ShellProps {
   children: ReactNode;
@@ -21,6 +22,20 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
   const { signOut, user } = useAuth();
+  const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
+
+  useEffect(() => {
+    if (!larpSlug) { setRuns([]); return; }
+    (async () => {
+      const { data: l } = await supabase.from("larps").select("id").eq("slug", larpSlug).maybeSingle();
+      if (!l) return;
+      const { data } = await supabase.from("runs")
+        .select("id, name, slug, is_active, date_from")
+        .eq("larp_id", l.id)
+        .order("date_from", { ascending: false });
+      setRuns(data ?? []);
+    })();
+  }, [larpSlug]);
 
   const larpNav: NavItem[] = larpSlug
     ? [
@@ -59,6 +74,22 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
           <V2NavGroup label={larpName || larpSlug}>
             {larpNav.map((item) => (
               <V2NavLink key={item.to} {...item} onClick={() => setMobileOpen(false)} />
+            ))}
+          </V2NavGroup>
+        )}
+
+        {larpSlug && (
+          <V2NavGroup label="Běhy">
+            {runs.length === 0 ? (
+              <div className="px-2 py-1 text-xs text-muted-foreground">Žádné běhy</div>
+            ) : runs.map((r) => (
+              <V2NavLink
+                key={r.id}
+                to={`/v2/larp/${larpSlug}/beh/${r.slug}`}
+                icon={CalendarDays}
+                label={r.name + (r.is_active ? " ●" : "")}
+                onClick={() => setMobileOpen(false)}
+              />
             ))}
           </V2NavGroup>
         )}

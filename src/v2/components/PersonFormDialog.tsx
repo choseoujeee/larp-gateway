@@ -63,13 +63,16 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
     if (!name.trim() || !slug.trim()) { toast.error("Jméno a slug jsou povinné"); return; }
     setSaving(true);
     if (isEdit && person) {
-      const { error } = await supabase.from("persons").update({
+      const update: Record<string, unknown> = {
         name, slug, group_name: groupName || null,
         performer: performer || null, performance_times: performanceTimes || null,
-      }).eq("id", person.id);
+      };
+      // Trigger hash_person_password automatically bcrypts plain values
+      if (password.trim()) update.password_hash = password.trim();
+      const { error } = await supabase.from("persons").update(update).eq("id", person.id);
       setSaving(false);
       if (error) { toast.error("Uložení selhalo: " + error.message); return; }
-      toast.success("Uloženo");
+      toast.success(password.trim() ? "Uloženo (vč. nového hesla)" : "Uloženo");
       onSaved(person.id);
       onOpenChange(false);
     } else {
@@ -127,16 +130,14 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
               </div>
             </>
           )}
-          {!isEdit && (
-            <div>
-              <Label htmlFor="pw">Heslo do portálu *</Label>
-              <div className="flex gap-2">
-                <Input id="pw" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <Button type="button" variant="outline" onClick={() => setPassword(randomPassword())}>Nové</Button>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Hráč ho použije pro přístup do portálu.</p>
+          <div>
+            <Label htmlFor="pw">Heslo do portálu {isEdit ? "(vyplň pro změnu)" : "*"}</Label>
+            <div className="flex gap-2">
+              <Input id="pw" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isEdit ? "Ponech prázdné = beze změny" : ""} />
+              <Button type="button" variant="outline" onClick={() => setPassword(randomPassword())}>Nové</Button>
             </div>
-          )}
+            <p className="mt-1 text-xs text-muted-foreground">{isEdit ? "Nové heslo přepíše stávající. Hash se neukazuje." : "Hráč/CP ho použije pro přístup do portálu."}</p>
+          </div>
         </div>
 
         <DialogFooter>

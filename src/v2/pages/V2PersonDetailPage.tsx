@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PortalLinkCard } from "../components/PortalLinkCard";
 import { PersonFormDialog } from "../components/PersonFormDialog";
+import { PlayerAssignmentsCard } from "../components/PlayerAssignmentsCard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -176,13 +177,15 @@ export default function V2PersonDetailPage() {
                 <PortalLinkCard
                   label={person.type === "cp" ? "CP portál (individuální)" : "Hráčský portál"}
                   url={portalUrl}
-                  hint="Hráč/CP se přihlásí heslem nastaveným u postavy."
+                  hint={'Heslo nastavíš tlačítkem „Upravit" výše (pole Heslo do portálu).'}
                 />
                 {person.type === "cp" && (
                   <PortalLinkCard label="CP hub (přehled všech CP)" url={cpHubUrl} hint="Sdílený přístup pro všechny CP daného LARPu." />
                 )}
               </CardContent>
             </Card>
+
+            <PlayerAssignmentsCard personId={person.id} larpId={person.larp_id} personType={person.type} />
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
