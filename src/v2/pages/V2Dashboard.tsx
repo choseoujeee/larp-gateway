@@ -89,8 +89,7 @@ export default function V2Dashboard() {
         )}
 
         <div className="mt-10 rounded border border-dashed border-border p-4 text-xs text-muted-foreground">
-          <strong>v2 (beta):</strong> nová verze portálu se staví etapově. Stará aplikace je beze
-          změny dostupná na <Link to="/admin" className="underline">/admin</Link>.
+          Stará verze aplikace je archivovaná na <Link to="/_archiv/admin" className="underline">/_archiv/admin</Link>.
         </div>
       </div>
     </V2Shell>
