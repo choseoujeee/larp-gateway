@@ -240,7 +240,7 @@ function TargetingSection({
     return m;
   }, [persons]);
 
-  // Build "include persons" list (base osoba + extras)
+  // Selected lists, regardless of target_type
   const includePersons = useMemo(() => {
     const ids = new Set<string>(doc.extra_target_person_ids ?? []);
     if (doc.target_type === "osoba" && doc.target_person_id) ids.add(doc.target_person_id);
@@ -253,9 +253,15 @@ function TargetingSection({
     return Array.from(gs);
   }, [doc]);
 
-  function setMode(mode: "vsichni" | "vyber") {
-    if (mode === "vsichni") {
+  // UI mode: vsichni / skupina / osoba
+  const mode: "vsichni" | "skupina" | "osoba" =
+    doc.target_type === "vsichni" ? "vsichni" : doc.target_type === "skupina" ? "skupina" : "osoba";
+
+  function setMode(next: "vsichni" | "skupina" | "osoba") {
+    if (next === "vsichni") {
       onDocChange({ target_type: "vsichni", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
+    } else if (next === "skupina") {
+      onDocChange({ target_type: "skupina", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
     } else {
       onDocChange({ target_type: "osoba", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
     }
@@ -263,7 +269,6 @@ function TargetingSection({
 
   function addPerson(id: string) {
     if (!id || includePersons.includes(id)) return;
-    // Always store via extras for consistency. Keep base target_type as osoba placeholder.
     const next = [...(doc.extra_target_person_ids ?? []), id];
     onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_person_ids: next });
   }
@@ -277,7 +282,7 @@ function TargetingSection({
   function addGroup(g: string) {
     if (!g || includeGroups.includes(g)) return;
     const next = [...(doc.extra_target_group_names ?? []), g];
-    onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_group_names: next });
+    onDocChange({ target_type: "skupina", target_person_id: null, target_group: null, extra_target_group_names: next });
   }
   function removeGroup(g: string) {
     const patch: Partial<DocRow> = {};
@@ -286,64 +291,83 @@ function TargetingSection({
     onDocChange(patch);
   }
 
-  const mode: "vsichni" | "vyber" = doc.target_type === "vsichni" ? "vsichni" : "vyber";
+  const hasHidden = hiddenPersonIds.length > 0 || hiddenGroupNames.length > 0;
+  const [hiddenOpen, setHiddenOpen] = useState<boolean>(hasHidden);
 
   return (
     <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
       <div>
         <Label>Komu</Label>
-        <Select value={mode} onValueChange={(v) => setMode(v as "vsichni" | "vyber")}>
+        <Select value={mode} onValueChange={(v) => setMode(v as "vsichni" | "skupina" | "osoba")}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="vsichni">Všem</SelectItem>
-            <SelectItem value="vyber">Vybraným skupinám / osobám</SelectItem>
+            <SelectItem value="skupina">Skupině</SelectItem>
+            <SelectItem value="osoba">Osobě</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {mode === "vyber" && (
-        <>
-          <PickerRow
-            label="Skupiny, které dokument uvidí"
-            chips={includeGroups.map((g) => ({ key: g, label: g, onRemove: () => removeGroup(g) }))}
-            options={groups.filter((g) => !includeGroups.includes(g)).map((g) => ({ value: g, label: g }))}
-            onAdd={addGroup}
-            placeholder="Přidat skupinu…"
-            emptyText="Žádná skupina"
-          />
-          <PickerRow
-            label="Konkrétní osoby, které dokument uvidí"
-            chips={includePersons.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => removePerson(id) }))}
-            options={persons.filter((p) => !includePersons.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
-            onAdd={addPerson}
-            placeholder="Přidat osobu…"
-            emptyText="Žádná osoba"
-          />
-        </>
+      {mode === "skupina" && (
+        <PickerRow
+          label="Skupiny, které dokument uvidí"
+          chips={includeGroups.map((g) => ({ key: g, label: g, onRemove: () => removeGroup(g) }))}
+          options={groups.filter((g) => !includeGroups.includes(g)).map((g) => ({ value: g, label: g }))}
+          onAdd={addGroup}
+          placeholder="Přidat skupinu…"
+          emptyText="Žádná skupina"
+        />
+      )}
+
+      {mode === "osoba" && (
+        <PickerRow
+          label="Osoby, které dokument uvidí"
+          chips={includePersons.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => removePerson(id) }))}
+          options={persons.filter((p) => !includePersons.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+          onAdd={addPerson}
+          placeholder="Přidat osobu…"
+          emptyText="Žádná osoba"
+        />
       )}
 
       <div className="border-t border-border pt-3">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Skrýt před</p>
-        <PickerRow
-          label="Skupiny, kterým se NEzobrazí"
-          chips={hiddenGroupNames.map((g) => ({ key: g, label: g, onRemove: () => onHiddenGroupsChange(hiddenGroupNames.filter((x) => x !== g)) }))}
-          options={groups.filter((g) => !hiddenGroupNames.includes(g)).map((g) => ({ value: g, label: g }))}
-          onAdd={(g) => onHiddenGroupsChange([...hiddenGroupNames, g])}
-          placeholder="Skrýt před skupinou…"
-          emptyText="Nikdo nevyloučen"
-        />
-        <PickerRow
-          label="Osoby, kterým se NEzobrazí"
-          chips={hiddenPersonIds.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => onHiddenPersonsChange(hiddenPersonIds.filter((x) => x !== id)) }))}
-          options={persons.filter((p) => !hiddenPersonIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
-          onAdd={(id) => onHiddenPersonsChange([...hiddenPersonIds, id])}
-          placeholder="Skrýt před osobou…"
-          emptyText="Nikdo nevyloučen"
-        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setHiddenOpen((o) => !o)}
+          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <EyeOff className="mr-1.5 h-3.5 w-3.5" />
+          Skrýt před {hasHidden && <span className="ml-1 text-foreground">({hiddenPersonIds.length + hiddenGroupNames.length})</span>}
+          {hiddenOpen ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+        </Button>
+
+        {hiddenOpen && (
+          <div className="mt-2 space-y-2">
+            <PickerRow
+              label="Skupiny, kterým se NEzobrazí"
+              chips={hiddenGroupNames.map((g) => ({ key: g, label: g, onRemove: () => onHiddenGroupsChange(hiddenGroupNames.filter((x) => x !== g)) }))}
+              options={groups.filter((g) => !hiddenGroupNames.includes(g)).map((g) => ({ value: g, label: g }))}
+              onAdd={(g) => onHiddenGroupsChange([...hiddenGroupNames, g])}
+              placeholder="Skrýt před skupinou…"
+              emptyText="Nikdo nevyloučen"
+            />
+            <PickerRow
+              label="Osoby, kterým se NEzobrazí"
+              chips={hiddenPersonIds.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => onHiddenPersonsChange(hiddenPersonIds.filter((x) => x !== id)) }))}
+              options={persons.filter((p) => !hiddenPersonIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+              onAdd={(id) => onHiddenPersonsChange([...hiddenPersonIds, id])}
+              placeholder="Skrýt před osobou…"
+              emptyText="Nikdo nevyloučen"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 function PickerRow({
   label, chips, options, onAdd, placeholder, emptyText,
