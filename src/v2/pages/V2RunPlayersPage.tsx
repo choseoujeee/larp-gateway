@@ -196,18 +196,19 @@ export default function V2RunPlayersPage() {
                             {a.player_email && <div className="truncate text-sm">{a.player_email}</div>}
                             {a.player_phone && <div className="text-xs text-muted-foreground">{a.player_phone}</div>}
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {a.paid_at ? (
-                              <Badge className="gap-1 bg-green-600 hover:bg-green-600"><Check className="h-3 w-3" />Zaplaceno</Badge>
+                              <button onClick={() => togglePaid(a)} title="Označit jako nezaplaceno" className="inline-flex">
+                                <Badge className="gap-1 bg-green-600 hover:bg-green-700 cursor-pointer"><Check className="h-3 w-3" />Zaplaceno</Badge>
+                              </button>
                             ) : (
-                              <Badge variant="outline">Nezaplaceno</Badge>
+                              <button onClick={() => togglePaid(a)} title="Označit jako zaplaceno" className="inline-flex">
+                                <Badge variant="outline" className="cursor-pointer hover:bg-accent">Nezaplaceno</Badge>
+                              </button>
                             )}
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
-                              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => togglePaid(a)} title="Přepnout zaplaceno">
-                                <Check className={`h-4 w-4 ${a.paid_at ? "text-green-600" : "text-muted-foreground"}`} />
-                              </Button>
                               <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(a); setDialogOpen(true); }} title="Upravit">
                                 <Pencil className="h-4 w-4" />
                               </Button>

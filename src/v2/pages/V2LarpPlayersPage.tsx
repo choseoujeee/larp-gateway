@@ -118,12 +118,19 @@ export default function V2LarpPlayersPage() {
 }
 
 function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larpSlug: string; emptyText: string }) {
-  if (rows.length === 0) {
+  const [localRows, setLocalRows] = useState(rows);
+  useEffect(() => { setLocalRows(rows); }, [rows]);
+  const togglePaid = async (r: AssignmentRow) => {
+    const newVal = r.paid_at ? null : new Date().toISOString();
+    setLocalRows((prev) => prev.map((x) => x.id === r.id ? { ...x, paid_at: newVal } : x));
+    await supabase.from("run_person_assignments").update({ paid_at: newVal }).eq("id", r.id);
+  };
+  if (localRows.length === 0) {
     return <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{emptyText}</CardContent></Card>;
   }
   return (
     <div className="space-y-2">
-      {rows.map((r) => {
+      {localRows.map((r) => {
         const isCp = r.person?.type === "cp";
         const personPath = r.person?.slug
           ? `/larp/${larpSlug}/${isCp ? "cp" : "postavy"}/${r.person.slug}`
@@ -153,9 +160,11 @@ function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larp
                   )
                 )}
                 {!isCp && (
-                  r.paid_at
-                    ? <Badge className="text-[10px]">Zaplaceno</Badge>
-                    : <Badge variant="outline" className="text-[10px]">Nezaplaceno</Badge>
+                  <button onClick={() => togglePaid(r)} title={r.paid_at ? "Označit jako nezaplaceno" : "Označit jako zaplaceno"} className="inline-flex">
+                    {r.paid_at
+                      ? <Badge className="text-[10px] cursor-pointer bg-green-600 hover:bg-green-700">Zaplaceno</Badge>
+                      : <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">Nezaplaceno</Badge>}
+                  </button>
                 )}
               </div>
             </CardContent>
