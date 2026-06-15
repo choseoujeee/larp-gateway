@@ -21,6 +21,8 @@ interface DocRow {
   target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
+  extra_target_person_ids: string[] | null;
+  extra_target_group_names: string[] | null;
   priority: number;
   sort_order: number | null;
   updated_at: string;
