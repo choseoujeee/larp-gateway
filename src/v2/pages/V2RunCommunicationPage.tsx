@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
-import { Loader2, Mail, FileText, KeyRound, History, Send, Plus, Copy, Trash2, RefreshCw, AlertCircle } from "lucide-react";
+import { Loader2, Mail, FileText, KeyRound, History, Send, Plus, Copy, Trash2, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { DEFAULT_EMAIL_TEMPLATES } from "../lib/defaultEmailTemplates";
 import { V2Shell } from "../components/V2Shell";
 import { useAuth } from "@/hooks/useAuth";
 import { useRun, getRunDisplayName } from "../hooks/useRun";
