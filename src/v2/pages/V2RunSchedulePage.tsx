@@ -11,7 +11,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { V2Shell } from "../components/V2Shell";
 import { useAuth } from "@/hooks/useAuth";
-import { useRun } from "../hooks/useRun";
+import { useRun, getRunDisplayName } from "../hooks/useRun";
 import { PaperCard, PaperCardContent } from "@/components/ui/paper-card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1028,7 +1028,7 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   if (embedded) return body;
 
   return (
-    <V2Shell larpName={run?.larp_name} runName={run?.name}>
+    <V2Shell larpName={run?.larp_name} runName={run ? getRunDisplayName(run) : undefined}>
       {runLoading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : body}

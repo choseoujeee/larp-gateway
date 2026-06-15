@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
-import { useRun, useRunCockpitStats } from "../hooks/useRun";
+import { useRun, useRunCockpitStats, getRunDisplayName } from "../hooks/useRun";
 
 export default function V2RunCockpit() {
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
@@ -32,7 +32,7 @@ export default function V2RunCockpit() {
   const issues = stats ? buildIssues(stats, base) : [];
 
   return (
-    <V2Shell larpName={run?.larp_name} runName={run?.name}>
+    <V2Shell larpName={run?.larp_name} runName={run ? getRunDisplayName(run) : undefined}>
       {loading || !run ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

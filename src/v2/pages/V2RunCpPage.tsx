@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useRun } from "../hooks/useRun";
+import { useRun, getRunDisplayName } from "../hooks/useRun";
 import { useLarpPerformerHistory } from "../hooks/useLarpPlayerHistory";
 import { toast } from "sonner";
 
@@ -116,7 +116,7 @@ export default function V2RunCpPage() {
   if (notFound) return <Navigate to={`/larp/${larpSlug}`} replace />;
 
   return (
-    <V2Shell larpName={run?.larp_name} runName={run?.name}>
+    <V2Shell larpName={run?.larp_name} runName={run ? getRunDisplayName(run) : undefined}>
       {runLoading || !run ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
