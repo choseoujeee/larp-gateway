@@ -998,6 +998,7 @@ export type Database = {
           name: string
           paid_at: string | null
           password_hash: string
+          password_plain: string | null
           performance_times: string | null
           performer: string | null
           run_id: string | null
@@ -1018,6 +1019,7 @@ export type Database = {
           name: string
           paid_at?: string | null
           password_hash: string
+          password_plain?: string | null
           performance_times?: string | null
           performer?: string | null
           run_id?: string | null
@@ -1038,6 +1040,7 @@ export type Database = {
           name?: string
           paid_at?: string | null
           password_hash?: string
+          password_plain?: string | null
           performance_times?: string | null
           performer?: string | null
           run_id?: string | null

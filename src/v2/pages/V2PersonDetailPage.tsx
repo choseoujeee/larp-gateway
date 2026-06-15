@@ -28,6 +28,7 @@ interface PersonRow {
   performance_times: string | null;
   medailonek: string | null;
   larp_id: string;
+  password_plain: string | null;
 }
 
 export default function V2PersonDetailPage() {
@@ -61,9 +62,13 @@ export default function V2PersonDetailPage() {
 
   async function updatePassword(plain: string) {
     if (!person) return;
-    // Trigger hash_person_password bcrypt-hashes when value lacks $2 prefix
-    const { error } = await supabase.from("persons").update({ password_hash: plain }).eq("id", person.id);
+    // Trigger hash_person_password bcrypts password_hash. We also persist the
+    // plain value so admins can read what they set.
+    const { error } = await supabase.from("persons")
+      .update({ password_hash: plain, password_plain: plain })
+      .eq("id", person.id);
     if (error) throw error;
+    setPerson({ ...person, password_plain: plain });
   }
 
   async function createPersonalDoc() {
@@ -144,9 +149,8 @@ export default function V2PersonDetailPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs uppercase tracking-wider">Heslo do portálu:</span>
                     <InlineEditField
-                      value="•••"
+                      value={person.password_plain}
                       onSave={(v) => v.trim() ? updatePassword(v.trim()) : Promise.resolve()}
-                      type="password"
                       emptyText="nenastaveno"
                       ariaLabel="Heslo"
                     />
@@ -176,8 +180,8 @@ export default function V2PersonDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Medailonek</h3>
                 <InlineEditRich
+                  title="Medailonek"
                   value={person.medailonek}
                   onSave={(v) => updateField({ medailonek: v })}
                 />

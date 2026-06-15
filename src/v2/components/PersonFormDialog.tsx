@@ -67,8 +67,12 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
         name, slug, group_name: groupName || null,
         performer: performer || null, performance_times: performanceTimes || null,
       };
-      // Trigger hash_person_password automatically bcrypts plain values
-      if (password.trim()) update.password_hash = password.trim();
+      // Trigger hash_person_password automatically bcrypts plain values.
+      // Also save plaintext so admin can read it later.
+      if (password.trim()) {
+        update.password_hash = password.trim();
+        update.password_plain = password.trim();
+      }
       const { error } = await supabase.from("persons").update(update).eq("id", person.id);
       setSaving(false);
       if (error) { toast.error("Uložení selhalo: " + error.message); return; }
@@ -87,8 +91,10 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
         p_performer: performer || null,
         p_performance_times: performanceTimes || null,
       });
+      if (error || !data) { setSaving(false); toast.error("Vytvoření selhalo: " + (error?.message ?? "")); return; }
+      // Persist plaintext password for admin visibility
+      await supabase.from("persons").update({ password_plain: password }).eq("id", data as string);
       setSaving(false);
-      if (error || !data) { toast.error("Vytvoření selhalo: " + (error?.message ?? "")); return; }
       toast.success(type === "cp" ? "CP vytvořeno" : "Postava vytvořena");
       onSaved(data as string);
       onOpenChange(false);
