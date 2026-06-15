@@ -50,16 +50,6 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
       ]
     : [];
 
-  const runNav: NavItem[] = larpSlug && runSlug
-    ? [
-        { to: `/larp/${larpSlug}/beh/${runSlug}`, icon: LayoutDashboard, label: "Cockpit" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/hraci`, icon: Users, label: "Hráči" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/cp`, icon: Theater, label: "CP performeři" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/komunikace`, icon: Mail, label: "Komunikace" },
-      ]
-    : [];
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
