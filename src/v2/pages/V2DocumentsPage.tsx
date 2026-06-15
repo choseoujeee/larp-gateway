@@ -177,9 +177,29 @@ function TargetIcon({ t }: { t: DocRow["target_type"] }) {
   return <User className="h-3 w-3" />;
 }
 
-function targetLabel(d: DocRow, names: Record<string, string>): string {
-  if (d.target_type === "vsichni") return "Všichni";
-  if (d.target_type === "skupina") return d.target_group ?? "Skupina";
-  return (d.target_person_id && names[d.target_person_id]) || "Osoba";
+type Chip = { label: string; icon?: JSX.Element; variant: "default" | "secondary" | "outline" | "destructive" };
+
+function targetChips(d: DocRow, names: Record<string, string>): Chip[] {
+  const chips: Chip[] = [];
+  const extraPersons = d.extra_target_person_ids ?? [];
+  const extraGroups = d.extra_target_group_names ?? [];
+
+  if (d.target_type === "vsichni") {
+    chips.push({ label: "Všem", icon: <Eye className="h-3 w-3" />, variant: "default" });
+  } else {
+    // collect groups
+    const groups = new Set<string>(extraGroups);
+    if (d.target_type === "skupina" && d.target_group) groups.add(d.target_group);
+    groups.forEach((g) => chips.push({ label: g, icon: <UsersIcon className="h-3 w-3" />, variant: "default" }));
+
+    // collect persons
+    const persons = new Set<string>(extraPersons);
+    if (d.target_type === "osoba" && d.target_person_id) persons.add(d.target_person_id);
+    persons.forEach((pid) => chips.push({ label: names[pid] ?? "Osoba", icon: <User className="h-3 w-3" />, variant: "default" }));
+
+    if (chips.length === 0) chips.push({ label: "Bez příjemce", variant: "outline" });
+  }
+  return chips;
 }
+
 
