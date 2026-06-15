@@ -68,7 +68,7 @@ export default function V2LarpHome() {
                 <p className="mt-1 text-xs text-muted-foreground">Číslo účtu: <span className="font-mono">{larp.payment_account}</span></p>
               )}
             </div>
-            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+            <Button size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="mr-2 h-4 w-4" />Upravit LARP
             </Button>
           </header>
