@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, useParams, useLocation } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, ChevronDown, LogOut, CalendarDays, UserCog, Archive } from "lucide-react";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, ChevronDown, LogOut, CalendarDays, UserCog, Archive, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +45,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
         { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
         { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
+        { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny" },
         { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
         { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
         ...(isSuperAdmin ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
