@@ -13,6 +13,8 @@ import V2GroupsPage from "./pages/V2GroupsPage";
 import V2LarpPlayersPage from "./pages/V2LarpPlayersPage";
 import V2RunPlayersPage from "./pages/V2RunPlayersPage";
 import V2RunCpPage from "./pages/V2RunCpPage";
+import V2LarpProductionPage from "./pages/V2LarpProductionPage";
+import V2RunProductionPage from "./pages/V2RunProductionPage";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
@@ -38,13 +40,13 @@ export default function V2Routes() {
       <Route path=":larpSlug/hraci" element={<V2LarpPlayersPage />} />
       <Route path=":larpSlug/organizatori" element={<V2OrganizersPage />} />
       <Route path=":larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." />} />
-      <Route path=":larpSlug/produkce" element={<V2Stub title="Produkce (sdílené pro celý LARP)" description="Sdílené produkční dokumenty, soubory, materiály a šablony checklistů — vše, co je stejné napříč běhy. Konkrétní použití pro daný běh najdete na stránce běhu → Produkce." />} />
+      <Route path=":larpSlug/produkce" element={<V2LarpProductionPage />} />
       <Route path=":larpSlug/drivejsi-behy" element={<V2PastRunsPage />} />
       <Route path=":larpSlug/beh/:runSlug" element={<V2RunCockpit />} />
       <Route path=":larpSlug/beh/:runSlug/hraci" element={<V2RunPlayersPage />} />
       <Route path=":larpSlug/beh/:runSlug/cp" element={<V2RunCpPage />} />
       <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<V2Stub title="Harmonogram" description="Harmonogram běhu (Etapa 2)." />} />
-      <Route path=":larpSlug/beh/:runSlug/produkce" element={<V2Stub title="Produkce" description="Checklist, materiály, tiskoviny (Etapa 2)." />} />
+      <Route path=":larpSlug/beh/:runSlug/produkce" element={<V2RunProductionPage />} />
       <Route path=":larpSlug/beh/:runSlug/komunikace" element={<V2Stub title="Komunikace" description="E-mail šablony a historie odeslaných (Etapa 2)." />} />
       <Route path="*" element={<V2Stub title="Nenalezeno" description="Tato stránka v2 neexistuje." />} />
     </Routes>
