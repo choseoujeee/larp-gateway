@@ -204,7 +204,7 @@ function V2RunsNavSection({
 
   const runNav = activeRun
     ? [
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}`, icon: LayoutDashboard, label: "Cockpit" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}`, icon: LayoutDashboard, label: "Přehled" },
         { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči" },
         { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři" },
         { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
