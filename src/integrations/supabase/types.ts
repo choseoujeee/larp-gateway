@@ -243,6 +243,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          audience: string[]
           content: string | null
           created_at: string
           doc_category: Database["public"]["Enums"]["doc_category"]
@@ -265,6 +266,7 @@ export type Database = {
           visible_to_cp: boolean
         }
         Insert: {
+          audience?: string[]
           content?: string | null
           created_at?: string
           doc_category: Database["public"]["Enums"]["doc_category"]
@@ -287,6 +289,7 @@ export type Database = {
           visible_to_cp?: boolean
         }
         Update: {
+          audience?: string[]
           content?: string | null
           created_at?: string
           doc_category?: Database["public"]["Enums"]["doc_category"]
@@ -1858,6 +1861,7 @@ export type Database = {
           content: string
           doc_type: Database["public"]["Enums"]["document_type"]
           id: string
+          is_shared: boolean
           priority: number
           sort_order: number
           target_type: Database["public"]["Enums"]["document_target"]

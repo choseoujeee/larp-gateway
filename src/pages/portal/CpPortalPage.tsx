@@ -78,6 +78,7 @@ export default function CpPortalPage() {
   const [cpScenesByCpId, setCpScenesByCpId] = useState<Record<string, { day_number: number; start_time: string; title: string | null }[]>>({});
   const [playerPersons, setPlayerPersons] = useState<PlayerPerson[]>([]);
   const [cpDocuments, setCpDocuments] = useState<Document[]>([]);
+  const [sharedDocuments, setSharedDocuments] = useState<Document[]>([]);
   
   const [cpSearch, setCpSearch] = useState("");
   const [filterPerformer, setFilterPerformer] = useState<string>("");
@@ -200,7 +201,8 @@ export default function CpPortalPage() {
       const cps: CpPerson[] = pd.cp_persons ?? [];
       setCpPersons(cps);
       setPlayerPersons(pd.player_persons ?? []);
-      setCpDocuments(pd.cp_documents ?? []);
+      setCpDocuments(pd.cp_documents_only ?? pd.cp_documents ?? []);
+      setSharedDocuments(pd.cp_documents_shared ?? []);
 
       // Process scenes
       type SceneRow = { cp_id: string; day_number: number; start_time: string; title: string | null };
@@ -315,6 +317,7 @@ export default function CpPortalPage() {
     setCpScenesByCpId({});
     setPlayerPersons([]);
     setCpDocuments([]);
+    setSharedDocuments([]);
     document.documentElement.removeAttribute("data-theme");
   };
 
@@ -527,7 +530,7 @@ export default function CpPortalPage() {
           <section aria-labelledby="cp-docs-heading">
             <h2 id="cp-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Společné dokumenty pro CP
+              Pro CP
             </h2>
             <PaperCard className="overflow-hidden">
               <Collapsible 
@@ -634,6 +637,117 @@ export default function CpPortalPage() {
               </Collapsible>
             </PaperCard>
           </section>
+
+          {/* Dokumenty sdílené s hráči */}
+          {sharedDocuments.length > 0 && (
+            <section aria-labelledby="shared-docs-heading">
+              <h2 id="shared-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Společné s hráči
+              </h2>
+              <PaperCard className="overflow-hidden">
+                <Collapsible
+                  open={openCategories.has("shared-docs")}
+                  onOpenChange={() => toggleCategory("shared-docs")}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      {openCategories.has("shared-docs") ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span className="font-typewriter text-sm tracking-wider uppercase">
+                        Dokumenty sdílené s hráči
+                      </span>
+                      <span className="text-sm text-muted-foreground">({sharedDocuments.length})</span>
+                      <span
+                        className="ml-auto no-print"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generatePdf(
+                            buildDocumentsHtml(sharedDocuments, "Sdílené dokumenty (hráči + CP)"),
+                            `Sdilene-dokumenty-${larpInfo?.name || "larp"}`
+                          );
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Stáhnout PDF sdílených dokumentů"
+                      >
+                        <Download className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                      </span>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="divide-y divide-border">
+                      {sharedDocuments.map((doc, index) => (
+                        <Collapsible
+                          key={doc.id}
+                          open={openDocuments.has(doc.id)}
+                          onOpenChange={() => toggleDocument(doc.id)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <button
+                              className={`w-full text-left py-3 px-4 flex items-center gap-2.5 hover:bg-muted/50 transition-colors ${
+                                index % 2 === 0 ? "bg-muted/20" : ""
+                              }`}
+                            >
+                              <ChevronRight
+                                className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
+                                  openDocuments.has(doc.id) ? "rotate-90" : ""
+                                }`}
+                              />
+                              <span className="text-base text-foreground">{doc.title}</span>
+                              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                                Sdílené
+                              </Badge>
+                              {doc.priority === 1 && (
+                                <span className="text-xs font-bold text-destructive uppercase tracking-wider flex-shrink-0">[PRIORITNÍ]</span>
+                              )}
+                              {doc.priority === 3 && (
+                                <span className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider flex-shrink-0">[VOLITELNÉ]</span>
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="px-5 py-5 bg-background border-t border-border">
+                              {doc.content && (
+                                <div
+                                  className="prose max-w-none text-base leading-relaxed text-foreground"
+                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }}
+                                />
+                              )}
+                              <div className="border-t border-border mt-4 pt-3 text-center no-print">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    generatePdf(
+                                      buildDocumentsHtml([{ title: doc.title, content: doc.content }]),
+                                      doc.title
+                                    );
+                                  }}
+                                  className="text-xs uppercase tracking-wider"
+                                >
+                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  PDF
+                                </Button>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </PaperCard>
+            </section>
+          )}
+
+
 
           {/* CP Roles Section */}
           <section aria-labelledby="cp-roles-heading">
