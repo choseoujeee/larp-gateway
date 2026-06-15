@@ -7,6 +7,7 @@ import V2PersonsListPage from "./pages/V2PersonsListPage";
 import V2PersonDetailPage from "./pages/V2PersonDetailPage";
 import V2Stub from "./pages/V2Stub";
 import V2OrganizersPage from "./pages/V2OrganizersPage";
+import V2PastRunsPage from "./pages/V2PastRunsPage";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
