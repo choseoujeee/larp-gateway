@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { NewLarpDialog } from "../components/NewLarpDialog";
 
 interface LarpRow {
   id: string;
@@ -19,6 +20,8 @@ export default function V2Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [larps, setLarps] = useState<LarpRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -31,7 +34,7 @@ export default function V2Dashboard() {
       if (!error && data) setLarps(data as LarpRow[]);
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, reloadKey]);
 
   if (!authLoading && !user) {
     return <Navigate to="/_archiv/login?next=/" replace />;
@@ -49,7 +52,7 @@ export default function V2Dashboard() {
               Vyberte LARP, na kterém chcete pracovat, nebo založte nový.
             </p>
           </div>
-          <Button disabled title="Zatím v přípravě (Etapa 1)">
+          <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Nový LARP
           </Button>
@@ -92,6 +95,12 @@ export default function V2Dashboard() {
           Stará verze aplikace je archivovaná na <Link to="/_archiv/admin" className="underline">/_archiv/admin</Link>.
         </div>
       </div>
+
+      <NewLarpDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onCreated={() => setReloadKey((k) => k + 1)}
+      />
     </V2Shell>
   );
 }
