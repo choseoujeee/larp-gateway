@@ -58,7 +58,7 @@ export default function V2DocumentsPage() {
       const [{ data: d }, { data: p }] = await Promise.all([
         supabase
           .from("documents")
-          .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, priority, sort_order, updated_at")
+          .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, extra_target_person_ids, extra_target_group_names, priority, sort_order, updated_at")
           .eq("larp_id", l.id)
           .order("doc_category")
           .order("priority")
