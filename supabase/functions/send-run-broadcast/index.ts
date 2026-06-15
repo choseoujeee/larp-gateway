@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     const rows = recipients.map((r) => {
       const ctx = {
         jmeno: r.name, postava: r.characterName, skupina: r.group,
-        larp: larpName, beh: run.name, magic_link: "", portal_link: "",
+        larp: larpName, beh: run.name, magic_link: "", portal_link: "", odkaz_na_portal: "",
       };
       const renderedSubject = renderTemplate(body.subject, ctx);
       const renderedHtml = renderTemplate(body.html, ctx);
