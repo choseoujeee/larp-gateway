@@ -59,43 +59,8 @@ export default function V2RunCpPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function update(cpId: string, patch: Partial<Performer>) {
-    setPerformers((prev) => {
-      const existing = prev[cpId] ?? { run_id: run!.id, cp_id: cpId, performer_name: "", performer_email: "", performer_phone: "" };
-      return { ...prev, [cpId]: { ...existing, ...patch, dirty: true } };
-    });
-  }
+  // Inline editing replaced by PerformerEditDialog
 
-  async function save(cpId: string) {
-    const p = performers[cpId];
-    if (!p?.performer_name?.trim()) { toast.error("Vyplň jméno performera"); return; }
-    setSavingId(cpId);
-    try {
-      if (p.id) {
-        const { error } = await supabase.from("cp_performers").update({
-          performer_name: p.performer_name.trim(),
-          performer_email: p.performer_email?.trim() || null,
-          performer_phone: p.performer_phone?.trim() || null,
-        }).eq("id", p.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("cp_performers").insert({
-          run_id: run!.id,
-          cp_id: cpId,
-          performer_name: p.performer_name.trim(),
-          performer_email: p.performer_email?.trim() || null,
-          performer_phone: p.performer_phone?.trim() || null,
-        });
-        if (error) throw error;
-      }
-      toast.success("Uloženo");
-      await load();
-    } catch (e) {
-      toast.error("Chyba: " + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setSavingId(null);
-    }
-  }
 
   async function remove(cpId: string) {
     const p = performers[cpId];
