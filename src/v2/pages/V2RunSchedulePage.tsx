@@ -166,18 +166,18 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
 
   // ── Fetchers ──
   const fetchEvents = useCallback(async () => {
-    if (!selectedRunId) return;
+    if (!larpId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("schedule_events")
       .select("*, persons!schedule_events_cp_id_fkey(access_token, name, performer, schedule_color), cp_scenes!schedule_events_cp_scene_id_fkey(title)")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", larpId)
       .order("day_number", { ascending: true })
       .order("start_time", { ascending: true });
     if (error) { toast.error("Chyba při načítání harmonogramu", { description: error.message }); setEvents([]); }
-    else setEvents((data as ScheduleEventRow[]) ?? []);
+    else setEvents((data as unknown as ScheduleEventRow[]) ?? []);
     setLoading(false);
-  }, [selectedRunId]);
+  }, [larpId]);
 
   const fetchCps = useCallback(async () => {
     if (!larpId) return;
