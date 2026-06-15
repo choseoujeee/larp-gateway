@@ -1,0 +1,1 @@
+ALTER TABLE public.larps ADD COLUMN IF NOT EXISTS payment_account text;

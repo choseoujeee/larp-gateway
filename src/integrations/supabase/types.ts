@@ -805,6 +805,7 @@ export type Database = {
           motto: string | null
           name: string
           owner_id: string
+          payment_account: string | null
           slug: string
           theme: string | null
           updated_at: string
@@ -818,6 +819,7 @@ export type Database = {
           motto?: string | null
           name: string
           owner_id: string
+          payment_account?: string | null
           slug: string
           theme?: string | null
           updated_at?: string
@@ -831,6 +833,7 @@ export type Database = {
           motto?: string | null
           name?: string
           owner_id?: string
+          payment_account?: string | null
           slug?: string
           theme?: string | null
           updated_at?: string
