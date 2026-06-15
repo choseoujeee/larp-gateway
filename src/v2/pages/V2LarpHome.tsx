@@ -9,14 +9,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface LarpRow { id: string; name: string; slug: string; motto: string | null; }
 interface RunRow { id: string; name: string; slug: string; date_from: string | null; date_to: string | null; is_active: boolean; }
-interface Counts { documents: number; persons: number; }
+interface Counts { documents: number; characters: number; cp: number; }
 
 export default function V2LarpHome() {
   const { larpSlug } = useParams<{ larpSlug: string }>();
   const { user, loading: authLoading } = useAuth();
   const [larp, setLarp] = useState<LarpRow | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
-  const [counts, setCounts] = useState<Counts>({ documents: 0, persons: 0 });
+  const [counts, setCounts] = useState<Counts>({ documents: 0, characters: 0, cp: 0 });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -32,13 +32,14 @@ export default function V2LarpHome() {
       if (!larpRow) { setNotFound(true); setLoading(false); return; }
       setLarp(larpRow as LarpRow);
 
-      const [{ data: runsRows }, { count: docCount }, { count: personCount }] = await Promise.all([
+      const [{ data: runsRows }, { count: docCount }, { count: charCount }, { count: cpCount }] = await Promise.all([
         supabase.from("runs").select("id, name, slug, date_from, date_to, is_active").eq("larp_id", larpRow.id).order("date_from", { ascending: false }),
         supabase.from("documents").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id),
-        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id),
+        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id).eq("type", "postava"),
+        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id).eq("type", "cp"),
       ]);
       setRuns((runsRows ?? []) as RunRow[]);
-      setCounts({ documents: docCount ?? 0, persons: personCount ?? 0 });
+      setCounts({ documents: docCount ?? 0, characters: charCount ?? 0, cp: cpCount ?? 0 });
       setLoading(false);
     })();
   }, [user, larpSlug]);
@@ -59,9 +60,10 @@ export default function V2LarpHome() {
             {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
           </header>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/larp/${larpSlug}/dokumenty`} />
-            <StatCard icon={Users} label="Postav" value={counts.persons} to={`/larp/${larpSlug}/postavy`} />
+            <StatCard icon={Users} label="Postav" value={counts.characters} to={`/larp/${larpSlug}/postavy`} />
+            <StatCard icon={Users} label="CP" value={counts.cp} to={`/larp/${larpSlug}/cp`} />
             <StatCard icon={Calendar} label="Běhů" value={runs.length} to={`#runs`} />
           </div>
 
