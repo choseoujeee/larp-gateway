@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { ProductionDocsList } from "../components/production/ProductionDocsList";
 import { ProductionMaterialsCard } from "../components/production/ProductionMaterialsCard";
-import { ProductionPrintablesCard } from "../components/production/ProductionPrintablesCard";
 import { ProductionChecklistCard } from "../components/production/ProductionChecklistCard";
 import { ProductionPortalCard } from "../components/production/ProductionPortalCard";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,12 +25,11 @@ export default function V2RunProductionPage() {
           <header>
             <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">Produkce — {run.name}</h1>
             <p className="text-sm text-muted-foreground">
-              Vše pro přípravu konkrétního běhu — checklist, tiskoviny, soubory a odkaz pro produkční tým.
+              Vše pro přípravu konkrétního běhu — checklist, soubory, odkazy, tiskoviny a přístup pro produkční tým.
             </p>
           </header>
 
           <ProductionChecklistCard runId={run.id} />
-          <ProductionPrintablesCard larpId={run.larp_id} runId={run.id} />
           <ProductionMaterialsCard larpId={run.larp_id} runId={run.id} newItemRunId={run.id} />
           <ProductionDocsList larpId={run.larp_id} larpSlug={run.larp_slug} />
           <ProductionPortalCard larpId={run.larp_id} runId={run.id} />
@@ -40,3 +38,4 @@ export default function V2RunProductionPage() {
     </V2Shell>
   );
 }
+
