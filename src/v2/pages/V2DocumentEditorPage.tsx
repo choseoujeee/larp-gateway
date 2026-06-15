@@ -164,7 +164,7 @@ export default function V2DocumentEditorPage() {
                   <Input id="title" value={doc.title} onChange={(e) => update("title", e.target.value)} className="mt-1 font-typewriter text-lg" />
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <Label>Kategorie</Label>
                     <Select value={doc.doc_category} onValueChange={(v) => update("doc_category", v as DocCategory)}>
@@ -187,13 +187,8 @@ export default function V2DocumentEditorPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-end">
-                    <div className="flex items-center gap-2 rounded border border-border px-3 py-2 w-full">
-                      <Switch id="personal" checked={doc.is_personal} onCheckedChange={(v) => update("is_personal", v)} />
-                      <Label htmlFor="personal" className="cursor-pointer text-sm">Osobní dokument</Label>
-                    </div>
-                  </div>
                 </div>
+
 
                 <TargetingSection
                   doc={doc}
