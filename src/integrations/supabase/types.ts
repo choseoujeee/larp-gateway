@@ -1985,6 +1985,7 @@ export type Database = {
             }[]
           }
       get_production_portal_data: { Args: { p_token: string }; Returns: Json }
+      get_run_cockpit_stats: { Args: { p_run_id: string }; Returns: Json }
       get_run_payment_info: {
         Args: { p_run_id: string }
         Returns: {
