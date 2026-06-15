@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Navigate, useNavigate, Link } from "react-router-dom";
-import { Loader2, ArrowLeft, Save, Trash2, X, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Trash2, X, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -88,11 +88,15 @@ export default function V2DocumentEditorPage() {
   async function save() {
     if (!doc) return;
     setSaving(true);
+    // Derive is_personal from targeting: a doc aimed at a specific person is "personal".
+    const targetsPerson =
+      (doc.target_type === "osoba" && !!doc.target_person_id) ||
+      (doc.extra_target_person_ids && doc.extra_target_person_ids.length > 0);
     const payload: any = {
       title: doc.title,
       content: doc.content,
       doc_category: doc.doc_category,
-      is_personal: doc.is_personal,
+      is_personal: !!targetsPerson,
       target_type: doc.target_type,
       target_group: doc.target_type === "skupina" ? doc.target_group : null,
       target_person_id: doc.target_type === "osoba" ? doc.target_person_id : null,
@@ -117,6 +121,7 @@ export default function V2DocumentEditorPage() {
     setDirty(false);
     toast.success("Uloženo");
   }
+
 
   async function remove() {
     if (!doc) return;
@@ -159,7 +164,7 @@ export default function V2DocumentEditorPage() {
                   <Input id="title" value={doc.title} onChange={(e) => update("title", e.target.value)} className="mt-1 font-typewriter text-lg" />
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <Label>Kategorie</Label>
                     <Select value={doc.doc_category} onValueChange={(v) => update("doc_category", v as DocCategory)}>
@@ -182,13 +187,8 @@ export default function V2DocumentEditorPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-end">
-                    <div className="flex items-center gap-2 rounded border border-border px-3 py-2 w-full">
-                      <Switch id="personal" checked={doc.is_personal} onCheckedChange={(v) => update("is_personal", v)} />
-                      <Label htmlFor="personal" className="cursor-pointer text-sm">Osobní dokument</Label>
-                    </div>
-                  </div>
                 </div>
+
 
                 <TargetingSection
                   doc={doc}
@@ -240,7 +240,7 @@ function TargetingSection({
     return m;
   }, [persons]);
 
-  // Build "include persons" list (base osoba + extras)
+  // Selected lists, regardless of target_type
   const includePersons = useMemo(() => {
     const ids = new Set<string>(doc.extra_target_person_ids ?? []);
     if (doc.target_type === "osoba" && doc.target_person_id) ids.add(doc.target_person_id);
@@ -253,9 +253,15 @@ function TargetingSection({
     return Array.from(gs);
   }, [doc]);
 
-  function setMode(mode: "vsichni" | "vyber") {
-    if (mode === "vsichni") {
+  // UI mode: vsichni / skupina / osoba
+  const mode: "vsichni" | "skupina" | "osoba" =
+    doc.target_type === "vsichni" ? "vsichni" : doc.target_type === "skupina" ? "skupina" : "osoba";
+
+  function setMode(next: "vsichni" | "skupina" | "osoba") {
+    if (next === "vsichni") {
       onDocChange({ target_type: "vsichni", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
+    } else if (next === "skupina") {
+      onDocChange({ target_type: "skupina", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
     } else {
       onDocChange({ target_type: "osoba", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
     }
@@ -263,7 +269,6 @@ function TargetingSection({
 
   function addPerson(id: string) {
     if (!id || includePersons.includes(id)) return;
-    // Always store via extras for consistency. Keep base target_type as osoba placeholder.
     const next = [...(doc.extra_target_person_ids ?? []), id];
     onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_person_ids: next });
   }
@@ -277,7 +282,7 @@ function TargetingSection({
   function addGroup(g: string) {
     if (!g || includeGroups.includes(g)) return;
     const next = [...(doc.extra_target_group_names ?? []), g];
-    onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_group_names: next });
+    onDocChange({ target_type: "skupina", target_person_id: null, target_group: null, extra_target_group_names: next });
   }
   function removeGroup(g: string) {
     const patch: Partial<DocRow> = {};
@@ -286,64 +291,83 @@ function TargetingSection({
     onDocChange(patch);
   }
 
-  const mode: "vsichni" | "vyber" = doc.target_type === "vsichni" ? "vsichni" : "vyber";
+  const hasHidden = hiddenPersonIds.length > 0 || hiddenGroupNames.length > 0;
+  const [hiddenOpen, setHiddenOpen] = useState<boolean>(hasHidden);
 
   return (
     <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
       <div>
         <Label>Komu</Label>
-        <Select value={mode} onValueChange={(v) => setMode(v as "vsichni" | "vyber")}>
+        <Select value={mode} onValueChange={(v) => setMode(v as "vsichni" | "skupina" | "osoba")}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="vsichni">Všem</SelectItem>
-            <SelectItem value="vyber">Vybraným skupinám / osobám</SelectItem>
+            <SelectItem value="skupina">Skupině</SelectItem>
+            <SelectItem value="osoba">Osobě</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {mode === "vyber" && (
-        <>
-          <PickerRow
-            label="Skupiny, které dokument uvidí"
-            chips={includeGroups.map((g) => ({ key: g, label: g, onRemove: () => removeGroup(g) }))}
-            options={groups.filter((g) => !includeGroups.includes(g)).map((g) => ({ value: g, label: g }))}
-            onAdd={addGroup}
-            placeholder="Přidat skupinu…"
-            emptyText="Žádná skupina"
-          />
-          <PickerRow
-            label="Konkrétní osoby, které dokument uvidí"
-            chips={includePersons.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => removePerson(id) }))}
-            options={persons.filter((p) => !includePersons.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
-            onAdd={addPerson}
-            placeholder="Přidat osobu…"
-            emptyText="Žádná osoba"
-          />
-        </>
+      {mode === "skupina" && (
+        <PickerRow
+          label="Skupiny, které dokument uvidí"
+          chips={includeGroups.map((g) => ({ key: g, label: g, onRemove: () => removeGroup(g) }))}
+          options={groups.filter((g) => !includeGroups.includes(g)).map((g) => ({ value: g, label: g }))}
+          onAdd={addGroup}
+          placeholder="Přidat skupinu…"
+          emptyText="Žádná skupina"
+        />
+      )}
+
+      {mode === "osoba" && (
+        <PickerRow
+          label="Osoby, které dokument uvidí"
+          chips={includePersons.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => removePerson(id) }))}
+          options={persons.filter((p) => !includePersons.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+          onAdd={addPerson}
+          placeholder="Přidat osobu…"
+          emptyText="Žádná osoba"
+        />
       )}
 
       <div className="border-t border-border pt-3">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Skrýt před</p>
-        <PickerRow
-          label="Skupiny, kterým se NEzobrazí"
-          chips={hiddenGroupNames.map((g) => ({ key: g, label: g, onRemove: () => onHiddenGroupsChange(hiddenGroupNames.filter((x) => x !== g)) }))}
-          options={groups.filter((g) => !hiddenGroupNames.includes(g)).map((g) => ({ value: g, label: g }))}
-          onAdd={(g) => onHiddenGroupsChange([...hiddenGroupNames, g])}
-          placeholder="Skrýt před skupinou…"
-          emptyText="Nikdo nevyloučen"
-        />
-        <PickerRow
-          label="Osoby, kterým se NEzobrazí"
-          chips={hiddenPersonIds.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => onHiddenPersonsChange(hiddenPersonIds.filter((x) => x !== id)) }))}
-          options={persons.filter((p) => !hiddenPersonIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
-          onAdd={(id) => onHiddenPersonsChange([...hiddenPersonIds, id])}
-          placeholder="Skrýt před osobou…"
-          emptyText="Nikdo nevyloučen"
-        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setHiddenOpen((o) => !o)}
+          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <EyeOff className="mr-1.5 h-3.5 w-3.5" />
+          Skrýt před {hasHidden && <span className="ml-1 text-foreground">({hiddenPersonIds.length + hiddenGroupNames.length})</span>}
+          {hiddenOpen ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+        </Button>
+
+        {hiddenOpen && (
+          <div className="mt-2 space-y-2">
+            <PickerRow
+              label="Skupiny, kterým se NEzobrazí"
+              chips={hiddenGroupNames.map((g) => ({ key: g, label: g, onRemove: () => onHiddenGroupsChange(hiddenGroupNames.filter((x) => x !== g)) }))}
+              options={groups.filter((g) => !hiddenGroupNames.includes(g)).map((g) => ({ value: g, label: g }))}
+              onAdd={(g) => onHiddenGroupsChange([...hiddenGroupNames, g])}
+              placeholder="Skrýt před skupinou…"
+              emptyText="Nikdo nevyloučen"
+            />
+            <PickerRow
+              label="Osoby, kterým se NEzobrazí"
+              chips={hiddenPersonIds.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => onHiddenPersonsChange(hiddenPersonIds.filter((x) => x !== id)) }))}
+              options={persons.filter((p) => !hiddenPersonIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+              onAdd={(id) => onHiddenPersonsChange([...hiddenPersonIds, id])}
+              placeholder="Skrýt před osobou…"
+              emptyText="Nikdo nevyloučen"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 function PickerRow({
   label, chips, options, onAdd, placeholder, emptyText,
