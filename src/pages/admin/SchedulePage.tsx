@@ -1021,7 +1021,7 @@ export default function SchedulePage() {
         <CpSceneDialog
           open={cpSceneDialogOpen}
           onOpenChange={(open) => { setCpSceneDialogOpen(open); if (!open) setCpSceneForDialog(null); }}
-          scene={cpSceneForDialog} cpId={cpSceneDialogCpId} runId={cpSceneDialogRunId} runDays={maxDay}
+          scene={cpSceneForDialog} cpId={cpSceneDialogCpId} larpId={currentLarpId ?? ""} runDays={maxDay}
           onSave={() => { fetchEvents(); fetchCpScenesForRun(); setCpSceneDialogOpen(false); setCpSceneForDialog(null); }}
         />
       )}
