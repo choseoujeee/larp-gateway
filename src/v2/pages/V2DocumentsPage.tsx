@@ -146,12 +146,15 @@ export default function V2DocumentsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-typewriter text-base">{d.title}</span>
+                        <Badge variant="default" className="text-[10px]">
+                          <TargetIcon t={d.target_type} />
+                          <span className="ml-1">{targetLabel(d, personNames)}</span>
+                        </Badge>
                         <Badge variant="outline" className="text-[10px] uppercase">{CATEGORY_LABEL[d.doc_category]}</Badge>
                         {d.is_personal && <Badge variant="secondary" className="text-[10px]">Osobní</Badge>}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <TargetBadge d={d} />
-                        <span>• upr. {new Date(d.updated_at).toLocaleDateString("cs-CZ")}</span>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        upr. {new Date(d.updated_at).toLocaleDateString("cs-CZ")}
                       </div>
                     </div>
                   </CardContent>
@@ -165,8 +168,15 @@ export default function V2DocumentsPage() {
   );
 }
 
-function TargetBadge({ d }: { d: DocRow }) {
-  if (d.target_type === "vsichni") return <span className="flex items-center gap-1"><Eye className="h-3 w-3" />Všichni</span>;
-  if (d.target_type === "skupina") return <span className="flex items-center gap-1"><UsersIcon className="h-3 w-3" />{d.target_group ?? "Skupina"}</span>;
-  return <span className="flex items-center gap-1"><User className="h-3 w-3" />Osoba</span>;
+function TargetIcon({ t }: { t: DocRow["target_type"] }) {
+  if (t === "vsichni") return <Eye className="h-3 w-3" />;
+  if (t === "skupina") return <UsersIcon className="h-3 w-3" />;
+  return <User className="h-3 w-3" />;
 }
+
+function targetLabel(d: DocRow, names: Record<string, string>): string {
+  if (d.target_type === "vsichni") return "Všichni";
+  if (d.target_type === "skupina") return d.target_group ?? "Skupina";
+  return (d.target_person_id && names[d.target_person_id]) || "Osoba";
+}
+
