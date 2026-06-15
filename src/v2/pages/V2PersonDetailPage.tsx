@@ -13,6 +13,7 @@ import { InlineEditField } from "../components/InlineEditField";
 import { InlineEditRich } from "../components/InlineEditRich";
 import { ActiveRunAssignmentCard } from "../components/ActiveRunAssignmentCard";
 import { PersonDocumentsList } from "../components/PersonDocumentsList";
+import { CpScenesSection } from "../components/CpScenesSection";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -202,6 +203,10 @@ export default function V2PersonDetailPage() {
             </Card>
 
             <ActiveRunAssignmentCard personId={person.id} larpId={person.larp_id} personType={person.type} />
+
+            {person.type === "cp" && (
+              <CpScenesSection larpId={person.larp_id} cpId={person.id} />
+            )}
 
             <PersonDocumentsList
               larpSlug={larpSlug!}
