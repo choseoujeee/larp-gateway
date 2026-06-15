@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
-import { Loader2, ArrowLeft, FileText, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Trash2 } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { PortalLinkCard } from "../components/PortalLinkCard";
-import { PersonFormDialog } from "../components/PersonFormDialog";
-import { PlayerAssignmentsCard } from "../components/PlayerAssignmentsCard";
+import { CompactPortalLink } from "../components/CompactPortalLink";
+import { InlineEditField } from "../components/InlineEditField";
+import { InlineEditRich } from "../components/InlineEditRich";
+import { ActiveRunAssignmentCard } from "../components/ActiveRunAssignmentCard";
+import { PersonDocumentsList } from "../components/PersonDocumentsList";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -28,30 +30,13 @@ interface PersonRow {
   larp_id: string;
 }
 
-interface DocRow {
-  id: string;
-  title: string;
-  doc_category: "organizacni" | "herni" | "produkcni";
-  is_personal: boolean;
-  target_type: string;
-  priority: number;
-}
-
-const CAT_LABEL: Record<DocRow["doc_category"], string> = {
-  organizacni: "Organizační",
-  herni: "Herní",
-  produkcni: "Produkční",
-};
-
 export default function V2PersonDetailPage() {
   const { larpSlug, personId } = useParams<{ larpSlug: string; personId: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [larpName, setLarpName] = useState("");
   const [person, setPerson] = useState<PersonRow | null>(null);
-  const [docs, setDocs] = useState<DocRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -60,37 +45,26 @@ export default function V2PersonDetailPage() {
     const { data: l } = await supabase.from("larps").select("id, name").eq("slug", larpSlug).maybeSingle();
     if (l) setLarpName(l.name);
     const { data: p } = await supabase.from("persons").select("*").eq("id", personId).maybeSingle();
-    if (!p) { setLoading(false); return; }
-    setPerson(p as PersonRow);
-
-    // Three safe queries instead of fragile .or() string concatenation
-    const q1 = supabase.from("documents")
-      .select("id, title, doc_category, is_personal, target_type, priority")
-      .eq("larp_id", p.larp_id).eq("target_type", "vsichni");
-    const q2 = supabase.from("documents")
-      .select("id, title, doc_category, is_personal, target_type, priority")
-      .eq("larp_id", p.larp_id).eq("target_type", "osoba").eq("target_person_id", p.id);
-    const q3 = p.group_name
-      ? supabase.from("documents")
-          .select("id, title, doc_category, is_personal, target_type, priority")
-          .eq("larp_id", p.larp_id).eq("target_type", "skupina").eq("target_group", p.group_name)
-      : Promise.resolve({ data: [] as DocRow[] });
-
-    const [r1, r2, r3] = await Promise.all([q1, q2, q3 as Promise<{ data: DocRow[] | null }>]);
-    const all = ([...(r1.data ?? []), ...(r2.data ?? []), ...(r3.data ?? [])] as DocRow[])
-      .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i);
-    setDocs(all);
+    setPerson((p as PersonRow) ?? null);
     setLoading(false);
   }, [personId, larpSlug]);
 
-  useEffect(() => { if (user) load(); }, [user, load]);
+  useEffect(() => { if (user) void load(); }, [user, load]);
 
-  const grouped = useMemo(() => {
-    const g: Record<DocRow["doc_category"], DocRow[]> = { organizacni: [], herni: [], produkcni: [] };
-    docs.forEach((d) => g[d.doc_category].push(d));
-    Object.values(g).forEach((arr) => arr.sort((a, b) => a.priority - b.priority || a.title.localeCompare(b.title)));
-    return g;
-  }, [docs]);
+  async function updateField(patch: Partial<PersonRow>) {
+    if (!person) return;
+    const { error } = await supabase.from("persons").update(patch).eq("id", person.id);
+    if (error) { toast.error("Uložení selhalo: " + error.message); throw error; }
+    setPerson({ ...person, ...patch });
+    toast.success("Uloženo");
+  }
+
+  async function updatePassword(plain: string) {
+    if (!person) return;
+    // Trigger hash_person_password bcrypt-hashes when value lacks $2 prefix
+    const { error } = await supabase.from("persons").update({ password_hash: plain }).eq("id", person.id);
+    if (error) throw error;
+  }
 
   async function createPersonalDoc() {
     if (!person) return;
@@ -119,9 +93,7 @@ export default function V2PersonDetailPage() {
 
   if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/postavy/${personId}`} replace />;
 
-  const backLink = person?.type === "cp"
-    ? `/larp/${larpSlug}/cp`
-    : `/larp/${larpSlug}/postavy`;
+  const backLink = person?.type === "cp" ? `/larp/${larpSlug}/cp` : `/larp/${larpSlug}/postavy`;
   const portalUrl = person && larpSlug
     ? person.type === "cp"
       ? `${window.location.origin}/${larpSlug}/cp/${person.slug}`
@@ -132,19 +104,14 @@ export default function V2PersonDetailPage() {
   return (
     <V2Shell larpName={larpName}>
       <div className="mx-auto max-w-4xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Link to={backLink} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="mr-1 h-4 w-4" />Zpět na seznam
           </Link>
           {person && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="mr-1 h-4 w-4" />Upravit
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-destructive">
-                <Trash2 className="mr-1 h-4 w-4" />Smazat
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-destructive">
+              <Trash2 className="mr-1 h-4 w-4" />Smazat
+            </Button>
           )}
         </div>
 
@@ -153,85 +120,97 @@ export default function V2PersonDetailPage() {
         ) : (
           <>
             <Card>
-              <CardHeader>
+              <CardHeader className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="font-typewriter text-2xl">{person.name}</CardTitle>
                   <Badge variant="outline">{person.type === "cp" ? "CP" : "Postava"}</Badge>
-                  {person.group_name && <Badge variant="secondary">{person.group_name}</Badge>}
+                  <InlineEditField
+                    value={person.name}
+                    onSave={(v) => updateField({ name: v.trim() || person.name })}
+                    displayClassName="font-typewriter text-2xl"
+                    inputClassName="text-2xl h-10"
+                    ariaLabel="Jméno"
+                  />
                 </div>
-                {person.performer && <p className="text-sm text-muted-foreground">Performer: {person.performer}</p>}
-                {person.performance_times && <p className="text-sm text-muted-foreground">Časy: {person.performance_times}</p>}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs uppercase tracking-wider">Skupina:</span>
+                    <InlineEditField
+                      value={person.group_name}
+                      onSave={(v) => updateField({ group_name: v.trim() || null })}
+                      emptyText="bez skupiny"
+                      ariaLabel="Skupina"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs uppercase tracking-wider">Heslo do portálu:</span>
+                    <InlineEditField
+                      value="•••"
+                      onSave={(v) => v.trim() ? updatePassword(v.trim()) : Promise.resolve()}
+                      type="password"
+                      emptyText="nenastaveno"
+                      ariaLabel="Heslo"
+                    />
+                  </div>
+                  {person.type === "cp" && (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs uppercase tracking-wider">Performer:</span>
+                        <InlineEditField
+                          value={person.performer}
+                          onSave={(v) => updateField({ performer: v.trim() || null })}
+                          emptyText="—"
+                          ariaLabel="Performer"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs uppercase tracking-wider">Časy:</span>
+                        <InlineEditField
+                          value={person.performance_times}
+                          onSave={(v) => updateField({ performance_times: v.trim() || null })}
+                          emptyText="—"
+                          ariaLabel="Časy vystoupení"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </CardHeader>
-              {person.medailonek && (
-                <CardContent>
-                  <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: person.medailonek }} />
-                </CardContent>
-              )}
+              <CardContent>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Medailonek</h3>
+                <InlineEditRich
+                  value={person.medailonek}
+                  onSave={(v) => updateField({ medailonek: v })}
+                />
+              </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="font-typewriter text-lg">Portálové odkazy</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <PortalLinkCard
+              <CardContent className="space-y-2 pt-4">
+                <CompactPortalLink
                   label={person.type === "cp" ? "CP portál (individuální)" : "Hráčský portál"}
                   url={portalUrl}
-                  hint={'Heslo nastavíš tlačítkem „Upravit" výše (pole Heslo do portálu).'}
+                  onSetPassword={updatePassword}
                 />
                 {person.type === "cp" && (
-                  <PortalLinkCard label="CP hub (přehled všech CP)" url={cpHubUrl} hint="Sdílený přístup pro všechny CP daného LARPu." />
+                  <CompactPortalLink label="CP hub" url={cpHubUrl} />
                 )}
               </CardContent>
             </Card>
 
-            <PlayerAssignmentsCard personId={person.id} larpId={person.larp_id} personType={person.type} />
+            <ActiveRunAssignmentCard personId={person.id} larpId={person.larp_id} personType={person.type} />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="font-typewriter text-lg">Související dokumenty</CardTitle>
-                <Button size="sm" onClick={createPersonalDoc}>
-                  <Plus className="mr-1 h-4 w-4" />Osobní dokument
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {docs.length === 0 ? (
-                  <p className="py-2 text-center text-sm text-muted-foreground">Žádné dokumenty.</p>
-                ) : (
-                  (["organizacni", "herni", "produkcni"] as const).map((cat) => grouped[cat].length > 0 && (
-                    <section key={cat}>
-                      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{CAT_LABEL[cat]}</h3>
-                      <div className="space-y-1.5">
-                        {grouped[cat].map((d) => (
-                          <Link key={d.id} to={`/larp/${larpSlug}/dokumenty/${d.id}`}
-                            className="flex items-center gap-2 rounded border border-border p-2 transition-colors hover:border-primary">
-                            <FileText className="h-4 w-4 shrink-0 text-primary" />
-                            <span className="flex-1 truncate text-sm">{d.title}</span>
-                            {d.is_personal && <Badge variant="secondary" className="text-[10px]">osobní</Badge>}
-                            {d.target_type === "skupina" && <Badge variant="outline" className="text-[10px]">skupina</Badge>}
-                            {d.target_type === "vsichni" && <Badge variant="outline" className="text-[10px]">všichni</Badge>}
-                          </Link>
-                        ))}
-                      </div>
-                    </section>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+            <PersonDocumentsList
+              larpSlug={larpSlug!}
+              larpId={person.larp_id}
+              personId={person.id}
+              personName={person.name}
+              personType={person.type}
+              personGroupName={person.group_name}
+              onCreatePersonal={createPersonalDoc}
+            />
           </>
         )}
       </div>
-
-      {person && (
-        <PersonFormDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          larpId={person.larp_id}
-          type={person.type}
-          person={person}
-          onSaved={() => load()}
-        />
-      )}
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
