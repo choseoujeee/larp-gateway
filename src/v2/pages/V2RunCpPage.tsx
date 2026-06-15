@@ -37,10 +37,10 @@ export default function V2RunCpPage() {
   const [cps, setCps] = useState<CP[]>([]);
   const [performers, setPerformers] = useState<Record<string, Performer>>({});
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "missing">("all");
   const [personDialogOpen, setPersonDialogOpen] = useState(false);
+  const [editingCp, setEditingCp] = useState<CP | null>(null);
   const { performers: history } = useLarpPerformerHistory(run?.larp_id);
 
   const load = useCallback(async () => {
