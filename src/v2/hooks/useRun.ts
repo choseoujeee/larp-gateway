@@ -82,7 +82,7 @@ export function useRun(larpSlug?: string, runSlug?: string) {
       if (cancelled) return;
       if (!r) { setNotFound(true); setLoading(false); return; }
 
-      setRun({ ...r, larp_name: larp.name, larp_slug: larp.slug });
+      setRun({ ...(r as any), larp_name: larp.name, larp_slug: larp.slug } as RunData);
       setLoading(false);
     })();
     return () => { cancelled = true; };

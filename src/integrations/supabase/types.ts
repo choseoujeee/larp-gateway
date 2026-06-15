@@ -1581,6 +1581,7 @@ export type Database = {
           payment_due_date: string | null
           payment_instructions: string | null
           payment_mode: string
+          run_number: number | null
           slug: string
           updated_at: string
         }
@@ -1602,6 +1603,7 @@ export type Database = {
           payment_due_date?: string | null
           payment_instructions?: string | null
           payment_mode?: string
+          run_number?: number | null
           slug: string
           updated_at?: string
         }
@@ -1623,6 +1625,7 @@ export type Database = {
           payment_due_date?: string | null
           payment_instructions?: string | null
           payment_mode?: string
+          run_number?: number | null
           slug?: string
           updated_at?: string
         }
