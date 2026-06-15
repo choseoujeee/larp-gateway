@@ -148,10 +148,11 @@ export default function V2DocumentsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-typewriter text-base">{d.title}</span>
-                        <Badge variant="default" className="text-[10px]">
-                          <TargetIcon t={d.target_type} />
-                          <span className="ml-1">{targetLabel(d, personNames)}</span>
-                        </Badge>
+                        {targetChips(d, personNames).map((c, i) => (
+                          <Badge key={i} variant={c.variant} className="text-[10px]">
+                            {c.icon}<span className={c.icon ? "ml-1" : ""}>{c.label}</span>
+                          </Badge>
+                        ))}
                         <Badge variant="outline" className="text-[10px] uppercase">{CATEGORY_LABEL[d.doc_category]}</Badge>
                         {d.is_personal && <Badge variant="secondary" className="text-[10px]">Osobní</Badge>}
                       </div>
