@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Loader2, Mail, FileText, KeyRound, History, Send, Plus, Copy, Trash2, RefreshCw, AlertCircle } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
