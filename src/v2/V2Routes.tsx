@@ -7,6 +7,7 @@ import V2PersonsListPage from "./pages/V2PersonsListPage";
 import V2PersonDetailPage from "./pages/V2PersonDetailPage";
 import V2Stub from "./pages/V2Stub";
 import V2OrganizersPage from "./pages/V2OrganizersPage";
+import V2PastRunsPage from "./pages/V2PastRunsPage";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
@@ -30,6 +31,7 @@ export default function V2Routes() {
       <Route path=":larpSlug/cp/:personId" element={<V2PersonDetailPage />} />
       <Route path=":larpSlug/organizatori" element={<V2OrganizersPage />} />
       <Route path=":larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." />} />
+      <Route path=":larpSlug/drivejsi-behy" element={<V2PastRunsPage />} />
       <Route path=":larpSlug/beh/:runSlug" element={<V2Stub title="Cockpit běhu" description="Pre-flight přehled (Etapa 2)." />} />
       <Route path=":larpSlug/beh/:runSlug/hraci" element={<V2Stub title="Hráči a magic linky" description="Pozvánky hráčů přes Lovable Emails (Etapa 2)." />} />
       <Route path=":larpSlug/beh/:runSlug/cp" element={<V2Stub title="CP performeři" description="Přiřazení performerů k rolím a scénám (Etapa 3)." />} />

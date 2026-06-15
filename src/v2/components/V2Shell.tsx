@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Link, NavLink, useParams } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays, UserCog } from "lucide-react";
+import { Link, NavLink, useParams, useLocation } from "react-router-dom";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, ChevronDown, LogOut, CalendarDays, UserCog, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,16 +50,6 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
       ]
     : [];
 
-  const runNav: NavItem[] = larpSlug && runSlug
-    ? [
-        { to: `/larp/${larpSlug}/beh/${runSlug}`, icon: LayoutDashboard, label: "Cockpit" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/hraci`, icon: Users, label: "Hráči" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/cp`, icon: Theater, label: "CP performeři" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/beh/${runSlug}/komunikace`, icon: Mail, label: "Komunikace" },
-      ]
-    : [];
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
@@ -82,27 +72,12 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         )}
 
         {larpSlug && (
-          <V2NavGroup label="Běhy">
-            {runs.length === 0 ? (
-              <div className="px-2 py-1 text-xs text-muted-foreground">Žádné běhy</div>
-            ) : runs.map((r) => (
-              <V2NavLink
-                key={r.id}
-                to={`/larp/${larpSlug}/beh/${r.slug}`}
-                icon={CalendarDays}
-                label={r.name + (r.is_active ? " ●" : "")}
-                onClick={() => setMobileOpen(false)}
-              />
-            ))}
-          </V2NavGroup>
-        )}
-
-        {runSlug && runNav.length > 0 && (
-          <V2NavGroup label={runName || `Běh: ${runSlug}`}>
-            {runNav.map((item) => (
-              <V2NavLink key={item.to} {...item} onClick={() => setMobileOpen(false)} />
-            ))}
-          </V2NavGroup>
+          <V2RunsNavSection
+            larpSlug={larpSlug}
+            runs={runs}
+            currentRunSlug={runSlug}
+            onNavigate={() => setMobileOpen(false)}
+          />
         )}
       </nav>
       {user && (
@@ -199,4 +174,106 @@ function V2Breadcrumb({ larpName, runName }: { larpName?: string; runName?: stri
       )}
     </nav>
   );
+}
+
+interface RunMini { id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }
+
+function V2RunsNavSection({
+  larpSlug,
+  runs,
+  currentRunSlug,
+  onNavigate,
+}: {
+  larpSlug: string;
+  runs: RunMini[];
+  currentRunSlug?: string;
+  onNavigate: () => void;
+}) {
+  const activeRun = runs.find((r) => r.is_active) ?? runs[0];
+  const onActiveRun = !!activeRun && currentRunSlug === activeRun.slug;
+  const location = useLocation();
+  const [expanded, setExpanded] = useState<boolean>(onActiveRun);
+
+  useEffect(() => {
+    if (onActiveRun) setExpanded(true);
+  }, [onActiveRun]);
+
+  const activeLabel = activeRun ? formatRunLabel(activeRun) : "Žádný aktivní běh";
+
+  const runNav = activeRun
+    ? [
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}`, icon: LayoutDashboard, label: "Cockpit" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/komunikace`, icon: Mail, label: "Komunikace" },
+      ]
+    : [];
+
+  const pastRunsActive = location.pathname === `/larp/${larpSlug}/drivejsi-behy`;
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Běhy
+      </div>
+      <div className="space-y-0.5">
+        {activeRun ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded px-2 py-2 text-sm transition-colors",
+                onActiveRun ? "bg-muted text-foreground" : "text-foreground hover:bg-muted"
+              )}
+            >
+              {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <CalendarDays className="h-4 w-4" />
+              <span className="flex-1 text-left">
+                <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">Aktuální běh</span>
+                <span className="block truncate">{activeLabel}</span>
+              </span>
+            </button>
+            {expanded && (
+              <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                {runNav.map((item) => (
+                  <V2NavLink key={item.to} {...item} onClick={onNavigate} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="px-2 py-1 text-xs text-muted-foreground">Žádný aktivní běh</div>
+        )}
+
+        <Link
+          to={`/larp/${larpSlug}/drivejsi-behy`}
+          onClick={onNavigate}
+          className={cn(
+            "mt-1 flex items-center gap-2 rounded px-2 py-2 text-sm transition-colors",
+            pastRunsActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+          )}
+        >
+          <Archive className="h-4 w-4" />
+          Dřívější běhy
+          <span className="ml-auto text-xs text-muted-foreground">{runs.filter((r) => !r.is_active).length}</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function formatRunLabel(r: RunMini): string {
+  if (r.date_from) {
+    try {
+      const d = new Date(r.date_from);
+      const month = d.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+      return `${r.name} · ${month}`;
+    } catch {
+      // fallthrough
+    }
+  }
+  return r.name;
 }
