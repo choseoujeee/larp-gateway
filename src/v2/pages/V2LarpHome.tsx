@@ -60,10 +60,26 @@ export default function V2LarpHome() {
         </div>
       ) : (
         <div className="mx-auto max-w-5xl space-y-6">
-          <header>
-            <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{larp?.name}</h1>
-            {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
+          <header className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{larp?.name}</h1>
+              {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
+              {larp?.payment_account && (
+                <p className="mt-1 text-xs text-muted-foreground">Číslo účtu: <span className="font-mono">{larp.payment_account}</span></p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />Upravit LARP
+            </Button>
           </header>
+          {larp && (
+            <LarpEditDialog
+              larpId={larp.id}
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onSaved={() => setReloadKey((k) => k + 1)}
+            />
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/larp/${larpSlug}/dokumenty`} />
