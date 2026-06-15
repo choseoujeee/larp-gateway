@@ -92,7 +92,7 @@ function SortableRow({ doc, larpSlug, personId, personType }: { doc: Doc; larpSl
         <span className="flex-1 truncate text-sm">{doc.title}</span>
         {doc.priority === 1 && <Badge variant="destructive" className="text-[10px]">prioritní</Badge>}
         {doc.priority === 3 && <Badge variant="outline" className="text-[10px]">volitelné</Badge>}
-        <TargetBadge doc={doc} />
+        <TargetBadge doc={doc} personId={personId} personType={personType} />
       </Link>
     </div>
   );
