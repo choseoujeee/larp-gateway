@@ -144,6 +144,22 @@ function ComposerTab({ runId, larpId }: { runId: string; larpId: string }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVar = (name: string) => {
+    const token = `{{${name}}}`;
+    const ta = bodyRef.current;
+    if (!ta) { setBody((b) => b + token); return; }
+    const start = ta.selectionStart ?? body.length;
+    const end = ta.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + token + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + token.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  };
 
   useEffect(() => {
     (async () => {
