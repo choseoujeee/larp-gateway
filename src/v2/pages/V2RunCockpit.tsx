@@ -97,9 +97,6 @@ export default function V2RunCockpit() {
               <Button asChild variant="outline" size="sm"><Link to={`${base}/cp`}><Theater className="mr-2 h-4 w-4" />CP performeři</Link></Button>
               <Button asChild variant="outline" size="sm"><Link to={`${base}/harmonogram`}><Calendar className="mr-2 h-4 w-4" />Harmonogram</Link></Button>
               <Button asChild variant="outline" size="sm"><Link to={`${base}/produkce`}><ClipboardCheck className="mr-2 h-4 w-4" />Produkce</Link></Button>
-              <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)} className="ml-auto">
-                <Plus className="mr-2 h-4 w-4" />Nový běh
-              </Button>
             </div>
           </section>
 
