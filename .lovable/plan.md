@@ -1,58 +1,62 @@
-## Cíl
+# Komunikace (Etapa 2)
 
-V archivu V1 existuje propracovaný harmonogram (`/_archiv/admin/harmonogram` → `src/pages/admin/SchedulePage.tsx`, 1029 řádků). V novém v2 je dnes na `:larpSlug/beh/:runSlug/harmonogram` jen `V2Stub`. Postavíme plnohodnotný harmonogram v2 a převezmeme všechny funkce z V1.
+Sekce **Komunikace** žije v detailu běhu (`/larp/:larpSlug/beh/:runSlug/komunikace`). Pokrývá šablony e-mailů, hromadné rozesílky hráčům/CP přiřazeným k danému běhu, rozesílku magic linků a kompletní log odeslaných zpráv. Odesílání jde přes vestavěnou Lovable e-mailovou infrastrukturu.
 
-## Funkce, které přebíráme z V1
+## Předpoklady infrastruktury
 
-- **Časová osa** — vertikální mřížka po dnech (1 min = 4 px, slot = 5 min), s popisky času, půlhodinovými a hodinovými linkami, „live" ukazatelem aktuálního času.
-- **Drag & drop v gridu** — událost se chytne a pustí do jiného slotu/dne; auto-update `start_time` a `day_number`. Při tažení CP události se synchronizuje i `cp_scenes.start_time/day_number`.
-- **Seznam (list) view s D&D** — alternativní pohled s přetahováním celého pořadí; po pádu se časy přepočítají od 08:00 s respektem k `duration_minutes`.
-- **Lanes (vícestopé řazení)** — kolidující události se zobrazí vedle sebe (`assignLanes`).
-- **Popovery na blocích** — detail s CP, lokací, performerem, popisem; akce Upravit / Scéna / Odebrat.
-- **Vstupy CP (CP scény)** — pre-fill events ze seznamu `cp_scenes` daného běhu (scény ještě nezařazené do harmonogramu), s vazbou `cp_scene_id` a obousměrnou synchronizací času.
-- **Vstupy dalších událostí** — pre-fill z LARP `production_materials` (typ `material`) a `documents` doc_type = `produkční` (typ `organizacni`). Také ruční typy: `programovy_blok`, `jidlo`, `presun`, `informace`, `vystoupeni_cp`, `material`, `organizacni`.
-- **CRUD dialog** — den, čas, trvání, typ, název, popis (rich), místo, CP, scéna, materiál, dokument, barva CP v gridu, performer (volný text + autocomplete z minulých běhů).
-- **Filtry** — fulltext, den, typ + přepínač Grid / Seznam.
-- **Live mode** — „Spustit běh" zobrazí červenou linku aktuálního času + zvýrazní právě běžící blok.
-- **Portal access** — vytvoření veřejného odkazu `/{larpSlug}/harmonogram/{token}` s heslem nebo bez (RPC `create_schedule_portal_access[_no_password]`, `set/remove_schedule_portal_password`). Read-only verze už existuje (`SchedulePortalPage`) a zůstává.
+1. Ověřit e-mailovou doménu (`check_email_domain_status`). Pokud chybí, ukázat dialog na nastavení domény.
+2. Nasadit `setup_email_infra` (fronty, log, cron, suppression).
+3. Scaffoldovat `send-transactional-email` a vytvořit jednu obecnou šablonu `larp-broadcast`, která dostává `{ subject, html }` jako `templateData` — díky tomu může každá LARP šablona mít vlastní HTML uložené v DB a do edge funkce posíláme už hotový obsah.
 
-## Nové vs. V1
+## UI: stránka `V2RunCommunicationPage`
 
-1. **Routování v2** — místo kontextů `useRunContext`/`useLarpContext` čteme `larpSlug` + `runSlug` z URL a doplníme query na `larps`/`runs` pro `larp_id` a `run_id`. Stejný vzor jako `V2RunProductionPage`.
-2. **LARP úroveň harmonogramu** — `:larpSlug/harmonogram` přidat jako přehled: select běhu (jako u produkce) → render stejné komponenty s vybraným `run_id`. Sdílené pre-fill zdroje (materiály, produkční dokumenty) zůstávají LARP-scoped.
-3. **Layout** — použít `V2Shell` + `RunHeader` (pro běh) / standardní LARP header.
+Tři záložky.
 
-## Soubory
+### 1. Composer (rozeslat zprávu)
+- Výběr příjemců: checkboxy „Všichni hráči“, „Všichni CP“, „Organizátoři“ + multi-select konkrétních osob / skupin (`run_person_assignments` JOIN `persons`). Vedle se ukazuje finální počet adresátů a kolik z nich má vyplněný e-mail.
+- Výběr šablony (volitelně) → předvyplní předmět a HTML.
+- Editor předmětu (text) + TipTap editoru těla (stejné nastavení jako u dokumentů, DOMPurify pravidla z `mem://ui/wysiwyg-editor`).
+- Proměnné: `{{jmeno}}`, `{{postava}}`, `{{skupina}}`, `{{larp}}`, `{{beh}}`, `{{portal_link}}`, `{{magic_link}}`. Náhled pro vybranou osobu.
+- Tlačítko „Odeslat“ zavolá edge funkci `send-run-broadcast` (viz níže), která zařadí jednu zprávu na adresáta do fronty `transactional_emails`.
 
-Nové:
-- `src/v2/pages/V2RunSchedulePage.tsx` — harmonogram konkrétního běhu (port z V1 SchedulePage s v2 routováním).
-- `src/v2/pages/V2LarpSchedulePage.tsx` — wrapper s výběrem běhu (analogie `V2LarpProductionPage`).
-- `src/v2/components/schedule/ScheduleEventDialog.tsx` — vytažený create/edit dialog (rozdělení 1000řádkového souboru pro čitelnost).
-- `src/v2/components/schedule/SchedulePortalAccessBar.tsx` — vytažený portal access bar.
+### 2. Šablony (`email_templates`)
+- CRUD seznam pro daný LARP (sdílené mezi běhy), filtr podle `kind` (pozvánka / info / díky / magic-link / vlastní).
+- Editor stejný jako composer; uložení do `email_templates` (sloupce už existují: `subject`, `body_html`, `body_text`, `kind`, `larp_id`).
+- Tlačítko „Použít v rozesílce“ otevře composer s předvyplněnými hodnotami.
 
-Znovupoužito beze změny:
-- `src/components/schedule/*` (ScheduleGridDay, AdminScheduleEventBox, GridSlotDroppable, konstanty, typy, utils) — komponenty jsou prezentační, fungují i v v2.
-- `src/lib/scheduleGridUtils.ts` (assignLanes, timeToMinutes).
-- `src/components/admin/CpSceneDialog.tsx` pro editaci scény z popoveru.
+### 3. Magic linky (přístupové údaje)
+- Tabulka hráčů/CP přiřazených k běhu se sloupci: jméno, postava, e-mail, stav (vygenerováno / odesláno / přihlášeno), tlačítko „Vygenerovat link“ a „Poslat e-mailem“.
+- Generování jednorázových tokenů do `magic_links` (token, person_id, run_id, expires_at, used_at). Odkaz ve tvaru `/portal/magic/:token` — frontend ho směňuje za standardní portálovou session přes existující RPC.
+- Možnost hromadné akce „Vygenerovat a rozeslat všem“ — použije pevnou šablonu kind `magic-link`.
 
-Upravené:
-- `src/v2/V2Routes.tsx` — `/:larpSlug/beh/:runSlug/harmonogram` → `V2RunSchedulePage`; přidat `/:larpSlug/harmonogram` → `V2LarpSchedulePage`.
-- `src/v2/pages/V2LarpHome.tsx` + případně `V2RunCockpit.tsx` / navigaci — odkaz na nový harmonogram (pokud chybí).
+### 4. Historie (`email_log_v2`)
+- Tabulka logů filtrovaná na aktuální `run_id`: čas, příjemce, předmět, šablona, stav (pending/sent/failed/suppressed), chybová zpráva.
+- Filtry: stav, šablona, časový rozsah; tlačítko „Odeslat znovu“ u failed.
+- Stat karty (odesláno / čeká / selhalo / blokováno) v hlavičce.
 
-## Datový model
+## Backend
 
-Beze změn — používáme existující tabulky `schedule_events`, `cp_scenes`, `production_materials`, `documents`, `persons`, `run_person_assignments`, `schedule_portal_access` a stávající RPC funkce.
+### Migrace
+- Nová tabulka `magic_links` (id, token uuid unique, person_id fk persons, run_id fk runs, expires_at timestamptz, used_at timestamptz nullable, created_at). RLS: insert/select jen pro vlastníky LARPu; portálová směna přes security definer RPC `consume_magic_link(p_token)`.
+- Sloupec `email` u `run_person_assignments` už existuje (`player_email`), využijeme ho — pokud chybí u CP, fallback na `persons.email` (přidat sloupec `persons.email`, pokud chybí).
+- `email_templates` nepřidávat sloupce — schéma stačí. Doplnit chybějící GRANT pokud chybí.
 
-## Postup implementace
+### Edge funkce
+- `send-run-broadcast`: ověří JWT a `is_run_owner(p_run_id)`. Vstup: `{ runId, recipients: { groups, personIds, includeOrganizers }, subject, html, templateKind? }`. Server expanduje na seznam příjemců, nahradí proměnné per osoba, vytvoří `magic_link` pokud HTML obsahuje `{{magic_link}}`, vloží řádek do `email_log_v2` se stavem `pending` a zavolá `enqueue_email` šablony `larp-broadcast` s `{ subject, html }`. Idempotency key: `broadcast-<runId>-<personId>-<timestamp>`.
+- `send-transactional-email` + `larp-broadcast.tsx` šablona: jednoduchý wrapper, který vrenderuje předaný `html` přes React Email (s povolenými inline styly, bez DOMPurify protože jde přes naše vlastní UI).
+- `handle-email-unsubscribe` se nepoužije pro provozní zprávy (jsou transakční), ale ponecháme defaultní patička s odkazem na portál.
 
-1. Vytvořit `V2RunSchedulePage.tsx` portem `SchedulePage.tsx` — nahradit `AdminLayout` za v2 shell, `useRunContext`/`useLarpContext` za URL params + ad-hoc fetche `larp_id`/`run_id`/`larp.slug`.
-2. Vytáhnout dialog a portal-bar do vlastních komponent (zachovat chování 1:1).
-3. Vytvořit `V2LarpSchedulePage.tsx` s `Select` běhu (vzor `V2LarpProductionPage`).
-4. Přidat obě routy do `V2Routes.tsx`.
-5. Propojit z V2 navigace (LARP home → „Harmonogram", běh cockpit → „Harmonogram"), pokud odkaz chybí.
-6. Smoke-test: otevřít stránku, přidat událost, drag & drop v gridu, list-mode reorder, vstup CP scény, materiálu, dokumentu, live mode, portal odkaz.
+### Aktualizace logů
+- Stav `pending` zapisuje `send-run-broadcast` při enqueue, stav `sent`/`failed` aktualizuje queue worker (`process-email-queue`) po pokusu o odeslání. Korelace přes `idempotency_key` uložený v `email_log_v2.metadata` (nový jsonb sloupec, pokud chybí).
 
-## Mimo rozsah
+## Routing a navigace
 
-- Read-only portal stránka `SchedulePortalPage` zůstává beze změn.
-- Žádné DB migrace.
+- `V2Routes.tsx`: nahradit `V2Stub` v `:larpSlug/beh/:runSlug/komunikace` za `V2RunCommunicationPage`.
+- Pod ní vnořené taby přes `?tab=` query param: `composer` (default), `templates`, `magic`, `log`.
+- Sekce v menu „Komunikace“ už existuje v `V2Shell`.
+
+## Otevřené technické detaily
+
+- Délka platnosti magic linku: 30 dní od vytvoření; jednorázové použití generuje portálovou session (cookie/localStorage podle existujícího portál mechanismu).
+- Rate limit pro hromadnou rozesílku spoléhá na `email_send_state` (default 120/min) — žádné vlastní omezení.
+- Odesílatel: `notify.<domena-larpu>` (z `larp_email_config`) — pokud není nastaveno, fallback na výchozí Lovable doménu.
