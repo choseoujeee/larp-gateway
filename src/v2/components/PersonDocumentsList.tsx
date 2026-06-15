@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { FileText, GripVertical, Plus, User, Users, Globe } from "lucide-react";
+import { FileText, GripVertical, Plus, User, Users, UsersRound, Drama, Share2 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   DragEndEvent,
@@ -24,6 +24,7 @@ interface Doc {
   is_personal: boolean;
   priority: number;
   sort_order: number;
+  audience: string[] | null;
 }
 
 interface Props {
@@ -42,17 +43,30 @@ const CATS = [
   { key: "osobni" as const, label: "Osobní" },
 ];
 
-function TargetBadge({ doc }: { doc: Doc }) {
-  if (doc.is_personal || doc.target_type === "osoba") {
+function TargetBadge({ doc, personId, personType }: { doc: Doc; personId: string; personType: "postava" | "cp" }) {
+  const a = doc.audience ?? [];
+  const personTag = `${personType === "cp" ? "cp" : "players"}:person:${personId}`;
+  if (doc.is_personal || a.includes(personTag) || doc.target_type === "osoba") {
     return <Badge variant="secondary" className="gap-1 text-[10px]"><User className="h-2.5 w-2.5" />osobní</Badge>;
   }
-  if (doc.target_type === "skupina") {
+  const hasPlayersAll = a.includes("players:all");
+  const hasCpAll = a.includes("cp:all");
+  if (hasPlayersAll && hasCpAll) {
+    return <Badge variant="outline" className="gap-1 border-violet-400/60 text-[10px] text-violet-600 dark:text-violet-300"><Share2 className="h-2.5 w-2.5" />sdílené</Badge>;
+  }
+  if (hasCpAll) {
+    return <Badge variant="outline" className="gap-1 border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"><Drama className="h-2.5 w-2.5" />všichni CP</Badge>;
+  }
+  if (hasPlayersAll) {
+    return <Badge variant="outline" className="gap-1 border-sky-400/60 text-[10px] text-sky-700 dark:text-sky-300"><UsersRound className="h-2.5 w-2.5" />všichni hráči</Badge>;
+  }
+  if (a.some((t) => t.startsWith("players:group:") || t.startsWith("cp:group:")) || doc.target_type === "skupina") {
     return <Badge variant="outline" className="gap-1 text-[10px]"><Users className="h-2.5 w-2.5" />skupina</Badge>;
   }
-  return <Badge variant="outline" className="gap-1 text-[10px]"><Globe className="h-2.5 w-2.5" />všichni</Badge>;
+  return null;
 }
 
-function SortableRow({ doc, larpSlug }: { doc: Doc; larpSlug: string }) {
+function SortableRow({ doc, larpSlug, personId, personType }: { doc: Doc; larpSlug: string; personId: string; personType: "postava" | "cp" }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: doc.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -78,7 +92,7 @@ function SortableRow({ doc, larpSlug }: { doc: Doc; larpSlug: string }) {
         <span className="flex-1 truncate text-sm">{doc.title}</span>
         {doc.priority === 1 && <Badge variant="destructive" className="text-[10px]">prioritní</Badge>}
         {doc.priority === 3 && <Badge variant="outline" className="text-[10px]">volitelné</Badge>}
-        <TargetBadge doc={doc} />
+        <TargetBadge doc={doc} personId={personId} personType={personType} />
       </Link>
     </div>
   );
@@ -98,19 +112,24 @@ export function PersonDocumentsList({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const select = "id, title, doc_category, is_personal, target_type, priority, sort_order";
-    const q1 = supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "vsichni");
-    const q2 = supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "osoba").eq("target_person_id", personId);
-    const q3 = personGroupName
-      ? supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "skupina").eq("target_group", personGroupName)
-      : Promise.resolve({ data: [] as Doc[] });
-    const [r1, r2, r3] = await Promise.all([q1, q2, q3 as Promise<{ data: Doc[] | null }>]);
-    const all = ([...(r1.data ?? []), ...(r2.data ?? []), ...(r3.data ?? [])] as Doc[])
-      .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
-      .sort((a, b) => a.sort_order - b.sort_order || a.priority - b.priority);
-    setDocs(all);
+    const select = "id, title, doc_category, is_personal, target_type, priority, sort_order, audience";
+    // Build the audience tags this person should see
+    const myTags = personType === "cp"
+      ? ["cp:all", `cp:person:${personId}`]
+      : ["players:all", `players:person:${personId}`, ...(personGroupName ? [`players:group:${personGroupName}`] : [])];
+    const { data, error } = await supabase
+      .from("documents")
+      .select(select)
+      .eq("larp_id", larpId)
+      .overlaps("audience", myTags);
+    if (error) {
+      toast.error("Načtení dokumentů selhalo");
+      setDocs([]);
+    } else {
+      setDocs(((data ?? []) as Doc[]).sort((a, b) => a.sort_order - b.sort_order || a.priority - b.priority));
+    }
     setLoading(false);
-  }, [larpId, personId, personGroupName]);
+  }, [larpId, personId, personType, personGroupName]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -166,7 +185,7 @@ export function PersonDocumentsList({
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(key, e)}>
                   <SortableContext items={list.map((d) => d.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-1.5">
-                      {list.map((d) => <SortableRow key={d.id} doc={d} larpSlug={larpSlug} />)}
+                      {list.map((d) => <SortableRow key={d.id} doc={d} larpSlug={larpSlug} personId={personId} personType={personType} />)}
                     </div>
                   </SortableContext>
                 </DndContext>
