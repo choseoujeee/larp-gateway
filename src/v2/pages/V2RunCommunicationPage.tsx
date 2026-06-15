@@ -411,6 +411,8 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
   const [links, setLinks] = useState<MagicLinkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedToken, setGeneratedToken] = useState<{ name: string; url: string } | null>(null);
+  const [bulkGenerated, setBulkGenerated] = useState<{ name: string; url: string }[] | null>(null);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -439,6 +441,41 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
     load();
   };
 
+  const generateAll = async (type: 'player' | 'cp') => {
+    setBulkGenerating(true);
+    const targets = persons.filter((p) => {
+      if (type === 'cp') return p.type === 'cp';
+      return p.type === 'postava' && !!assignments[p.id];
+    });
+
+    const results: { name: string; url: string }[] = [];
+    for (const p of targets) {
+      const { data, error } = await supabase.rpc('create_run_magic_link', {
+        p_run_id: runId,
+        p_person_id: p.id,
+        p_scope: p.type === 'cp' ? 'cp' : 'player',
+        p_ttl_days: 30,
+      });
+      if (error) {
+        toast.error(`Chyba pro ${p.name}: ${error.message}`);
+        continue;
+      }
+      if (data) {
+        results.push({
+          name: assignments[p.id]?.player_name ?? p.name,
+          url: `${window.location.origin}/portal/magic/${data}`,
+        });
+      }
+    }
+
+    setBulkGenerated(results);
+    setBulkGenerating(false);
+    load();
+    if (results.length > 0) {
+      toast.success(`Vygenerováno ${results.length} odkazů`);
+    }
+  };
+
   const revoke = async (id: string) => {
     const { error } = await supabase.from("magic_links").update({ revoked_at: new Date().toISOString() }).eq("id", id);
     if (error) { toast.error(error.message); return; }
@@ -451,6 +488,33 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
     return m;
   }, [links]);
 
+  const playerPersons = useMemo(() => persons.filter((p) => p.type === 'postava' && !!assignments[p.id]), [persons, assignments]);
+  const cpPersons = useMemo(() => persons.filter((p) => p.type === 'cp'), [persons]);
+
+  const renderPersonRow = (p: PersonRow) => {
+    const playerLinks = linksByPerson[p.id] ?? [];
+    const active = playerLinks.find((l) => !l.revoked_at && new Date(l.valid_until) > new Date());
+    return (
+      <div key={p.id} className="flex items-center justify-between py-2.5 px-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{assignments[p.id]?.player_name ?? p.name}</span>
+            <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
+            {active && <Badge variant="secondary" className="text-[10px]">Aktivní link</Badge>}
+            {active?.last_used_at && <Badge variant="default" className="text-[10px]">Použito</Badge>}
+          </div>
+          <p className="text-xs text-muted-foreground">{assignments[p.id]?.player_email ?? p.email ?? "bez e-mailu"}</p>
+        </div>
+        <div className="flex gap-1">
+          {active && <Button size="sm" variant="ghost" onClick={() => revoke(active.id)}>Zneplatnit</Button>}
+          <Button size="sm" variant="outline" onClick={() => generate(p.id, p.name, p.type === "cp" ? "cp" : "player")}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />Vygenerovat
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <Loader2 className="h-5 w-5 animate-spin" />;
 
   return (
@@ -461,39 +525,49 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
           Jednorázový odkaz na portál (platnost 30 dní). Po vygenerování ho zkopíruj nebo pošli přes rozesílku.
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="divide-y">
-          {persons.map((p) => {
-            const isAssigned = !!assignments[p.id];
-            if (p.type === "postava" && !isAssigned) return null;
-            const playerLinks = linksByPerson[p.id] ?? [];
-            const active = playerLinks.find((l) => !l.revoked_at && new Date(l.valid_until) > new Date());
-            return (
-              <div key={p.id} className="flex items-center justify-between py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{assignments[p.id]?.player_name ?? p.name}</span>
-                    <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
-                    {active && <Badge variant="secondary" className="text-[10px]">Aktivní link</Badge>}
-                    {active?.last_used_at && <Badge variant="default" className="text-[10px]">Použito</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{assignments[p.id]?.player_email ?? p.email ?? "bez e-mailu"}</p>
-                </div>
-                <div className="flex gap-1">
-                  {active && <Button size="sm" variant="ghost" onClick={() => revoke(active.id)}>Zneplatnit</Button>}
-                  <Button size="sm" variant="outline" onClick={() => generate(p.id, p.name, p.type === "cp" ? "cp" : "player")}>
-                    <RefreshCw className="h-3.5 w-3.5 mr-1" />Vygenerovat
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+      <CardContent className="space-y-6">
+        {/* Hráči */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Odkazy pro hráče</h3>
+            {playerPersons.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => generateAll('player')} disabled={bulkGenerating}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />Vygenerovat vše
+              </Button>
+            )}
+          </div>
+          <div className="divide-y border rounded-md">
+            {playerPersons.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-3 px-3">Žádné přiřazené postavy.</p>
+            ) : (
+              playerPersons.map(renderPersonRow)
+            )}
+          </div>
+        </div>
+
+        {/* CP */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Odkazy pro CP</h3>
+            {cpPersons.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => generateAll('cp')} disabled={bulkGenerating}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />Vygenerovat vše
+              </Button>
+            )}
+          </div>
+          <div className="divide-y border rounded-md">
+            {cpPersons.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-3 px-3">Žádní CP.</p>
+            ) : (
+              cpPersons.map(renderPersonRow)
+            )}
+          </div>
         </div>
       </CardContent>
 
       <Dialog open={!!generatedToken} onOpenChange={(o) => !o && setGeneratedToken(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Magic link vygenerován</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Odkaz vygenerován</DialogTitle></DialogHeader>
           <p className="text-sm">Pro: <strong>{generatedToken?.name}</strong></p>
           <div className="flex gap-2">
             <Input readOnly value={generatedToken?.url ?? ""} onFocus={(e) => e.currentTarget.select()} />
@@ -505,6 +579,25 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
           <p className="text-xs text-muted-foreground">
             Tento odkaz se zobrazí jen jednou. Po zavření ho už znovu nezobrazíš (v DB je uložen jen hash).
           </p>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!bulkGenerated} onOpenChange={(o) => !o && setBulkGenerated(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Hromadně vygenerované odkazy</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{bulkGenerated?.length ?? 0} odkazů vygenerováno. Zkopíruj si je — po zavření dialogu se už nezobrazí.</p>
+          <Textarea
+            readOnly
+            rows={Math.min(12, (bulkGenerated?.length ?? 0) + 2)}
+            value={bulkGenerated?.map((b) => `${b.name}: ${b.url}`).join('\n') ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {
+              navigator.clipboard.writeText(bulkGenerated?.map((b) => `${b.name}: ${b.url}`).join('\n') ?? '');
+              toast.success("Zkopírováno");
+            }}><Copy className="h-4 w-4 mr-1" />Zkopírovat vše</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
