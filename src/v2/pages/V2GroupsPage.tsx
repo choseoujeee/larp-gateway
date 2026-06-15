@@ -49,18 +49,19 @@ export default function V2GroupsPage() {
   }, [user, larpSlug]);
 
   const groups = useMemo(() => {
+    const isCpGroup = (n: string) => n.trim().toLowerCase() === "cp";
     const map = new Map<string, { members: PersonMini[]; docs: DocMini[] }>();
     for (const p of persons) {
       if (p.type === "cp") continue;
       const g = (p.group_name ?? "").trim();
-      if (!g) continue;
+      if (!g || isCpGroup(g)) continue;
       if (!map.has(g)) map.set(g, { members: [], docs: [] });
       map.get(g)!.members.push(p);
     }
     for (const d of docs) {
       const names = new Set<string>();
-      if (d.target_type === "skupina" && d.target_group) names.add(d.target_group);
-      for (const n of d.extra_target_group_names ?? []) names.add(n);
+      if (d.target_type === "skupina" && d.target_group && !isCpGroup(d.target_group)) names.add(d.target_group);
+      for (const n of d.extra_target_group_names ?? []) if (!isCpGroup(n)) names.add(n);
       for (const n of names) {
         if (!map.has(n)) map.set(n, { members: [], docs: [] });
         map.get(n)!.docs.push(d);
