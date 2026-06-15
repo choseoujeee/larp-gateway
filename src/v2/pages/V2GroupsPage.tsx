@@ -51,6 +51,7 @@ export default function V2GroupsPage() {
   const groups = useMemo(() => {
     const map = new Map<string, { members: PersonMini[]; docs: DocMini[] }>();
     for (const p of persons) {
+      if (p.type === "cp") continue;
       const g = (p.group_name ?? "").trim();
       if (!g) continue;
       if (!map.has(g)) map.set(g, { members: [], docs: [] });
