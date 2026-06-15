@@ -181,7 +181,7 @@ export default function CpDetailPage() {
   }, [currentLarpId, slug]);
 
   const fetchScenes = async () => {
-    if (!cp?.id || !selectedRunId) {
+    if (!cp?.id || !currentLarpId) {
       setScenes([]);
       return;
     }
@@ -190,7 +190,7 @@ export default function CpDetailPage() {
       .from("cp_scenes")
       .select("*")
       .eq("cp_id", cp.id)
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("day_number")
       .order("start_time");
 
@@ -601,13 +601,13 @@ export default function CpDetailPage() {
           </div>
 
           {/* Široký blok scén (úpravy, přetahování) */}
-          {selectedRunId ? (
+          {currentLarpId ? (
             <PaperCard>
               <PaperCardContent className="py-4">
                 <CpSceneList
                   scenes={scenes}
                   cpId={cp.id}
-                  runId={selectedRunId}
+                  larpId={currentLarpId}
                   runDays={runDays}
                   onScenesChange={fetchScenes}
                 />
@@ -616,7 +616,7 @@ export default function CpDetailPage() {
           ) : (
             <PaperCard>
               <PaperCardContent className="py-8 text-center text-muted-foreground">
-                Vyberte běh pro zobrazení scén
+                Vyberte LARP pro zobrazení scén
               </PaperCardContent>
             </PaperCard>
           )}

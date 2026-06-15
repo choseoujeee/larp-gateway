@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface CpSceneForConflict {
   id: string;
   cp_id: string;
-  run_id: string;
+  larp_id: string;
   day_number: number;
   start_time: string;
   duration_minutes: number;
@@ -39,18 +39,15 @@ export interface PerformerConflict {
 }
 
 /**
- * Načte scény běhu a přiřazení performerů, seskupí scény podle performera
- * (performer může mít více CP v jednom běhu pouze pokud je to stejný
- * performer_name u různých cp_id – neplatí v aktuálním schématu, ale
- * pro jistotu seskupíme podle performer_name). Pro každého performera
- * zkontroluje překryvy časů (den + čas začátku a konce).
+ * Načte LARP-globální CP scény a per-run přiřazení performerů.
+ * Detekuje překryvy časů pro stejného performera napříč různými CP.
  */
-export async function detectPerformerConflicts(runId: string): Promise<PerformerConflict[]> {
+export async function detectPerformerConflicts(runId: string, larpId: string): Promise<PerformerConflict[]> {
   const [scenesRes, performersRes] = await Promise.all([
     supabase
       .from("cp_scenes")
-      .select("id, cp_id, run_id, day_number, start_time, duration_minutes, location")
-      .eq("run_id", runId)
+      .select("id, cp_id, larp_id, day_number, start_time, duration_minutes, location")
+      .eq("larp_id", larpId)
       .eq("is_preherni", false),
     supabase
       .from("cp_performers")

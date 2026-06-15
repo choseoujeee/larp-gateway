@@ -38,7 +38,7 @@ interface CpSceneDialogProps {
   onOpenChange: (open: boolean) => void;
   scene: CpScene | null;
   cpId: string;
-  runId: string;
+  larpId: string;
   runDays?: number;
   onSave: () => void;
 }
@@ -48,7 +48,7 @@ export function CpSceneDialog({
   onOpenChange,
   scene,
   cpId,
-  runId,
+  larpId,
   runDays = 3,
   onSave,
 }: CpSceneDialogProps) {
@@ -97,17 +97,17 @@ export function CpSceneDialog({
   }, [scene, open]);
 
   useEffect(() => {
-    if (!open || !runId) return;
+    if (!open || !larpId) return;
     supabase
       .from("cp_scenes")
       .select("location")
-      .eq("run_id", runId)
+      .eq("larp_id", larpId)
       .not("location", "is", null)
       .then(({ data }) => {
         const distinct = [...new Set((data ?? []).map((r) => (r as { location: string }).location).filter(Boolean))].sort();
         setLocationSuggestions(distinct);
       });
-  }, [open, runId]);
+  }, [open, larpId]);
 
   const handleSave = async () => {
     if (!formData.start_time?.trim()) {
@@ -124,7 +124,7 @@ export function CpSceneDialog({
 
     const sceneData = {
       cp_id: cpId,
-      run_id: runId,
+      larp_id: larpId,
       title: formData.title.trim() || null,
       day_number: formData.day_number,
       start_time: startTimeNormalized,
@@ -182,7 +182,7 @@ export function CpSceneDialog({
         const { data: eventData, error: eventError } = await supabase
           .from("schedule_events")
           .insert({
-            run_id: runId,
+            larp_id: larpId,
             day_number: formData.day_number,
             start_time: startTimeNormalized,
             duration_minutes: formData.duration_minutes,

@@ -20,7 +20,7 @@ import { CpSceneDialog } from "./CpSceneDialog";
 export interface CpScene {
   id: string;
   cp_id: string;
-  run_id: string;
+  larp_id: string;
   start_time: string;
   duration_minutes: number;
   day_number: number;
@@ -36,12 +36,12 @@ export interface CpScene {
 interface CpSceneListProps {
   scenes: CpScene[];
   cpId: string;
-  runId: string;
+  larpId: string;
   onScenesChange: () => void;
   runDays?: number;
 }
 
-export function CpSceneList({ scenes, cpId, runId, onScenesChange, runDays = 3 }: CpSceneListProps) {
+export function CpSceneList({ scenes, cpId, larpId, onScenesChange, runDays = 3 }: CpSceneListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedScene, setSelectedScene] = useState<CpScene | null>(null);
@@ -188,7 +188,7 @@ export function CpSceneList({ scenes, cpId, runId, onScenesChange, runDays = 3 }
         onOpenChange={setDialogOpen}
         scene={selectedScene}
         cpId={cpId}
-        runId={runId}
+        larpId={larpId}
         runDays={runDays}
         onSave={onScenesChange}
       />

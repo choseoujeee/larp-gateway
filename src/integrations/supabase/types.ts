@@ -68,9 +68,9 @@ export type Database = {
           duration_minutes: number
           id: string
           is_preherni: boolean
+          larp_id: string
           location: string | null
           props: string | null
-          run_id: string
           schedule_event_id: string | null
           sort_order: number | null
           start_time: string
@@ -85,9 +85,9 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_preherni?: boolean
+          larp_id: string
           location?: string | null
           props?: string | null
-          run_id: string
           schedule_event_id?: string | null
           sort_order?: number | null
           start_time: string
@@ -102,9 +102,9 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_preherni?: boolean
+          larp_id?: string
           location?: string | null
           props?: string | null
-          run_id?: string
           schedule_event_id?: string | null
           sort_order?: number | null
           start_time?: string
@@ -120,10 +120,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "cp_scenes_run_id_fkey"
-            columns: ["run_id"]
+            foreignKeyName: "cp_scenes_larp_id_fkey"
+            columns: ["larp_id"]
             isOneToOne: false
-            referencedRelation: "runs"
+            referencedRelation: "larps"
             referencedColumns: ["id"]
           },
           {
@@ -136,6 +136,60 @@ export type Database = {
         ]
       }
       cp_scenes_backup_v1: {
+        Row: {
+          cp_id: string | null
+          created_at: string | null
+          day_number: number | null
+          description: string | null
+          duration_minutes: number | null
+          id: string | null
+          is_preherni: boolean | null
+          location: string | null
+          props: string | null
+          run_id: string | null
+          schedule_event_id: string | null
+          sort_order: number | null
+          start_time: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cp_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string | null
+          is_preherni?: boolean | null
+          location?: string | null
+          props?: string | null
+          run_id?: string | null
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cp_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string | null
+          is_preherni?: boolean | null
+          location?: string | null
+          props?: string | null
+          run_id?: string | null
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cp_scenes_backup_v2: {
         Row: {
           cp_id: string | null
           created_at: string | null
@@ -1716,10 +1770,10 @@ export type Database = {
           duration_minutes: number
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
+          larp_id: string
           location: string | null
           material_id: string | null
           performer_text: string | null
-          run_id: string
           start_time: string
           title: string
           updated_at: string
@@ -1734,10 +1788,10 @@ export type Database = {
           duration_minutes?: number
           event_type: Database["public"]["Enums"]["event_type"]
           id?: string
+          larp_id: string
           location?: string | null
           material_id?: string | null
           performer_text?: string | null
-          run_id: string
           start_time: string
           title: string
           updated_at?: string
@@ -1752,10 +1806,10 @@ export type Database = {
           duration_minutes?: number
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          larp_id?: string
           location?: string | null
           material_id?: string | null
           performer_text?: string | null
-          run_id?: string
           start_time?: string
           title?: string
           updated_at?: string
@@ -1783,22 +1837,79 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedule_events_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedule_events_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "production_materials"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "schedule_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "runs"
-            referencedColumns: ["id"]
-          },
         ]
       }
       schedule_events_backup_v1: {
+        Row: {
+          cp_id: string | null
+          cp_scene_id: string | null
+          created_at: string | null
+          day_number: number | null
+          description: string | null
+          document_id: string | null
+          duration_minutes: number | null
+          event_type: Database["public"]["Enums"]["event_type"] | null
+          id: string | null
+          location: string | null
+          material_id: string | null
+          performer_text: string | null
+          run_id: string | null
+          start_time: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cp_id?: string | null
+          cp_scene_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          document_id?: string | null
+          duration_minutes?: number | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          location?: string | null
+          material_id?: string | null
+          performer_text?: string | null
+          run_id?: string | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cp_id?: string | null
+          cp_scene_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          document_id?: string | null
+          duration_minutes?: number | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          location?: string | null
+          material_id?: string | null
+          performer_text?: string | null
+          run_id?: string | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      schedule_events_backup_v2: {
         Row: {
           cp_id: string | null
           cp_scene_id: string | null

@@ -33,18 +33,18 @@ export function CpScenesSection({ larpId, cpId }: Props) {
   }, [larpId]);
 
   const loadScenes = useCallback(async () => {
-    if (!selectedRunId) { setScenes([]); return; }
+    if (!larpId) { setScenes([]); return; }
     setLoadingScenes(true);
     const { data } = await supabase
       .from("cp_scenes")
       .select("*")
       .eq("cp_id", cpId)
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", larpId)
       .order("day_number")
       .order("start_time");
     setScenes((data ?? []) as CpScene[]);
     setLoadingScenes(false);
-  }, [cpId, selectedRunId]);
+  }, [cpId, larpId]);
 
   useEffect(() => { loadScenes(); }, [loadScenes]);
 
@@ -62,7 +62,7 @@ export function CpScenesSection({ larpId, cpId }: Props) {
         <CardTitle className="font-typewriter text-lg">Scény v harmonogramu</CardTitle>
         {runs.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Běh</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Dny podle běhu</span>
             <Select value={selectedRunId ?? ""} onValueChange={(v) => setSelectedRunId(v)}>
               <SelectTrigger className="h-8 w-auto min-w-[180px] text-sm"><SelectValue placeholder="Vyber běh…" /></SelectTrigger>
               <SelectContent>
@@ -77,17 +77,13 @@ export function CpScenesSection({ larpId, cpId }: Props) {
       <CardContent>
         {loadingRuns ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : runs.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Tento LARP zatím nemá žádný běh.</p>
-        ) : !selectedRunId ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Vyberte běh.</p>
         ) : loadingScenes ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <CpSceneList
             scenes={scenes}
             cpId={cpId}
-            runId={selectedRunId}
+            larpId={larpId}
             runDays={runDays}
             onScenesChange={loadScenes}
           />
