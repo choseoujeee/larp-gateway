@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle, Plus } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { RunHeader } from "../components/RunHeader";
 import { RunEditDialog } from "../components/RunEditDialog";
+import { RunCreateDialog } from "../components/RunCreateDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -16,6 +17,7 @@ export default function V2RunCockpit() {
   const { run, loading: runLoading, notFound, reload } = useRun(larpSlug, runSlug);
   const { stats, loading: statsLoading } = useRunCockpitStats(run?.id);
   const [editOpen, setEditOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/beh/${runSlug}`} replace />;
   if (notFound) return <Navigate to={`/larp/${larpSlug}`} replace />;
@@ -45,6 +47,13 @@ export default function V2RunCockpit() {
             onOpenChange={setEditOpen}
             onSaved={reload}
           />
+          <RunCreateDialog
+            larpId={run.larp_id}
+            larpSlug={run.larp_slug}
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+          />
+
 
 
           {/* Klíčová čísla */}
