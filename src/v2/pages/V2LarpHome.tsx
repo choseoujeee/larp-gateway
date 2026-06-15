@@ -9,14 +9,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface LarpRow { id: string; name: string; slug: string; motto: string | null; }
 interface RunRow { id: string; name: string; slug: string; date_from: string | null; date_to: string | null; is_active: boolean; }
-interface Counts { documents: number; persons: number; }
+interface Counts { documents: number; characters: number; cp: number; }
 
 export default function V2LarpHome() {
   const { larpSlug } = useParams<{ larpSlug: string }>();
   const { user, loading: authLoading } = useAuth();
   const [larp, setLarp] = useState<LarpRow | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
-  const [counts, setCounts] = useState<Counts>({ documents: 0, persons: 0 });
+  const [counts, setCounts] = useState<Counts>({ documents: 0, characters: 0, cp: 0 });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
