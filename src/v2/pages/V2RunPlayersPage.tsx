@@ -184,7 +184,7 @@ export default function V2RunPlayersPage() {
         <div className="mx-auto max-w-6xl space-y-4">
           <div>
             <Button asChild variant="ghost" size="sm" className="mb-2">
-              <Link to={`/larp/${larpSlug}/beh/${runSlug}`}><ArrowLeft className="mr-1 h-4 w-4" />Cockpit běhu</Link>
+              <Link to={`/larp/${larpSlug}/beh/${runSlug}`}><ArrowLeft className="mr-1 h-4 w-4" />Přehled běhu</Link>
             </Button>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
