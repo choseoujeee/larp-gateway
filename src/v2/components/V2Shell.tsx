@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays } from "lucide-react";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
 
 interface V2ShellProps {
