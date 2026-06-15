@@ -1008,11 +1008,11 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
         </DialogContent>
       </Dialog>
 
-      {cpSceneDialogOpen && cpSceneDialogCpId && cpSceneDialogRunId && (
+      {cpSceneDialogOpen && cpSceneDialogCpId && larpId && (
         <CpSceneDialog
           open={cpSceneDialogOpen}
           onOpenChange={(open) => { setCpSceneDialogOpen(open); if (!open) setCpSceneForDialog(null); }}
-          scene={cpSceneForDialog} cpId={cpSceneDialogCpId} runId={cpSceneDialogRunId} runDays={maxDay}
+          scene={cpSceneForDialog} cpId={cpSceneDialogCpId} larpId={larpId} runDays={maxDay}
           onSave={() => { fetchEvents(); fetchCpScenesForRun(); setCpSceneDialogOpen(false); setCpSceneForDialog(null); }}
         />
       )}
