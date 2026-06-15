@@ -133,9 +133,9 @@ export default function V2DocumentEditorPage() {
   }
 
 
-  async function remove() {
+  async function confirmDelete() {
     if (!doc) return;
-    if (!confirm(`Smazat dokument „${doc.title}"?`)) return;
+    setDeleteOpen(false);
     const { error } = await supabase.from("documents").delete().eq("id", doc.id);
     if (error) { toast.error("Smazání selhalo"); return; }
     toast.success("Smazáno");
@@ -153,7 +153,7 @@ export default function V2DocumentEditorPage() {
             <ArrowLeft className="mr-1 h-4 w-4" />Zpět na dokumenty
           </Link>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={remove} disabled={!doc || loading} className="text-destructive">
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} disabled={!doc || loading} className="text-destructive">
               <Trash2 className="mr-1 h-4 w-4" />Smazat
             </Button>
             <Button onClick={save} disabled={!dirty || saving || loading}>
@@ -227,6 +227,23 @@ export default function V2DocumentEditorPage() {
           </>
         )}
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Smazat dokument?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Opravdu chcete smazat dokument „{doc?.title ?? ""}"? Tuto akci nelze vrátit zpět.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteOpen(false)}>Zrušit</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Smazat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </V2Shell>
   );
 }
