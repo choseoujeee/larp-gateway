@@ -81,7 +81,12 @@ export function ProductionMaterialsCard({ larpId, runId, newItemRunId }: Props) 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{m.title}</span>
-                    {runId && m.run_id === null && <Badge variant="outline" className="text-[10px]">Sdílené</Badge>}
+                    {runId === "all" && (
+                      m.run_id === null
+                        ? <Badge variant="outline" className="text-[10px]">Sdílené</Badge>
+                        : m.run_name ? <Badge variant="secondary" className="text-[10px]">{m.run_name}</Badge> : null
+                    )}
+                    {typeof runId === "string" && runId !== "all" && m.run_id === null && <Badge variant="outline" className="text-[10px]">Sdílené</Badge>}
                   </div>
                   {m.note && <div className="text-xs text-muted-foreground">{m.note}</div>}
                   {m.url && (
