@@ -1,113 +1,70 @@
+# Etapa 2 — Běh kompletně (bez harmonogramu)
 
-# Etapa 2 — Běhy, hráči, magic linky, e-maily
+Postavím všechny stránky a komponenty pro správu běhu kromě harmonogramu. Magic linky a e-maily zůstávají na samostatný sub-sprint (jsou velké a vyžadují email-domain setup) — připravím ale DB hooky tak, aby se to napojilo později bez refaktoru.
 
-Začneme rychlou opravou cockpitu (editace běhu), pak postupně postavíme tvorbu běhu, přihlášky hráčů, hráčský portál a e-mail šablony. Každá podetapa je samostatně deploynutelná.
+## Co tato dávka přináší
 
-## 2.0 Editovatelný cockpit běhu (rychlá oprava)
+Zakládání profilů lidí - možnost vytvářet nové hráče a performery přes relevantní stránky (přes CP, přes Hráče i přes běh. 
 
-Cockpit dnes jen ukazuje `RunHeader` — nelze nic změnit.
+### 1. Stránka Hráči v běhu — `/larp/:larpSlug/beh/:runSlug/hraci`
 
-- Tlačítko "Upravit běh" v hlavičce cockpitu → otevře dialog/sheet `RunEditDialog`.
-- Editovatelná pole: `name`, `slug`, `date_from`, `date_to`, `location`, `address`, `contact`, `mission_briefing`, `footer_text`, `is_active`.
-- Platby (`payment_*`) zůstávají ve své vlastní sekci (později), v základním dialogu ne.
-- Validace: `date_to >= date_from`, slug unikátní per LARP (DB constraint už existuje).
-- Update přes existující RLS policy `Vlastník upravuje běhy`.
-- Po uložení: invalidate `useRun`, pokud se změní slug → navigace na nový URL.
+Plnohodnotná tabulka postav v běhu (zdroj pravdy = `run_person_assignments`):
 
-Drobnost: do `RunHeader` přidat malé pero/edit ikonu, aby šlo otevřít dialog i kliknutím na hlavičku.
+- Řádek = postava z LARPu (typ `postava`), s případným přiřazeným hráčem.
+- Sloupce: postava (+ skupina), jméno hráče, e-mail, telefon, stav platby, akce.
+- **Přiřazení hráče** — inline edit (jméno/email/telefon), uložení vytvoří/updatuje řádek v `run_person_assignments`.
+- **Z dřívějších běhů** — autocomplete při vyplňování jména/emailu nabídne hráče, kteří už hráli některý běh tohoto LARPu (využiju logiku z `V2LarpPlayersPage`).
+- **Platba** — toggle "Zaplaceno" → `paid_at = now()` / `null`.
+- **Heslo do portálu** — tlačítko "Vygenerovat heslo" (přes RPC `create_person_assignment_with_password`), zobrazí náhled hesla.
+- **Hromadné akce** — "Přiřadit všechny postavy" (založí prázdné assignmenty), "Označit všechny zaplacené".
+- **Filtry** — vyhledávání + filtr "jen nepřiřazené" / "jen nezaplacené".
+- **Souhrn nahoře** — N/M přiřazeno, K zaplaceno.
 
-## 2.1 Tvorba běhu (3-krokový wizard)
+### 2. Stránka CP performeři v běhu — `/larp/:larpSlug/beh/:runSlug/cp`
 
-Nová stránka `/larp/:larpSlug/beh/novy` (link z `V2LarpHome` a `V2PastRunsPage`).
+Zdroj pravdy = `cp_performers`:
 
-Wizard kroky:
-1. **Základ** — name, slug (auto z name), date_from/to, location, address, contact.
-2. **Postavy z katalogu** — checkbox list všech `persons` LARPu typu `postava`. Default: všechny zaškrtnuté. Vybrané se po dokončení připojí přes `persons.run_id` (nebo zůstanou na LARPu a vytvoří se prázdné `run_person_assignments`? — viz technická poznámka).
-3. **CP z katalogu** — totéž pro typ `cp`.
+- Řádek = CP z LARPu (typ `cp`).
+- Sloupce: CP (+ skupina), performer (jméno/email/telefon), akce.
+- **Inline edit** performer dat, uložení vytvoří/updatuje řádek v `cp_performers`.
+- **Návrh performera z minulých běhů** — autocomplete (cross-run aggregation podobně jako hráči, pouze pro CP).
+- **Hromadné akce** — "Zkopírovat performery z předchozího běhu" (vezme nejnovější uplynulý běh a překlopí přiřazení 1:1).
 
-Po dokončení redirect na cockpit nového běhu.
+### 3. Detail postavy — sjednocení
 
-## 2.2 Hráči, magic linky a pozvánky
+- `PlayerAssignmentsCard` dnes existuje na detailu postavy. Nechávám, ale přidám tlačítko "Otevřít v běhu →" které odkáže na novou stránku Hráči konkrétního běhu.
 
-Stránka `/larp/:larpSlug/beh/:runSlug/hraci` (dnes stub).
+### 4. Cockpit běhu — vylepšení
 
-Tabulka hráčů (řádek = postava v běhu):
-- postava (z katalogu)
-- jméno hráče + e-mail (editovatelné inline / přes drawer)
-- stav magic linku: nevygenerován / odeslán / kliknuto (last_seen_at) / expirován
-- stav platby: nezaplaceno / zaplaceno (paid_at)
-- akce: "Poslat pozvánku", "Poslat znovu", "Zkopírovat link", "Označit zaplaceno"
-- hromadné akce: "Pozvat všechny nevyzvané", "Připomenout platbu nezaplaceným"
+- Stat "Hráči" linkuje na novou stránku.
+- Stat "CP performeři" linkuje na novou stránku.
+- V issues přibude přesnější rozpis nezaplacených / bez performera.
 
-Magic linky:
-- Tabulka `magic_links` už existuje — ověřit schéma a doplnit, co chybí (token, person_id, run_id, expires_at, last_seen_at, sent_at, purpose).
-- Default expirace: `run.date_to + 30 dnů`.
-- Veřejná route `/m/:token` → ověří token (RPC `consume_magic_link`), nastaví `last_seen_at`, uloží token do localStorage, přesměruje na `/p/:larpSlug/:personSlug` (hráčský portál) — bez hesla.
-- Stará portálová route (`/portal/...`) zůstává v `_archiv/` pro legacy.
+### 5. Hraci v LARPu (cross-run directory)
 
-E-mail odeslání přes Lovable Emails (auth už máme; pro app-emails zavoláme `email_domain--scaffold_transactional_email`).
+- Stávající `V2LarpPlayersPage` rozšířím o tlačítko "Pozvat do běhu" které otevře dialog s výběrem běhu + postavy → vytvoří assignment s prefill daty.
 
-## 2.3 Hráčský portál (mobile-first)
+## Co teď NESTAVÍM (oddělím do dalšího sub-sprintu, abychom dokončili tuto dávku rychle)
 
-Nová route `/p/:larpSlug/:personSlug` — bez hesla, autorizace přes localStorage token (validace přes RPC `verify_magic_link_session`).
+- Magic linky + veřejné `/m/:token` routy.
+- E-mailové šablony, odesílání pozvánek.
+- Hráčský portál na `/p/:larpSlug/:personSlug` (zůstává stávající `/portal/...`).
+- Harmonogram (next sprint dle uživatele).
 
-Layout single-column, mobile-first, používá `LarpThemeProvider` (vizuální identita per LARP).
-
-Sekce (sticky tabs nebo akordeon):
-1. **Moje postava** — jméno, skupina, medailonek, performer.
-2. **Dokumenty** — řazeno: organizační → herní osobní → herní skupinové → herní obecné. Klik na dokument zapíše `document_views.last_seen_at` (per person × document).
-3. **Harmonogram** — read-only view veřejných eventů běhu.
-4. **Kontakt na org** — `run.contact`, `larp.contact`.
-5. **Platba** — `run.payment_*`, stav zaplaceno + instrukce.
-
-Tisk: zachovat současný PDF export přes hidden iframe.
-
-## 2.4 Pre-flight v cockpitu
-
-Rozšířit `get_run_cockpit_stats` o:
-- magic linky: vygenerováno / odesláno / kliknuto
-- dokumenty: % postav, které otevřely všechny své povinné dokumenty (přes `document_views`)
-
-V cockpitu přidat 5. StatCard "Pozvánky" a nové issues:
-- "X hráčů nemá pozvánku"
-- "X hráčů ještě nekliklo"
-- "X hráčů nečetlo dokumenty"
-
-## 2.5 E-mail šablony per LARP
-
-Tabulka `email_templates` už existuje — využít.
-
-Stránka `/larp/:larpSlug/beh/:runSlug/komunikace` (dnes stub):
-- Seznam šablon (per LARP): Pozvánka, Připomenutí platby, Nový dokument, D-1 reminder, Po akci.
-- WYSIWYG editor (TipTap, stejný jako u dokumentů) s podporou proměnných `{{postava}}`, `{{datum}}`, `{{odkaz}}`, `{{hrac}}`, `{{larp}}`.
-- Náhled s testovacími daty.
-- Historie odeslaných (`email_log_v2`): komu, kdy, šablona, stav (sent/bounced/opened).
-- Odeslání: hromadně z této stránky NEBO per osoba z karty hráče (2.2).
-
-Odesílání přes scaffoldnutou `send-transactional-email` edge funkci. Před prvním sendem volá agent `email_domain--scaffold_transactional_email`.
-
-## Akceptační kritéria etapy 2
-
-- V cockpitu lze upravit místo, čas, termín i ostatní pole běhu.
-- Org vytvoří nový běh přes wizard, vybere postavy a CP z katalogu.
-- Org pozve hráče e-mailem; hráč kliknutím přijde do portálu bez hesla.
-- Magic link expiruje 30 dnů po `date_to`.
-- Cockpit ukazuje kompletní pre-flight (linky, platby, čtenost dokumentů).
-- E-mail šablony lze editovat, odeslat hromadně i jednotlivě, historie viditelná.
+Po schválení tohoto kroku ti potvrdím a hned přejdeme na magic linky + e-maily jako samostatný PR.
 
 ## Technické poznámky
 
-- Migrace: rozšířit `magic_links` (pokud chybí sloupce), přidat `document_views(person_id, document_id, last_seen_at)` unikátní index. Vždy `GRANT` + RLS policies (security definer RPC pro insert z hráčského portálu bez auth.uid()).
-- RPC funkce: `create_magic_link(p_run_id, p_person_id, p_email, p_purpose)`, `consume_magic_link(p_token)`, `verify_magic_link_session(p_token)`, `log_document_view(p_token, p_document_id)`, `get_player_portal_data(p_token)`.
-- E-maily: Lovable Cloud + `email_domain--scaffold_transactional_email`. Šablony per LARP renderujeme v edge funkci z `email_templates` řádků (template body z DB, ne z `_shared/`).
-- Vazba postava ↔ běh: rozhodnout zda používáme `persons.run_id` (1:1) nebo `run_person_assignments` (M:N s rolí hráče). Dnes existuje obojí — sjednotit na `run_person_assignments` jako zdroj pravdy pro pozvánky/platby; `persons.run_id` zachovat pro legacy a postupně odstranit.
-- Routing: nová route `/m/:token` se přidá do hlavního `App.tsx` mimo `V2Routes`.
+- Žádné DB změny — schéma `run_person_assignments` a `cp_performers` stačí.
+- Pro autocomplete dřívějších hráčů použiju agregaci přes všechny runy LARPu (existuje již v `V2LarpPlayersPage`) — vytáhnu do hooku `useLarpPlayerHistory(larpId)`.
+- Komponenty: `V2RunPlayersPage.tsx`, `V2RunCpPage.tsx`, sdílený `PlayerAutocompleteInput.tsx`, `PerformerAutocompleteInput.tsx`.
+- Tlačítka stylem jednotná (variant="outline" + ikona, jak jsme sjednotili dříve).
 
-## Pořadí implementace
+## Akceptace
 
-1. 2.0 cockpit editace (1 PR).
-2. 2.1 wizard nového běhu.
-3. 2.2 + 2.3 + 2.4 magic linky a hráčský portál (DB + RPC + UI + cockpit stats).
-4. 2.5 e-mail šablony a odesílání.
+- Můžu otevřít běh → Hráči, vidím všechny postavy, přiřadím hráče, označím platbu.
+- Můžu otevřít běh → CP, přiřadím performery.
+- Při psaní jména/emailu mi to navrhne hráče z minulých běhů.
+- Cockpit ukazuje správná čísla a odkazy fungují.
 
-Začnu s 2.0 hned po schválení.
+Mám stavět?
