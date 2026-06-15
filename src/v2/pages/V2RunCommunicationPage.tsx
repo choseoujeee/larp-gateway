@@ -386,17 +386,39 @@ function TemplatesTab({ larpId }: { larpId: string }) {
     load();
   };
 
+  const seedDefaults = async () => {
+    const existing = new Set(templates.map((t) => t.kind));
+    const toInsert = DEFAULT_EMAIL_TEMPLATES.filter((t) => !existing.has(t.kind)).map((t) => ({
+      larp_id: larpId, kind: t.kind, subject: t.subject, body_html: t.body_html, body_text: null,
+    }));
+    if (toInsert.length === 0) { toast.info("Všechny přednastavené šablony už existují"); return; }
+    const { error } = await supabase.from("email_templates").insert(toInsert);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Vloženo ${toInsert.length} šablon`);
+    load();
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Šablony e-mailů</CardTitle>
-        <Button size="sm" onClick={() => setEditing({ kind: "vlastni", subject: "", body_html: "" })}>
-          <Plus className="h-4 w-4 mr-1" /> Nová šablona
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={seedDefaults}>
+            <Sparkles className="h-4 w-4 mr-1" /> Vložit přednastavené
+          </Button>
+          <Button size="sm" onClick={() => setEditing({ kind: "vlastni", subject: "", body_html: "" })}>
+            <Plus className="h-4 w-4 mr-1" /> Nová šablona
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : templates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Zatím žádné šablony.</p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Zatím žádné šablony.</p>
+            <Button size="sm" variant="outline" onClick={seedDefaults}>
+              <Sparkles className="h-4 w-4 mr-1" /> Vložit 6 přednastavených šablon
+            </Button>
+          </div>
         ) : (
           <div className="space-y-2">
             {templates.map((t) => (
