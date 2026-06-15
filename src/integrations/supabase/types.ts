@@ -769,18 +769,21 @@ export type Database = {
           created_at: string
           email: string | null
           larp_id: string
+          permissions: Json
           user_id: string
         }
         Insert: {
           created_at?: string
           email?: string | null
           larp_id: string
+          permissions?: Json
           user_id: string
         }
         Update: {
           created_at?: string
           email?: string | null
           larp_id?: string
+          permissions?: Json
           user_id?: string
         }
         Relationships: [
@@ -1788,6 +1791,22 @@ export type Database = {
     }
     Functions: {
       can_access_larp: { Args: { p_larp_id: string }; Returns: boolean }
+      can_edit_larp_section: {
+        Args: { p_larp_id: string; p_section: string }
+        Returns: boolean
+      }
+      can_edit_run_section: {
+        Args: { p_run_id: string; p_section: string }
+        Returns: boolean
+      }
+      can_view_larp_section: {
+        Args: { p_larp_id: string; p_section: string }
+        Returns: boolean
+      }
+      can_view_run_section: {
+        Args: { p_run_id: string; p_section: string }
+        Returns: boolean
+      }
       check_production_portal_passwordless: {
         Args: { p_token: string }
         Returns: Json
@@ -2023,6 +2042,10 @@ export type Database = {
       get_schedule_portal_events: { Args: { p_token: string }; Returns: Json }
       is_larp_owner: { Args: { larp_id: string }; Returns: boolean }
       is_run_owner: { Args: { run_id: string }; Returns: boolean }
+      larp_section_level: {
+        Args: { p_larp_id: string; p_section: string }
+        Returns: string
+      }
       remove_production_portal_password: {
         Args: { p_access_id: string }
         Returns: boolean

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
+import { useLarpPermissions, type SectionKey } from "../hooks/useLarpPermissions";
 
 interface V2ShellProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ interface NavItem {
   to: string;
   icon: typeof LayoutDashboard;
   label: string;
+  section?: SectionKey;
 }
 
 export function V2Shell({ children, larpName, runName }: V2ShellProps) {
@@ -24,6 +26,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
   const { signOut, user } = useAuth();
   const { isSuperAdmin } = useAdminRole();
+  const { canView, canManageOrganizers } = useLarpPermissions(larpSlug);
   const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
 
   useEffect(() => {
@@ -39,19 +42,21 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
     })();
   }, [larpSlug]);
 
-  const larpNav: NavItem[] = larpSlug
+  const larpNavAll: NavItem[] = larpSlug
     ? [
         { to: `/larp/${larpSlug}`, icon: LayoutDashboard, label: "Přehled" },
-        { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
-        { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
-        { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny" },
-        { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
-        { to: `/larp/${larpSlug}/hraci`, icon: UsersIcon, label: "Hráči" },
-        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
-        ...(isSuperAdmin ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
+        { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty", section: "documents" },
+        { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy", section: "characters" },
+        { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny", section: "groups" },
+        { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP", section: "cp" },
+        { to: `/larp/${larpSlug}/hraci`, icon: UsersIcon, label: "Hráči", section: "players" },
+        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce", section: "production" },
+        { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design", section: "design" },
+        ...((canManageOrganizers || isSuperAdmin) ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
     : [];
+
+  const larpNav = larpNavAll.filter((item) => !item.section || canView(item.section));
 
 
   const Sidebar = (
@@ -80,6 +85,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
             runs={runs}
             currentRunSlug={runSlug}
             onNavigate={() => setMobileOpen(false)}
+            canView={canView}
           />
         )}
       </nav>
@@ -186,11 +192,13 @@ function V2RunsNavSection({
   runs,
   currentRunSlug,
   onNavigate,
+  canView,
 }: {
   larpSlug: string;
   runs: RunMini[];
   currentRunSlug?: string;
   onNavigate: () => void;
+  canView: (s: SectionKey) => boolean;
 }) {
   const activeRun = runs.find((r) => r.is_active) ?? runs[0];
   const onActiveRun = !!activeRun && currentRunSlug === activeRun.slug;
@@ -203,16 +211,17 @@ function V2RunsNavSection({
 
   const activeLabel = activeRun ? formatRunLabel(activeRun) : "Žádný aktivní běh";
 
-  const runNav = activeRun
+  const runNavAll: Array<{ to: string; icon: typeof LayoutDashboard; label: string; section?: SectionKey }> = activeRun
     ? [
         { to: `/larp/${larpSlug}/beh/${activeRun.slug}`, icon: LayoutDashboard, label: "Přehled" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/komunikace`, icon: Mail, label: "Komunikace" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči", section: "players" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři", section: "cp" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram", section: "schedule" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/produkce`, icon: ClipboardCheck, label: "Produkce", section: "production" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/komunikace`, icon: Mail, label: "Komunikace", section: "communication" },
       ]
     : [];
+  const runNav = runNavAll.filter((i) => !i.section || canView(i.section));
 
   const pastRunsActive = location.pathname === `/larp/${larpSlug}/drivejsi-behy`;
 
