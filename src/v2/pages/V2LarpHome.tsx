@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
-import { Loader2, Plus, FileText, Users, Calendar } from "lucide-react";
+import { Loader2, Plus, FileText, Users, Calendar, Pencil } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { RunCreateDialog } from "../components/RunCreateDialog";
+import { LarpEditDialog } from "../components/LarpEditDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-interface LarpRow { id: string; name: string; slug: string; motto: string | null; }
+interface LarpRow { id: string; name: string; slug: string; motto: string | null; payment_account: string | null; }
 interface RunRow { id: string; name: string; slug: string; date_from: string | null; date_to: string | null; is_active: boolean; }
 interface Counts { documents: number; characters: number; cp: number; }
 
