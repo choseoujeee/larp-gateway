@@ -312,7 +312,7 @@ function ComposerTab({ runId, larpId }: { runId: string; larpId: string }) {
           </label>
           <div className="border-t pt-3 space-y-1 max-h-64 overflow-auto">
             <p className="text-xs text-muted-foreground mb-1">Konkrétní osoby:</p>
-            {persons.map((p) => (
+            {persons.filter((p) => assignments[p.id]).map((p) => (
               <label key={p.id} className="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={recipients.personIds.includes(p.id)}
