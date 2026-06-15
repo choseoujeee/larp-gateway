@@ -15,6 +15,8 @@ import V2RunPlayersPage from "./pages/V2RunPlayersPage";
 import V2RunCpPage from "./pages/V2RunCpPage";
 import V2LarpProductionPage from "./pages/V2LarpProductionPage";
 import V2RunProductionPage from "./pages/V2RunProductionPage";
+import V2RunSchedulePage from "./pages/V2RunSchedulePage";
+import V2LarpSchedulePage from "./pages/V2LarpSchedulePage";
 import { SectionGuard } from "./components/SectionGuard";
 
 /** V2 dashboard mounted at "/" */
@@ -46,7 +48,8 @@ export default function V2Routes() {
       <Route path=":larpSlug/beh/:runSlug" element={<V2RunCockpit />} />
       <Route path=":larpSlug/beh/:runSlug/hraci" element={<SectionGuard section="players"><V2RunPlayersPage /></SectionGuard>} />
       <Route path=":larpSlug/beh/:runSlug/cp" element={<SectionGuard section="cp"><V2RunCpPage /></SectionGuard>} />
-      <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<SectionGuard section="schedule"><V2Stub title="Harmonogram" description="Harmonogram běhu (Etapa 2)." /></SectionGuard>} />
+      <Route path=":larpSlug/harmonogram" element={<SectionGuard section="schedule"><V2LarpSchedulePage /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<SectionGuard section="schedule"><V2RunSchedulePage /></SectionGuard>} />
       <Route path=":larpSlug/beh/:runSlug/produkce" element={<SectionGuard section="production"><V2RunProductionPage /></SectionGuard>} />
       <Route path=":larpSlug/beh/:runSlug/komunikace" element={<SectionGuard section="communication"><V2Stub title="Komunikace" description="E-mail šablony a historie odeslaných (Etapa 2)." /></SectionGuard>} />
       <Route path="*" element={<V2Stub title="Nenalezeno" description="Tato stránka v2 neexistuje." />} />
