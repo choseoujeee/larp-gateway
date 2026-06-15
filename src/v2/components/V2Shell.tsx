@@ -192,11 +192,13 @@ function V2RunsNavSection({
   runs,
   currentRunSlug,
   onNavigate,
+  canView,
 }: {
   larpSlug: string;
   runs: RunMini[];
   currentRunSlug?: string;
   onNavigate: () => void;
+  canView: (s: SectionKey) => boolean;
 }) {
   const activeRun = runs.find((r) => r.is_active) ?? runs[0];
   const onActiveRun = !!activeRun && currentRunSlug === activeRun.slug;
@@ -209,16 +211,17 @@ function V2RunsNavSection({
 
   const activeLabel = activeRun ? formatRunLabel(activeRun) : "Žádný aktivní běh";
 
-  const runNav = activeRun
+  const runNavAll: Array<{ to: string; icon: typeof LayoutDashboard; label: string; section?: SectionKey }> = activeRun
     ? [
         { to: `/larp/${larpSlug}/beh/${activeRun.slug}`, icon: LayoutDashboard, label: "Přehled" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/komunikace`, icon: Mail, label: "Komunikace" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/hraci`, icon: Users, label: "Hráči", section: "players" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/cp`, icon: Theater, label: "CP performeři", section: "cp" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/harmonogram`, icon: Calendar, label: "Harmonogram", section: "schedule" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/produkce`, icon: ClipboardCheck, label: "Produkce", section: "production" },
+        { to: `/larp/${larpSlug}/beh/${activeRun.slug}/komunikace`, icon: Mail, label: "Komunikace", section: "communication" },
       ]
     : [];
+  const runNav = runNavAll.filter((i) => !i.section || canView(i.section));
 
   const pastRunsActive = location.pathname === `/larp/${larpSlug}/drivejsi-behy`;
 
