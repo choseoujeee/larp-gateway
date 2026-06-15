@@ -124,6 +124,12 @@ export default function V2DocumentsPage() {
               <TabsTrigger value="produkcni">Produkční</TabsTrigger>
             </TabsList>
           </Tabs>
+          <Tabs value={groupBy} onValueChange={(v) => setGroupBy(v as "category" | "target")} className="w-full sm:w-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+              <TabsTrigger value="category">Dle typu</TabsTrigger>
+              <TabsTrigger value="target">Dle cílení</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -140,36 +146,90 @@ export default function V2DocumentsPage() {
         ) : filtered.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">Žádné dokumenty.</CardContent></Card>
         ) : (
-          <div className="grid gap-2">
-            {filtered.map((d) => (
-              <Link key={d.id} to={`/larp/${larpSlug}/dokumenty/${d.id}`}>
-                <Card className="transition-colors hover:border-primary">
-                  <CardContent className="flex items-start gap-3 py-3">
-                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-typewriter text-base">{d.title}</span>
-                        {targetChips(d, personNames).map((c, i) => (
-                          <Badge key={i} variant={c.variant} className="text-[10px]">
-                            {c.icon}<span className={c.icon ? "ml-1" : ""}>{c.label}</span>
-                          </Badge>
-                        ))}
-                        <Badge variant="outline" className="text-[10px] uppercase">{CATEGORY_LABEL[d.doc_category]}</Badge>
-                        {d.is_personal && <Badge variant="secondary" className="text-[10px]">Osobní</Badge>}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        upr. {new Date(d.updated_at).toLocaleDateString("cs-CZ")}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+          <div className="space-y-6">
+            {groupDocs(filtered, groupBy, personNames).map((section) => (
+              <div key={section.key} className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <h2 className="font-typewriter text-sm uppercase tracking-wider text-muted-foreground">{section.label}</h2>
+                  <span className="text-xs text-muted-foreground">({section.docs.length})</span>
+                </div>
+                <div className="grid gap-2">
+                  {section.docs.map((d) => (
+                    <Link key={d.id} to={`/larp/${larpSlug}/dokumenty/${d.id}`}>
+                      <Card className="transition-colors hover:border-primary">
+                        <CardContent className="flex items-start gap-3 py-3">
+                          <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate font-typewriter text-base">{d.title}</span>
+                              {targetChips(d, personNames).map((c, i) => (
+                                <Badge key={i} variant={c.variant} className="text-[10px]">
+                                  {c.icon}<span className={c.icon ? "ml-1" : ""}>{c.label}</span>
+                                </Badge>
+                              ))}
+                              <Badge variant="outline" className="text-[10px] uppercase">{CATEGORY_LABEL[d.doc_category]}</Badge>
+                              {d.is_personal && <Badge variant="secondary" className="text-[10px]">Osobní</Badge>}
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              upr. {new Date(d.updated_at).toLocaleDateString("cs-CZ")}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
     </V2Shell>
   );
+}
+
+interface Section { key: string; label: string; docs: DocRow[]; sortIndex: number }
+
+function groupDocs(docs: DocRow[], mode: "category" | "target", names: Record<string, string>): Section[] {
+  const map = new Map<string, Section>();
+  const push = (key: string, label: string, sortIndex: number, d: DocRow) => {
+    if (!map.has(key)) map.set(key, { key, label, sortIndex, docs: [] });
+    map.get(key)!.docs.push(d);
+  };
+
+  if (mode === "category") {
+    const order: DocCategory[] = ["organizacni", "herni", "produkcni"];
+    for (const d of docs) {
+      const idx = order.indexOf(d.doc_category);
+      push(d.doc_category, CATEGORY_LABEL[d.doc_category], idx, d);
+    }
+  } else {
+    for (const d of docs) {
+      const targets: Array<{ key: string; label: string; sortIndex: number }> = [];
+      const extraPersons = d.extra_target_person_ids ?? [];
+      const extraGroups = d.extra_target_group_names ?? [];
+
+      if (d.target_type === "vsichni") {
+        targets.push({ key: "__all__", label: "Všem", sortIndex: 0 });
+      } else {
+        const groups = new Set<string>(extraGroups);
+        if (d.target_type === "skupina" && d.target_group) groups.add(d.target_group);
+        groups.forEach((g) => targets.push({ key: `g:${g}`, label: g, sortIndex: 1 }));
+
+        const persons = new Set<string>(extraPersons);
+        if (d.target_type === "osoba" && d.target_person_id) persons.add(d.target_person_id);
+        persons.forEach((pid) => targets.push({ key: `p:${pid}`, label: names[pid] ?? "Osoba", sortIndex: 2 }));
+
+        if (targets.length === 0) targets.push({ key: "__none__", label: "Bez příjemce", sortIndex: 9 });
+      }
+      for (const t of targets) push(t.key, t.label, t.sortIndex, d);
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.sortIndex !== b.sortIndex) return a.sortIndex - b.sortIndex;
+    return a.label.localeCompare(b.label, "cs");
+  });
 }
 
 function TargetIcon({ t }: { t: DocRow["target_type"] }) {
