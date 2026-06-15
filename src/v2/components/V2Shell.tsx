@@ -46,6 +46,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         { to: `/v2/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
         { to: `/v2/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
         { to: `/v2/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
+        ...(isSuperAdmin ? [{ to: `/v2/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
     : [];
 
