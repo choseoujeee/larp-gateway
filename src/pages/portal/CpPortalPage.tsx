@@ -317,6 +317,7 @@ export default function CpPortalPage() {
     setCpScenesByCpId({});
     setPlayerPersons([]);
     setCpDocuments([]);
+    setSharedDocuments([]);
     document.documentElement.removeAttribute("data-theme");
   };
 
