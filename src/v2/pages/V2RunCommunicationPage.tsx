@@ -456,7 +456,7 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Magic linky pro hráče a CP</CardTitle>
+        <CardTitle>Odkazy pro hráče a CP</CardTitle>
         <p className="text-sm text-muted-foreground">
           Jednorázový odkaz na portál (platnost 30 dní). Po vygenerování ho zkopíruj nebo pošli přes rozesílku.
         </p>
