@@ -40,6 +40,7 @@ export default function V2DocumentsPage() {
   const navigate = useNavigate();
   const [larp, setLarp] = useState<LarpRow | null>(null);
   const [docs, setDocs] = useState<DocRow[]>([]);
+  const [personNames, setPersonNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DocCategory | "all">("all");
   const [query, setQuery] = useState("");
@@ -52,17 +53,24 @@ export default function V2DocumentsPage() {
       const { data: l } = await supabase.from("larps").select("id, name, slug").eq("slug", larpSlug).maybeSingle();
       if (!l) { setLoading(false); return; }
       setLarp(l as LarpRow);
-      const { data: d } = await supabase
-        .from("documents")
-        .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, priority, sort_order, updated_at")
-        .eq("larp_id", l.id)
-        .order("doc_category")
-        .order("priority")
-        .order("sort_order");
+      const [{ data: d }, { data: p }] = await Promise.all([
+        supabase
+          .from("documents")
+          .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, priority, sort_order, updated_at")
+          .eq("larp_id", l.id)
+          .order("doc_category")
+          .order("priority")
+          .order("sort_order"),
+        supabase.from("persons").select("id, name").eq("larp_id", l.id),
+      ]);
       setDocs((d ?? []) as DocRow[]);
+      const map: Record<string, string> = {};
+      (p ?? []).forEach((x: { id: string; name: string }) => { map[x.id] = x.name; });
+      setPersonNames(map);
       setLoading(false);
     })();
   }, [user, larpSlug]);
+
 
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();
