@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { FileText, GripVertical, Plus, User, Users, Globe } from "lucide-react";
+import { FileText, GripVertical, Plus, User, Users, UsersRound, Drama, Share2 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   DragEndEvent,
@@ -24,6 +24,7 @@ interface Doc {
   is_personal: boolean;
   priority: number;
   sort_order: number;
+  audience: string[] | null;
 }
 
 interface Props {
@@ -42,14 +43,27 @@ const CATS = [
   { key: "osobni" as const, label: "Osobní" },
 ];
 
-function TargetBadge({ doc }: { doc: Doc }) {
-  if (doc.is_personal || doc.target_type === "osoba") {
+function TargetBadge({ doc, personId, personType }: { doc: Doc; personId: string; personType: "postava" | "cp" }) {
+  const a = doc.audience ?? [];
+  const personTag = `${personType === "cp" ? "cp" : "players"}:person:${personId}`;
+  if (doc.is_personal || a.includes(personTag) || doc.target_type === "osoba") {
     return <Badge variant="secondary" className="gap-1 text-[10px]"><User className="h-2.5 w-2.5" />osobní</Badge>;
   }
-  if (doc.target_type === "skupina") {
+  const hasPlayersAll = a.includes("players:all");
+  const hasCpAll = a.includes("cp:all");
+  if (hasPlayersAll && hasCpAll) {
+    return <Badge variant="outline" className="gap-1 border-violet-400/60 text-[10px] text-violet-600 dark:text-violet-300"><Share2 className="h-2.5 w-2.5" />sdílené</Badge>;
+  }
+  if (hasCpAll) {
+    return <Badge variant="outline" className="gap-1 border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"><Drama className="h-2.5 w-2.5" />všichni CP</Badge>;
+  }
+  if (hasPlayersAll) {
+    return <Badge variant="outline" className="gap-1 border-sky-400/60 text-[10px] text-sky-700 dark:text-sky-300"><UsersRound className="h-2.5 w-2.5" />všichni hráči</Badge>;
+  }
+  if (a.some((t) => t.startsWith("players:group:") || t.startsWith("cp:group:")) || doc.target_type === "skupina") {
     return <Badge variant="outline" className="gap-1 text-[10px]"><Users className="h-2.5 w-2.5" />skupina</Badge>;
   }
-  return <Badge variant="outline" className="gap-1 text-[10px]"><Globe className="h-2.5 w-2.5" />všichni</Badge>;
+  return null;
 }
 
 function SortableRow({ doc, larpSlug }: { doc: Doc; larpSlug: string }) {
