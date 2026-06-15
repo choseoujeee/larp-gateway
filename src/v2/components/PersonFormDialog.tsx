@@ -91,8 +91,10 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
         p_performer: performer || null,
         p_performance_times: performanceTimes || null,
       });
+      if (error || !data) { setSaving(false); toast.error("Vytvoření selhalo: " + (error?.message ?? "")); return; }
+      // Persist plaintext password for admin visibility
+      await supabase.from("persons").update({ password_plain: password }).eq("id", data as string);
       setSaving(false);
-      if (error || !data) { toast.error("Vytvoření selhalo: " + (error?.message ?? "")); return; }
       toast.success(type === "cp" ? "CP vytvořeno" : "Postava vytvořena");
       onSaved(data as string);
       onOpenChange(false);
