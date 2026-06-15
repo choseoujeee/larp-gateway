@@ -22,6 +22,20 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
   const { signOut, user } = useAuth();
+  const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
+
+  useEffect(() => {
+    if (!larpSlug) { setRuns([]); return; }
+    (async () => {
+      const { data: l } = await supabase.from("larps").select("id").eq("slug", larpSlug).maybeSingle();
+      if (!l) return;
+      const { data } = await supabase.from("runs")
+        .select("id, name, slug, is_active, date_from")
+        .eq("larp_id", l.id)
+        .order("date_from", { ascending: false });
+      setRuns(data ?? []);
+    })();
+  }, [larpSlug]);
 
   const larpNav: NavItem[] = larpSlug
     ? [
