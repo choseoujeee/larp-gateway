@@ -82,27 +82,12 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         )}
 
         {larpSlug && (
-          <V2NavGroup label="Běhy">
-            {runs.length === 0 ? (
-              <div className="px-2 py-1 text-xs text-muted-foreground">Žádné běhy</div>
-            ) : runs.map((r) => (
-              <V2NavLink
-                key={r.id}
-                to={`/larp/${larpSlug}/beh/${r.slug}`}
-                icon={CalendarDays}
-                label={r.name + (r.is_active ? " ●" : "")}
-                onClick={() => setMobileOpen(false)}
-              />
-            ))}
-          </V2NavGroup>
-        )}
-
-        {runSlug && runNav.length > 0 && (
-          <V2NavGroup label={runName || `Běh: ${runSlug}`}>
-            {runNav.map((item) => (
-              <V2NavLink key={item.to} {...item} onClick={() => setMobileOpen(false)} />
-            ))}
-          </V2NavGroup>
+          <V2RunsNavSection
+            larpSlug={larpSlug}
+            runs={runs}
+            currentRunSlug={runSlug}
+            onNavigate={() => setMobileOpen(false)}
+          />
         )}
       </nav>
       {user && (
