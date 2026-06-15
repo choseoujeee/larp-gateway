@@ -22,6 +22,9 @@ export function ProductionChecklistCard({ runId }: Props) {
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
   const [newGroup, setNewGroup] = useState("Hlavní");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editGroup, setEditGroup] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
