@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Loader2, Plus, FileText, Users, Calendar } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
+import { RunCreateDialog } from "../components/RunCreateDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,8 @@ export default function V2LarpHome() {
   const [counts, setCounts] = useState<Counts>({ documents: 0, characters: 0, cp: 0 });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user || !larpSlug) return;
@@ -42,7 +45,7 @@ export default function V2LarpHome() {
       setCounts({ documents: docCount ?? 0, characters: charCount ?? 0, cp: cpCount ?? 0 });
       setLoading(false);
     })();
-  }, [user, larpSlug]);
+  }, [user, larpSlug, reloadKey]);
 
   if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}`} replace />;
   if (notFound) return <Navigate to="/" replace />;
@@ -70,10 +73,19 @@ export default function V2LarpHome() {
           <section id="runs">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-typewriter text-xl">Běhy</h2>
-              <Button size="sm" disabled title="Zatím v přípravě (Etapa 2)">
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />Nový běh
               </Button>
             </div>
+            {larp && (
+              <RunCreateDialog
+                larpId={larp.id}
+                larpSlug={larp.slug}
+                open={createOpen}
+                onOpenChange={setCreateOpen}
+                onCreated={() => setReloadKey((k) => k + 1)}
+              />
+            )}
             {runs.length === 0 ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground">Žádné běhy.</CardContent></Card>
             ) : (
