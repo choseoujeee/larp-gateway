@@ -279,7 +279,7 @@ function ComposerTab({ runId, larpId }: { runId: string; larpId: string }) {
                     personIds: v ? [...r.personIds, p.id] : r.personIds.filter((x) => x !== p.id),
                   }))}
                 />
-                <span className="truncate">{p.name} <Badge variant="outline" className="ml-1 text-[10px]">{p.type}</Badge></span>
+                <span className="truncate">{assignments[p.id]?.player_name ?? p.name} ({p.slug}) <Badge variant="outline" className="ml-1 text-[10px]">{p.type}</Badge></span>
               </label>
             ))}
           </div>
