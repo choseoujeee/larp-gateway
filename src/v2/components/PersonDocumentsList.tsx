@@ -66,7 +66,7 @@ function TargetBadge({ doc, personId, personType }: { doc: Doc; personId: string
   return null;
 }
 
-function SortableRow({ doc, larpSlug }: { doc: Doc; larpSlug: string }) {
+function SortableRow({ doc, larpSlug, personId, personType }: { doc: Doc; larpSlug: string; personId: string; personType: "postava" | "cp" }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: doc.id });
   const style = {
     transform: CSS.Transform.toString(transform),
