@@ -590,13 +590,13 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden",
+        "flex flex-col rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         className
       )}
       style={{ minHeight }}
     >
       {/* Toolbar */}
-      <div className="flex-shrink-0 flex flex-wrap items-center gap-0.5 border-b border-border bg-background px-1 py-1 rounded-t-md shadow-[0_1px_0_0_hsl(var(--border))] sticky top-0 z-10">
+      <div className="sticky top-0 z-20 flex-shrink-0 flex flex-wrap items-center gap-0.5 border-b border-border bg-background/95 backdrop-blur-sm px-1 py-1 rounded-t-md shadow-sm">
         {/* Undo/Redo */}
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Zpět (Ctrl+Z)">
           <Undo2 className="h-4 w-4" />
@@ -909,7 +909,7 @@ export function RichTextEditor({
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden rounded-b-md">
         <EditorContent editor={editor} />
       </div>
     </div>
