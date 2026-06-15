@@ -61,22 +61,20 @@ export default function V2LarpProductionPage() {
           <ProductionMaterialsCard larpId={larp.id} runId="all" newItemRunId={activeRun?.id ?? null} />
 
           {activeRun ? (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="font-typewriter text-base">
-                  Checklist · {activeRun.name}
-                </CardTitle>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Checklist běhu · {activeRun.name}
+                </div>
                 <Link
                   to={`/larp/${larp.slug}/beh/${activeRun.slug}/produkce`}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Produkce běhu <ChevronRight className="h-3 w-3" />
+                  Otevřít produkci běhu <ChevronRight className="h-3 w-3" />
                 </Link>
-              </CardHeader>
-              <CardContent>
-                <ProductionChecklistCard runId={activeRun.id} />
-              </CardContent>
-            </Card>
+              </div>
+              <ProductionChecklistCard runId={activeRun.id} />
+            </div>
           ) : (
             <Card>
               <CardContent className="py-6 text-center text-sm text-muted-foreground">
