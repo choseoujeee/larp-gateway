@@ -155,7 +155,7 @@ export function ActiveRunAssignmentCard({ personId, larpId, personType }: Props)
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="font-typewriter text-lg">{personType === "cp" ? "Performer aktuálního běhu" : "Hráč aktuálního běhu"}</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">{run.name}{run.date_from && ` · ${new Date(run.date_from).toLocaleDateString("cs-CZ")}`}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{getRunDisplayName(run)}{run.date_from && ` · ${new Date(run.date_from).toLocaleDateString("cs-CZ")}`}</p>
           </div>
           {!editing && (
             <div className="flex gap-1">
