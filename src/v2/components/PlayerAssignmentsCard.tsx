@@ -60,16 +60,8 @@ export function PlayerAssignmentsCard({ personId, larpId, personType }: Props) {
     setSavingId(runId);
     try {
       if (a.id) {
-        const update: Record<string, unknown> = {
-          player_name: a.player_name || null,
-          player_email: a.player_email || null,
-          player_phone: a.player_phone || null,
-        };
         if (opts?.newPassword) {
-          // Direct hashing via pgcrypto extension; bcrypt salt
-          const { data: hash } = await supabase.rpc("create_person_assignment_with_password" as never, {} as never).then(() => ({ data: null })).catch(() => ({ data: null }));
-          void hash;
-          // Fall back: re-create via RPC (RPC handles hashing); delete + recreate to reuse RPC
+          // Re-issue assignment via RPC to get bcrypt hashing
           await supabase.from("run_person_assignments").delete().eq("id", a.id);
           const { data: newId, error: rpcErr } = await supabase.rpc("create_person_assignment_with_password", {
             p_run_id: runId, p_person_id: personId, p_password: opts.newPassword,
@@ -80,7 +72,11 @@ export function PlayerAssignmentsCard({ personId, larpId, personType }: Props) {
             await supabase.from("run_person_assignments").update({ player_phone: a.player_phone }).eq("id", newId as string);
           }
         } else {
-          const { error } = await supabase.from("run_person_assignments").update(update).eq("id", a.id);
+          const { error } = await supabase.from("run_person_assignments").update({
+            player_name: a.player_name || null,
+            player_email: a.player_email || null,
+            player_phone: a.player_phone || null,
+          }).eq("id", a.id);
           if (error) throw error;
         }
       } else {
