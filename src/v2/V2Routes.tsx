@@ -19,6 +19,7 @@ export default function V2Routes() {
       <Route path="larp/:larpSlug/postavy/:personId" element={<V2PersonDetailPage />} />
       <Route path="larp/:larpSlug/cp" element={<V2PersonsListPage kind="cp" />} />
       <Route path="larp/:larpSlug/cp/:personId" element={<V2PersonDetailPage />} />
+      <Route path="larp/:larpSlug/organizatori" element={<V2OrganizersPage />} />
       <Route path="larp/:larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte ve V1 adminu (/admin/design)." />} />
       <Route path="larp/:larpSlug/beh/:runSlug" element={<V2Stub title="Cockpit běhu" description="Pre-flight přehled (Etapa 2)." />} />
       <Route path="larp/:larpSlug/beh/:runSlug/hraci" element={<V2Stub title="Hráči a magic linky" description="Pozvánky hráčů přes Lovable Emails (Etapa 2)." />} />
