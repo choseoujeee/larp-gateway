@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
-import { Loader2, Plus, FileText, Users, Calendar } from "lucide-react";
+import { Loader2, Plus, FileText, Users, Calendar, Pencil } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { RunCreateDialog } from "../components/RunCreateDialog";
+import { LarpEditDialog } from "../components/LarpEditDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-interface LarpRow { id: string; name: string; slug: string; motto: string | null; }
+interface LarpRow { id: string; name: string; slug: string; motto: string | null; payment_account: string | null; }
 interface RunRow { id: string; name: string; slug: string; date_from: string | null; date_to: string | null; is_active: boolean; }
 interface Counts { documents: number; characters: number; cp: number; }
 
@@ -21,6 +22,7 @@ export default function V2LarpHome() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function V2LarpHome() {
       setLoading(true);
       const { data: larpRow } = await supabase
         .from("larps")
-        .select("id, name, slug, motto")
+        .select("id, name, slug, motto, payment_account")
         .eq("slug", larpSlug)
         .maybeSingle();
       if (!larpRow) { setNotFound(true); setLoading(false); return; }
@@ -58,10 +60,26 @@ export default function V2LarpHome() {
         </div>
       ) : (
         <div className="mx-auto max-w-5xl space-y-6">
-          <header>
-            <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{larp?.name}</h1>
-            {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
+          <header className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{larp?.name}</h1>
+              {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
+              {larp?.payment_account && (
+                <p className="mt-1 text-xs text-muted-foreground">Číslo účtu: <span className="font-mono">{larp.payment_account}</span></p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />Upravit LARP
+            </Button>
           </header>
+          {larp && (
+            <LarpEditDialog
+              larpId={larp.id}
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onSaved={() => setReloadKey((k) => k + 1)}
+            />
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/larp/${larpSlug}/dokumenty`} />

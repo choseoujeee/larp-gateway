@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,14 +29,19 @@ interface RunForm {
   contact: string;
   mission_briefing: string;
   footer_text: string;
+  payment_account: string;
   is_active: boolean;
 }
 
 const empty: RunForm = {
   name: "", slug: "", date_from: "", date_to: "",
   location: "", address: "", contact: "",
-  mission_briefing: "", footer_text: "", is_active: false,
+  mission_briefing: "", footer_text: "", payment_account: "",
+  is_active: false,
 };
+
+/** Fields that make sense to copy to other runs of the same LARP. Identity fields stay per-run. */
+const SHARED_FIELDS = ["location", "address", "contact", "mission_briefing", "footer_text", "payment_account"] as const;
 
 export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: Props) {
   const navigate = useNavigate();
@@ -44,23 +50,21 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
   const [larpId, setLarpId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scope, setScope] = useState<"this" | "all">("this");
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setScope("this");
       const { data, error } = await supabase
         .from("runs")
-        .select("name, slug, date_from, date_to, location, address, contact, mission_briefing, footer_text, is_active, larp_id")
+        .select("name, slug, date_from, date_to, location, address, contact, mission_briefing, footer_text, payment_account, is_active, larp_id")
         .eq("id", runId)
         .maybeSingle();
       if (cancelled) return;
-      if (error || !data) {
-        toast.error("Nepodařilo se načíst běh");
-        setLoading(false);
-        return;
-      }
+      if (error || !data) { toast.error("Nepodařilo se načíst běh"); setLoading(false); return; }
       setForm({
         name: data.name ?? "",
         slug: data.slug ?? "",
@@ -71,6 +75,7 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
         contact: data.contact ?? "",
         mission_briefing: data.mission_briefing ?? "",
         footer_text: data.footer_text ?? "",
+        payment_account: data.payment_account ?? "",
         is_active: data.is_active ?? false,
       });
       setOriginalSlug(data.slug ?? "");
@@ -93,7 +98,6 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
 
     setSaving(true);
 
-    // If this run is being marked active, deactivate other runs in the same LARP first.
     if (form.is_active && larpId) {
       await supabase.from("runs").update({ is_active: false }).eq("larp_id", larpId).neq("id", runId);
     }
@@ -110,22 +114,40 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
         contact: form.contact.trim() || null,
         mission_briefing: form.mission_briefing || null,
         footer_text: form.footer_text || null,
+        payment_account: form.payment_account.trim() || null,
         is_active: form.is_active,
       })
       .eq("id", runId);
 
-    setSaving(false);
-
     if (error) {
-      if (error.code === "23505") {
-        toast.error("Slug už pro tento LARP existuje");
-      } else {
-        toast.error("Uložení selhalo: " + error.message);
-      }
+      setSaving(false);
+      if (error.code === "23505") toast.error("Slug už pro tento LARP existuje");
+      else toast.error("Uložení selhalo: " + error.message);
       return;
     }
 
-    toast.success("Běh uložen");
+    if (scope === "all" && larpId) {
+      const sharedUpdate: Record<string, string | null> = {
+        location: form.location.trim() || null,
+        address: form.address.trim() || null,
+        contact: form.contact.trim() || null,
+        mission_briefing: form.mission_briefing || null,
+        footer_text: form.footer_text || null,
+        payment_account: form.payment_account.trim() || null,
+      };
+      const { error: bulkErr } = await supabase
+        .from("runs").update(sharedUpdate).eq("larp_id", larpId).neq("id", runId);
+      if (bulkErr) {
+        setSaving(false);
+        toast.error("Tento běh uložen, ale propagace selhala: " + bulkErr.message);
+        return;
+      }
+      toast.success("Uloženo pro všechny běhy LARPu");
+    } else {
+      toast.success("Běh uložen");
+    }
+
+    setSaving(false);
     onOpenChange(false);
     onSaved();
 
@@ -195,12 +217,40 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
               <Textarea id="footer_text" rows={2} value={form.footer_text} onChange={(e) => set("footer_text", e.target.value)} />
             </div>
 
+            <div className="space-y-1.5">
+              <Label htmlFor="payment_account">Číslo účtu (pro platby hráčů)</Label>
+              <Input id="payment_account" value={form.payment_account} onChange={(e) => set("payment_account", e.target.value)} placeholder="1234567890/0100" />
+            </div>
+
             <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3">
               <div>
                 <div className="text-sm font-medium">Aktivní běh</div>
                 <div className="text-xs text-muted-foreground">Aktivní běh je viditelný v portálech hráčů a CP. Najednou může být aktivní jen jeden běh LARPu.</div>
               </div>
               <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
+            </div>
+
+            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <div className="text-sm font-medium">Rozsah uložení</div>
+              <RadioGroup value={scope} onValueChange={(v) => setScope(v as "this" | "all")} className="space-y-1">
+                <label className="flex items-start gap-2 text-sm">
+                  <RadioGroupItem value="this" id="scope-this" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">Uložit jen tento běh</span>
+                    <span className="block text-xs text-muted-foreground">Změny se promítnou pouze do běhu „{form.name || "?"}".</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <RadioGroupItem value="all" id="scope-all" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">Uložit pro všechny běhy LARPu</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Místo, adresa, kontakt, mission briefing, patička a číslo účtu se zapíší do všech ostatních běhů.
+                      Název, slug, datum a aktivnost zůstávají per-běh.
+                    </span>
+                  </span>
+                </label>
+              </RadioGroup>
             </div>
           </div>
         )}
