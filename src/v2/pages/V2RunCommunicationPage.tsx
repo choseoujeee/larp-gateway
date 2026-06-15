@@ -19,11 +19,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 
-type TemplateKind = "pozvanka" | "info" | "diky" | "magic-link" | "vlastni";
+type TemplateKind = "pozvanka" | "info" | "diky" | "magic-link" | "uvitani-hraci" | "uvitani-cp" | "uvitani-produkce" | "info-pred-hrou" | "zmena-info" | "podekovani-po-hre" | "vlastni";
 const KIND_LABELS: Record<TemplateKind, string> = {
+  "uvitani-hraci": "Uvítání hráčů",
+  "uvitani-cp": "Uvítání CP",
+  "uvitani-produkce": "Uvítání produkce",
+  "info-pred-hrou": "Info před hrou",
+  "zmena-info": "Změna / oznámení",
+  "podekovani-po-hre": "Poděkování po hře",
   "pozvanka": "Pozvánka",
-  "info": "Info před hrou",
-  "diky": "Poděkování",
+  "info": "Info před hrou (legacy)",
+  "diky": "Poděkování (legacy)",
   "magic-link": "Přihlašovací odkaz",
   "vlastni": "Vlastní",
 };
