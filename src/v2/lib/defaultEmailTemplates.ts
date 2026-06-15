@@ -27,7 +27,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     subject: "Vítej v {{larp}} — tvůj přístup do portálu",
     body_html: wrap(`
       <h1 style="font-size:22px;margin:0 0 16px;color:#3a2614;">Vítej, {{jmeno}}!</h1>
-      <p>Máme obrovskou radost, že jsi se přihlásil/a do <strong>{{larp}}</strong> a budeš s námi hrát postavu <strong>{{postava}}</strong>${"{{skupina}}" ? " (skupina <strong>{{skupina}}</strong>)" : ""}.</p>
+      <p>Máme obrovskou radost, že jsi se přihlásil/a do <strong>{{larp}}</strong> a budeš s námi hrát postavu <strong>{{postava}}</strong> ve skupině <strong>{{skupina}}</strong>.</p>
       <p>Děkujeme za důvěru — připravujeme pro tebe zážitek, na který se sami strašně těšíme.</p>
       <p>Tvůj osobní vstup do portálu, kde najdeš materiály k postavě, harmonogram a další informace, je tady:</p>
       ${btn("Otevřít portál hráče")}
