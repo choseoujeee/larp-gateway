@@ -44,20 +44,22 @@ export function InlineEditRich({ value, onSave, emptyText = "Klikni pro přidán
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => { setDraft(value ?? ""); setEditing(true); }}
-      className="group block w-full text-left rounded p-2 -mx-2 hover:bg-muted/50 transition-colors"
-      aria-label="Upravit medailonek"
-    >
+    <div className="group relative">
       {value?.trim() ? (
         <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} />
       ) : (
         <div className="text-sm italic text-muted-foreground">{emptyText}</div>
       )}
-      <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-        <Pencil className="h-3 w-3" />Upravit
-      </div>
-    </button>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="mt-2 h-7 px-2 text-xs text-muted-foreground"
+        onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+        aria-label="Upravit medailonek"
+      >
+        <Pencil className="mr-1 h-3 w-3" />Upravit
+      </Button>
+    </div>
   );
 }

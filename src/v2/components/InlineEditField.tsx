@@ -72,19 +72,20 @@ export function InlineEditField({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setEditing(true)}
-      className={cn(
-        "group inline-flex items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-muted/50 transition-colors",
-        className,
-      )}
-      aria-label={ariaLabel ? `Upravit: ${ariaLabel}` : "Upravit"}
-    >
+    <span className={cn("group inline-flex items-center gap-1.5 rounded px-1 py-0.5", className)}>
       <span className={cn(value ? "" : "text-muted-foreground italic", displayClassName)}>
         {type === "password" && value ? "••••••••" : (value || emptyText)}
       </span>
-      <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="h-6 w-6 opacity-60 hover:opacity-100"
+        onClick={() => setEditing(true)}
+        aria-label={ariaLabel ? `Upravit: ${ariaLabel}` : "Upravit"}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+    </span>
   );
 }
