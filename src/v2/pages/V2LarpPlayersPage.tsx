@@ -153,9 +153,11 @@ function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larp
                   )
                 )}
                 {!isCp && (
-                  r.paid_at
-                    ? <Badge className="text-[10px]">Zaplaceno</Badge>
-                    : <Badge variant="outline" className="text-[10px]">Nezaplaceno</Badge>
+                  <button onClick={() => togglePaid(r)} title={r.paid_at ? "Označit jako nezaplaceno" : "Označit jako zaplaceno"} className="inline-flex">
+                    {r.paid_at
+                      ? <Badge className="text-[10px] cursor-pointer bg-green-600 hover:bg-green-700">Zaplaceno</Badge>
+                      : <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">Nezaplaceno</Badge>}
+                  </button>
                 )}
               </div>
             </CardContent>
