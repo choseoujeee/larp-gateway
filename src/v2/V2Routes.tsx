@@ -1,6 +1,10 @@
 import { Routes, Route } from "react-router-dom";
 import V2Dashboard from "./pages/V2Dashboard";
 import V2LarpHome from "./pages/V2LarpHome";
+import V2DocumentsPage from "./pages/V2DocumentsPage";
+import V2DocumentEditorPage from "./pages/V2DocumentEditorPage";
+import V2PersonsPage from "./pages/V2PersonsPage";
+import V2PersonDetailPage from "./pages/V2PersonDetailPage";
 import V2Stub from "./pages/V2Stub";
 
 export default function V2Routes() {
@@ -8,9 +12,11 @@ export default function V2Routes() {
     <Routes>
       <Route index element={<V2Dashboard />} />
       <Route path="larp/:larpSlug" element={<V2LarpHome />} />
-      <Route path="larp/:larpSlug/dokumenty" element={<V2Stub title="Dokumenty" description="Nový editor dokumentů (Etapa 1). Obsah stávajících dokumentů zůstává v DB beze změny." />} />
-      <Route path="larp/:larpSlug/postavy" element={<V2Stub title="Postavy" description="Katalog postav LARPu (Etapa 1)." />} />
-      <Route path="larp/:larpSlug/cp" element={<V2Stub title="CP" description="Katalog CP rolí a performerů (Etapa 1)." />} />
+      <Route path="larp/:larpSlug/dokumenty" element={<V2DocumentsPage />} />
+      <Route path="larp/:larpSlug/dokumenty/:docId" element={<V2DocumentEditorPage />} />
+      <Route path="larp/:larpSlug/postavy" element={<V2PersonsPage />} />
+      <Route path="larp/:larpSlug/postavy/:personId" element={<V2PersonDetailPage />} />
+      <Route path="larp/:larpSlug/cp" element={<V2Stub title="CP" description="Katalog CP rolí a performerů (Etapa 1+)." />} />
       <Route path="larp/:larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu (Etapa 1)." />} />
       <Route path="larp/:larpSlug/beh/:runSlug" element={<V2Stub title="Cockpit běhu" description="Pre-flight přehled — kdo má magic link, kdo zaplatil, kdo si přečetl dokumenty (Etapa 2)." />} />
       <Route path="larp/:larpSlug/beh/:runSlug/hraci" element={<V2Stub title="Hráči a magic linky" description="Pozvánky hráčů přes Lovable Emails (Etapa 2)." />} />
