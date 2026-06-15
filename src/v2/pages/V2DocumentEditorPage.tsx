@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Navigate, useNavigate, Link } from "react-router-dom";
-import { Loader2, ArrowLeft, Save, Trash2, X, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Trash2, X, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
