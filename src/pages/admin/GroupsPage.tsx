@@ -210,6 +210,7 @@ export default function GroupsPage() {
       title: "Úvod",
       content: "",
       doc_type: "herni",
+      doc_category: "herni",
       target_type: "skupina",
       target_group: name,
       sort_order: 0,

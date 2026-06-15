@@ -35,6 +35,7 @@ import OrganizersPage from "./pages/admin/OrganizersPage";
 import NotFound from "./pages/NotFound";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import V2Routes from "./v2/V2Routes";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,9 @@ const App = () => (
                 <BrowserRouter>
                 <ErrorBoundary>
                 <Routes>
+                  {/* v2 — greenfield přestavba */}
+                  <Route path="/v2/*" element={<V2Routes />} />
+
                   {/* Public */}
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
