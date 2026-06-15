@@ -135,12 +135,120 @@ export type Database = {
           },
         ]
       }
+      cp_scenes_backup_v1: {
+        Row: {
+          cp_id: string | null
+          created_at: string | null
+          day_number: number | null
+          description: string | null
+          duration_minutes: number | null
+          id: string | null
+          is_preherni: boolean | null
+          location: string | null
+          props: string | null
+          run_id: string | null
+          schedule_event_id: string | null
+          sort_order: number | null
+          start_time: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cp_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string | null
+          is_preherni?: boolean | null
+          location?: string | null
+          props?: string | null
+          run_id?: string | null
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cp_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string | null
+          is_preherni?: boolean | null
+          location?: string | null
+          props?: string | null
+          run_id?: string | null
+          schedule_event_id?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      document_views: {
+        Row: {
+          document_id: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          person_id: string
+          run_id: string | null
+          view_count: number
+        }
+        Insert: {
+          document_id: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          person_id: string
+          run_id?: string | null
+          view_count?: number
+        }
+        Update: {
+          document_id?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          person_id?: string
+          run_id?: string | null
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_views_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_views_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_views_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: string | null
           created_at: string
+          doc_category: Database["public"]["Enums"]["doc_category"]
           doc_type: Database["public"]["Enums"]["document_type"]
           id: string
+          is_personal: boolean
           larp_id: string | null
           priority: number
           run_id: string | null
@@ -157,8 +265,10 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string
+          doc_category: Database["public"]["Enums"]["doc_category"]
           doc_type: Database["public"]["Enums"]["document_type"]
           id?: string
+          is_personal?: boolean
           larp_id?: string | null
           priority?: number
           run_id?: string | null
@@ -175,8 +285,10 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string
+          doc_category?: Database["public"]["Enums"]["doc_category"]
           doc_type?: Database["public"]["Enums"]["document_type"]
           id?: string
+          is_personal?: boolean
           larp_id?: string | null
           priority?: number
           run_id?: string | null
@@ -210,6 +322,165 @@ export type Database = {
             columns: ["target_person_id"]
             isOneToOne: false
             referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents_backup_v1: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          doc_type: Database["public"]["Enums"]["document_type"] | null
+          id: string | null
+          larp_id: string | null
+          priority: number | null
+          run_id: string | null
+          sort_order: number | null
+          target_group: string | null
+          target_person_id: string | null
+          target_type: Database["public"]["Enums"]["document_target"] | null
+          title: string | null
+          updated_at: string | null
+          visibility_mode: string | null
+          visible_days_before: number | null
+          visible_to_cp: boolean | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          doc_type?: Database["public"]["Enums"]["document_type"] | null
+          id?: string | null
+          larp_id?: string | null
+          priority?: number | null
+          run_id?: string | null
+          sort_order?: number | null
+          target_group?: string | null
+          target_person_id?: string | null
+          target_type?: Database["public"]["Enums"]["document_target"] | null
+          title?: string | null
+          updated_at?: string | null
+          visibility_mode?: string | null
+          visible_days_before?: number | null
+          visible_to_cp?: boolean | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          doc_type?: Database["public"]["Enums"]["document_type"] | null
+          id?: string | null
+          larp_id?: string | null
+          priority?: number | null
+          run_id?: string | null
+          sort_order?: number | null
+          target_group?: string | null
+          target_person_id?: string | null
+          target_type?: Database["public"]["Enums"]["document_target"] | null
+          title?: string | null
+          updated_at?: string | null
+          visibility_mode?: string | null
+          visible_days_before?: number | null
+          visible_to_cp?: boolean | null
+        }
+        Relationships: []
+      }
+      email_log_v2: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          larp_id: string
+          person_id: string | null
+          recipient_email: string
+          run_id: string | null
+          status: string
+          subject: string | null
+          template_kind: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          larp_id: string
+          person_id?: string | null
+          recipient_email: string
+          run_id?: string | null
+          status?: string
+          subject?: string | null
+          template_kind: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          larp_id?: string
+          person_id?: string | null
+          recipient_email?: string
+          run_id?: string | null
+          status?: string
+          subject?: string | null
+          template_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_v2_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_v2_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_v2_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          body_text: string | null
+          created_at: string
+          id: string
+          kind: string
+          larp_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          larp_id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          larp_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: false
+            referencedRelation: "larps"
             referencedColumns: ["id"]
           },
         ]
@@ -452,6 +723,38 @@ export type Database = {
           },
         ]
       }
+      larp_email_config: {
+        Row: {
+          created_at: string
+          larp_id: string
+          reply_to: string | null
+          sender_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          larp_id: string
+          reply_to?: string | null
+          sender_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          larp_id?: string
+          reply_to?: string | null
+          sender_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "larp_email_config_larp_id_fkey"
+            columns: ["larp_id"]
+            isOneToOne: true
+            referencedRelation: "larps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       larp_organizers: {
         Row: {
           created_at: string
@@ -522,6 +825,63 @@ export type Database = {
           visual_mode?: string
         }
         Relationships: []
+      }
+      magic_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          last_used_at: string | null
+          person_id: string | null
+          revoked_at: string | null
+          run_id: string
+          scope: string
+          token_hash: string
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          person_id?: string | null
+          revoked_at?: string | null
+          run_id: string
+          scope: string
+          token_hash: string
+          valid_from?: string
+          valid_until: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          person_id?: string | null
+          revoked_at?: string | null
+          run_id?: string
+          scope?: string
+          token_hash?: string
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magic_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magic_links_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizer_accounts: {
         Row: {
@@ -693,6 +1053,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      persons_backup_v1: {
+        Row: {
+          access_token: string | null
+          act_info: string | null
+          created_at: string | null
+          group_name: string | null
+          id: string | null
+          larp_id: string | null
+          medailonek: string | null
+          mission_briefing: string | null
+          name: string | null
+          paid_at: string | null
+          password_hash: string | null
+          performance_times: string | null
+          performer: string | null
+          run_id: string | null
+          schedule_color: string | null
+          slug: string | null
+          type: Database["public"]["Enums"]["person_type"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          act_info?: string | null
+          created_at?: string | null
+          group_name?: string | null
+          id?: string | null
+          larp_id?: string | null
+          medailonek?: string | null
+          mission_briefing?: string | null
+          name?: string | null
+          paid_at?: string | null
+          password_hash?: string | null
+          performance_times?: string | null
+          performer?: string | null
+          run_id?: string | null
+          schedule_color?: string | null
+          slug?: string | null
+          type?: Database["public"]["Enums"]["person_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          act_info?: string | null
+          created_at?: string | null
+          group_name?: string | null
+          id?: string | null
+          larp_id?: string | null
+          medailonek?: string | null
+          mission_briefing?: string | null
+          name?: string | null
+          paid_at?: string | null
+          password_hash?: string | null
+          performance_times?: string | null
+          performer?: string | null
+          run_id?: string | null
+          schedule_color?: string | null
+          slug?: string | null
+          type?: Database["public"]["Enums"]["person_type"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       portal_feedback: {
         Row: {
@@ -1099,6 +1522,72 @@ export type Database = {
           },
         ]
       }
+      runs_backup_v1: {
+        Row: {
+          address: string | null
+          contact: string | null
+          created_at: string | null
+          date_from: string | null
+          date_to: string | null
+          footer_text: string | null
+          id: string | null
+          is_active: boolean | null
+          larp_id: string | null
+          location: string | null
+          mission_briefing: string | null
+          name: string | null
+          payment_account: string | null
+          payment_amount: string | null
+          payment_due_date: string | null
+          payment_instructions: string | null
+          payment_mode: string | null
+          slug: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact?: string | null
+          created_at?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          footer_text?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          larp_id?: string | null
+          location?: string | null
+          mission_briefing?: string | null
+          name?: string | null
+          payment_account?: string | null
+          payment_amount?: string | null
+          payment_due_date?: string | null
+          payment_instructions?: string | null
+          payment_mode?: string | null
+          slug?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact?: string | null
+          created_at?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          footer_text?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          larp_id?: string | null
+          location?: string | null
+          mission_briefing?: string | null
+          name?: string | null
+          payment_account?: string | null
+          payment_amount?: string | null
+          payment_due_date?: string | null
+          payment_instructions?: string | null
+          payment_mode?: string | null
+          slug?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       schedule_events: {
         Row: {
           cp_id: string | null
@@ -1191,6 +1680,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schedule_events_backup_v1: {
+        Row: {
+          cp_id: string | null
+          cp_scene_id: string | null
+          created_at: string | null
+          day_number: number | null
+          description: string | null
+          document_id: string | null
+          duration_minutes: number | null
+          event_type: Database["public"]["Enums"]["event_type"] | null
+          id: string | null
+          location: string | null
+          material_id: string | null
+          performer_text: string | null
+          run_id: string | null
+          start_time: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cp_id?: string | null
+          cp_scene_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          document_id?: string | null
+          duration_minutes?: number | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          location?: string | null
+          material_id?: string | null
+          performer_text?: string | null
+          run_id?: string | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cp_id?: string | null
+          cp_scene_id?: string | null
+          created_at?: string | null
+          day_number?: number | null
+          description?: string | null
+          document_id?: string | null
+          duration_minutes?: number | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          location?: string | null
+          material_id?: string | null
+          performer_text?: string | null
+          run_id?: string | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       schedule_portal_access: {
         Row: {
@@ -1598,6 +2144,7 @@ export type Database = {
       }
     }
     Enums: {
+      doc_category: "organizacni" | "herni" | "produkcni"
       document_target: "vsichni" | "skupina" | "osoba"
       document_type:
         | "organizacni"
@@ -1743,6 +2290,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      doc_category: ["organizacni", "herni", "produkcni"],
       document_target: ["vsichni", "skupina", "osoba"],
       document_type: [
         "organizacni",
