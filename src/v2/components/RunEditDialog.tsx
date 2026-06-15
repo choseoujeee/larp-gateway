@@ -50,23 +50,21 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
   const [larpId, setLarpId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scope, setScope] = useState<"this" | "all">("this");
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setScope("this");
       const { data, error } = await supabase
         .from("runs")
-        .select("name, slug, date_from, date_to, location, address, contact, mission_briefing, footer_text, is_active, larp_id")
+        .select("name, slug, date_from, date_to, location, address, contact, mission_briefing, footer_text, payment_account, is_active, larp_id")
         .eq("id", runId)
         .maybeSingle();
       if (cancelled) return;
-      if (error || !data) {
-        toast.error("Nepodařilo se načíst běh");
-        setLoading(false);
-        return;
-      }
+      if (error || !data) { toast.error("Nepodařilo se načíst běh"); setLoading(false); return; }
       setForm({
         name: data.name ?? "",
         slug: data.slug ?? "",
@@ -77,6 +75,7 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
         contact: data.contact ?? "",
         mission_briefing: data.mission_briefing ?? "",
         footer_text: data.footer_text ?? "",
+        payment_account: data.payment_account ?? "",
         is_active: data.is_active ?? false,
       });
       setOriginalSlug(data.slug ?? "");
@@ -99,7 +98,6 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
 
     setSaving(true);
 
-    // If this run is being marked active, deactivate other runs in the same LARP first.
     if (form.is_active && larpId) {
       await supabase.from("runs").update({ is_active: false }).eq("larp_id", larpId).neq("id", runId);
     }
@@ -116,22 +114,40 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
         contact: form.contact.trim() || null,
         mission_briefing: form.mission_briefing || null,
         footer_text: form.footer_text || null,
+        payment_account: form.payment_account.trim() || null,
         is_active: form.is_active,
       })
       .eq("id", runId);
 
-    setSaving(false);
-
     if (error) {
-      if (error.code === "23505") {
-        toast.error("Slug už pro tento LARP existuje");
-      } else {
-        toast.error("Uložení selhalo: " + error.message);
-      }
+      setSaving(false);
+      if (error.code === "23505") toast.error("Slug už pro tento LARP existuje");
+      else toast.error("Uložení selhalo: " + error.message);
       return;
     }
 
-    toast.success("Běh uložen");
+    if (scope === "all" && larpId) {
+      const sharedUpdate: Record<string, string | null> = {
+        location: form.location.trim() || null,
+        address: form.address.trim() || null,
+        contact: form.contact.trim() || null,
+        mission_briefing: form.mission_briefing || null,
+        footer_text: form.footer_text || null,
+        payment_account: form.payment_account.trim() || null,
+      };
+      const { error: bulkErr } = await supabase
+        .from("runs").update(sharedUpdate).eq("larp_id", larpId).neq("id", runId);
+      if (bulkErr) {
+        setSaving(false);
+        toast.error("Tento běh uložen, ale propagace selhala: " + bulkErr.message);
+        return;
+      }
+      toast.success("Uloženo pro všechny běhy LARPu");
+    } else {
+      toast.success("Běh uložen");
+    }
+
+    setSaving(false);
     onOpenChange(false);
     onSaved();
 
