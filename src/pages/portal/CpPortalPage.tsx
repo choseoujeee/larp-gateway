@@ -201,7 +201,8 @@ export default function CpPortalPage() {
       const cps: CpPerson[] = pd.cp_persons ?? [];
       setCpPersons(cps);
       setPlayerPersons(pd.player_persons ?? []);
-      setCpDocuments(pd.cp_documents ?? []);
+      setCpDocuments(pd.cp_documents_only ?? pd.cp_documents ?? []);
+      setSharedDocuments(pd.cp_documents_shared ?? []);
 
       // Process scenes
       type SceneRow = { cp_id: string; day_number: number; start_time: string; title: string | null };
