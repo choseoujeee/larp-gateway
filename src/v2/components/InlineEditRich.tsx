@@ -9,12 +9,14 @@ interface Props {
   onSave: (next: string | null) => Promise<void>;
   emptyText?: string;
   minHeight?: string;
+  /** Optional heading rendered above with an inline pencil edit button. */
+  title?: string;
 }
 
 /**
- * Inline-editable rich text (medailonek). Click to edit, explicit Save/Cancel.
+ * Inline-editable rich text. Click pencil to edit, explicit Save/Cancel.
  */
-export function InlineEditRich({ value, onSave, emptyText = "Klikni pro přidání textu", minHeight = "200px" }: Props) {
+export function InlineEditRich({ value, onSave, emptyText = "Klikni na tužku pro přidání textu", minHeight = "200px", title }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
@@ -27,9 +29,28 @@ export function InlineEditRich({ value, onSave, emptyText = "Klikni pro přidán
     } finally { setSaving(false); }
   }
 
+  const heading = title ? (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      {!editing && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 opacity-60 hover:opacity-100"
+          onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+          aria-label={`Upravit: ${title}`}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  ) : null;
+
   if (editing) {
     return (
       <div className="space-y-2">
+        {heading}
         <RichTextEditor value={draft} onChange={setDraft} minHeight={minHeight} />
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={() => { setDraft(value ?? ""); setEditing(false); }} disabled={saving}>
@@ -45,21 +66,24 @@ export function InlineEditRich({ value, onSave, emptyText = "Klikni pro přidán
 
   return (
     <div className="group relative">
+      {heading}
       {value?.trim() ? (
         <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} />
       ) : (
         <div className="text-sm italic text-muted-foreground">{emptyText}</div>
       )}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="mt-2 h-7 px-2 text-xs text-muted-foreground"
-        onClick={() => { setDraft(value ?? ""); setEditing(true); }}
-        aria-label="Upravit medailonek"
-      >
-        <Pencil className="mr-1 h-3 w-3" />Upravit
-      </Button>
+      {!title && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="mt-2 h-7 px-2 text-xs text-muted-foreground"
+          onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+          aria-label="Upravit"
+        >
+          <Pencil className="mr-1 h-3 w-3" />Upravit
+        </Button>
+      )}
     </div>
   );
 }
