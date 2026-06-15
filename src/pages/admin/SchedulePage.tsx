@@ -1017,7 +1017,7 @@ export default function SchedulePage() {
         </DialogContent>
       </Dialog>
 
-      {cpSceneDialogOpen && cpSceneDialogCpId && cpSceneDialogRunId && (
+      {cpSceneDialogOpen && cpSceneDialogCpId && currentLarpId && (
         <CpSceneDialog
           open={cpSceneDialogOpen}
           onOpenChange={(open) => { setCpSceneDialogOpen(open); if (!open) setCpSceneForDialog(null); }}

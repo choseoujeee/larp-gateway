@@ -143,7 +143,6 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   const [cpSceneDialogOpen, setCpSceneDialogOpen] = useState(false);
   const [cpSceneForDialog, setCpSceneForDialog] = useState<CpScene | null>(null);
   const [cpSceneDialogCpId, setCpSceneDialogCpId] = useState("");
-  const [cpSceneDialogRunId, setCpSceneDialogRunId] = useState("");
   const [activeGridDragId, setActiveGridDragId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -199,10 +198,10 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   }, [larpId]);
 
   const fetchCpScenesForRun = useCallback(async () => {
-    if (!selectedRunId) return;
-    const { data } = await supabase.from("cp_scenes").select("id, cp_id, title, description, location, start_time, duration_minutes, day_number, persons!cp_scenes_cp_id_fkey(name)").eq("run_id", selectedRunId).order("day_number", { ascending: true }).order("start_time", { ascending: true });
+    if (!larpId) return;
+    const { data } = await supabase.from("cp_scenes").select("id, cp_id, title, description, location, start_time, duration_minutes, day_number, persons!cp_scenes_cp_id_fkey(name)").eq("larp_id", larpId).order("day_number", { ascending: true }).order("start_time", { ascending: true });
     setScheduleCpScenes((data as ScheduleCpScene[]) ?? []);
-  }, [selectedRunId]);
+  }, [larpId]);
 
   const fetchSchedulePortalAccess = useCallback(async () => {
     if (!selectedRunId) return;
@@ -224,18 +223,14 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   }, [selectedRunId]);
 
   useEffect(() => {
-    if (selectedRunId) {
-      fetchEvents(); fetchCpScenesForRun(); fetchSchedulePortalAccess(); fetchRunPerformerByCpId();
-    } else {
-      setEvents([]); setScheduleCpScenes([]); setSchedulePortalAccess(null); setRunPerformerByCpId({});
-      setLoading(false);
-    }
-  }, [selectedRunId, fetchEvents, fetchCpScenesForRun, fetchSchedulePortalAccess, fetchRunPerformerByCpId]);
+    if (selectedRunId) { fetchSchedulePortalAccess(); fetchRunPerformerByCpId(); }
+    else { setSchedulePortalAccess(null); setRunPerformerByCpId({}); }
+  }, [selectedRunId, fetchSchedulePortalAccess, fetchRunPerformerByCpId]);
 
   useEffect(() => {
-    if (larpId) { fetchCps(); fetchScheduleMaterials(); fetchScheduleProductionDocs(); }
-    else { setCps([]); setScheduleMaterials([]); setScheduleProductionDocs([]); }
-  }, [larpId, fetchCps, fetchScheduleMaterials, fetchScheduleProductionDocs]);
+    if (larpId) { fetchEvents(); fetchCpScenesForRun(); fetchCps(); fetchScheduleMaterials(); fetchScheduleProductionDocs(); }
+    else { setEvents([]); setScheduleCpScenes([]); setCps([]); setScheduleMaterials([]); setScheduleProductionDocs([]); setLoading(false); }
+  }, [larpId, fetchEvents, fetchCpScenesForRun, fetchCps, fetchScheduleMaterials, fetchScheduleProductionDocs]);
 
   useEffect(() => {
     if (!larpId) { setPastRunPeopleNames([]); return; }
@@ -386,12 +381,11 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   };
 
   const openCpSceneEdit = async (event: ScheduleEventRow) => {
-    if (!event.cp_scene_id || !event.cp_id || !selectedRunId) return;
+    if (!event.cp_scene_id || !event.cp_id || !larpId) return;
     const { data, error } = await supabase.from("cp_scenes").select("*").eq("id", event.cp_scene_id).single();
     if (error || !data) { toast.error("Nepodařilo se načíst scénu CP"); return; }
     setCpSceneForDialog(data as CpScene);
     setCpSceneDialogCpId(event.cp_id);
-    setCpSceneDialogRunId(selectedRunId);
     setCpSceneDialogOpen(true);
   };
 
@@ -418,11 +412,11 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
   const normalizeTime = (t: string) => (t.length >= 8 ? t : t.length === 5 ? `${t}:00` : t);
 
   const handleSave = async () => {
-    if (!formData.title.trim() || !selectedRunId) { toast.error("Vyplňte název události"); return; }
+    if (!formData.title.trim() || !larpId) { toast.error("Vyplňte název události"); return; }
     setSaving(true);
     const startTime = normalizeTime(formData.start_time);
     const payload = {
-      run_id: selectedRunId, day_number: formData.day_number, start_time: startTime,
+      larp_id: larpId, day_number: formData.day_number, start_time: startTime,
       duration_minutes: formData.duration_minutes, event_type: formData.event_type,
       title: formData.title.trim(), description: formData.description.trim() || null,
       location: formData.location.trim() || null, cp_id: formData.cp_id || null,
@@ -456,7 +450,7 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
       const insertedEvent = insertedData;
       if (formData.event_type === "vystoupeni_cp" && !formData.cp_scene_id && formData.createSceneForEvent && formData.cp_id && insertedEvent) {
         const { data: sceneData, error: sceneError } = await supabase.from("cp_scenes").insert({
-          cp_id: formData.cp_id, run_id: selectedRunId, day_number: formData.day_number,
+          cp_id: formData.cp_id, larp_id: larpId, day_number: formData.day_number,
           start_time: startTime, duration_minutes: formData.duration_minutes,
           location: formData.location.trim() || null, description: formData.description.trim() || null,
           schedule_event_id: insertedEvent.id,
