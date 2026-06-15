@@ -31,6 +31,7 @@ export default function V2Routes() {
       <Route path=":larpSlug/postavy/:personId" element={<V2PersonDetailPage />} />
       <Route path=":larpSlug/cp" element={<V2PersonsListPage kind="cp" />} />
       <Route path=":larpSlug/cp/:personId" element={<V2PersonDetailPage />} />
+      <Route path=":larpSlug/skupiny" element={<V2GroupsPage />} />
       <Route path=":larpSlug/organizatori" element={<V2OrganizersPage />} />
       <Route path=":larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." />} />
       <Route path=":larpSlug/produkce" element={<V2Stub title="Produkce (sdílené pro celý LARP)" description="Sdílené produkční dokumenty, soubory, materiály a šablony checklistů — vše, co je stejné napříč běhy. Konkrétní použití pro daný běh najdete na stránce běhu → Produkce." />} />
