@@ -45,7 +45,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
         { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
         { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
-        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce (sdílené)" },
+        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
         { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
         ...(isSuperAdmin ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
@@ -140,7 +140,7 @@ function V2NavLink({ to, icon: Icon, label, onClick }: NavItem & { onClick?: () 
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end={true}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
