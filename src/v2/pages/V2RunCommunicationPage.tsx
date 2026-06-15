@@ -279,7 +279,7 @@ function ComposerTab({ runId, larpId }: { runId: string; larpId: string }) {
                     personIds: v ? [...r.personIds, p.id] : r.personIds.filter((x) => x !== p.id),
                   }))}
                 />
-                <span className="truncate">{p.name} <Badge variant="outline" className="ml-1 text-[10px]">{p.type}</Badge></span>
+                <span className="truncate">{assignments[p.id]?.player_name ?? p.name} ({p.slug}) <Badge variant="outline" className="ml-1 text-[10px]">{p.type}</Badge></span>
               </label>
             ))}
           </div>
@@ -498,7 +498,7 @@ function MagicLinksTab({ runId, larpId, larpSlug }: { runId: string; larpId: str
       <div key={p.id} className="flex items-center justify-between py-2.5 px-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium">{assignments[p.id]?.player_name ?? p.name}</span>
+            <span className="font-medium">{assignments[p.id]?.player_name ?? p.name} ({p.slug})</span>
             <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
             {active && <Badge variant="secondary" className="text-[10px]">Aktivní link</Badge>}
             {active?.last_used_at && <Badge variant="default" className="text-[10px]">Použito</Badge>}
