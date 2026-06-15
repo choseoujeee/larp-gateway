@@ -6,6 +6,7 @@ import { Loader2, Pencil, Check, X, KeyRound, Trash2, Mail, Phone, User, Save } 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { randomPassword } from "../lib/slug";
+import { getRunDisplayName } from "../hooks/useRun";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ import {
 interface Run {
   id: string;
   name: string;
+  run_number: number | null;
   date_from: string | null;
   is_active: boolean | null;
 }
@@ -49,7 +51,7 @@ export function ActiveRunAssignmentCard({ personId, larpId, personType }: Props)
     setLoading(true);
     const { data: r } = await supabase
       .from("runs")
-      .select("id, name, date_from, is_active")
+      .select("id, name, run_number, date_from, is_active")
       .eq("larp_id", larpId)
       .eq("is_active", true)
       .maybeSingle();
@@ -153,7 +155,7 @@ export function ActiveRunAssignmentCard({ personId, larpId, personType }: Props)
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="font-typewriter text-lg">{personType === "cp" ? "Performer aktuálního běhu" : "Hráč aktuálního běhu"}</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">{run.name}{run.date_from && ` · ${new Date(run.date_from).toLocaleDateString("cs-CZ")}`}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{getRunDisplayName(run)}{run.date_from && ` · ${new Date(run.date_from).toLocaleDateString("cs-CZ")}`}</p>
           </div>
           {!editing && (
             <div className="flex gap-1">

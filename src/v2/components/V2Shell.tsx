@@ -27,7 +27,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const { signOut, user } = useAuth();
   const { isSuperAdmin } = useAdminRole();
   const { canView, canManageOrganizers } = useLarpPermissions(larpSlug);
-  const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
+  const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; run_number: number | null; is_active: boolean | null; date_from: string | null }>>([]);
 
   useEffect(() => {
     if (!larpSlug) { setRuns([]); return; }
@@ -35,10 +35,10 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
       const { data: l } = await supabase.from("larps").select("id").eq("slug", larpSlug).maybeSingle();
       if (!l) return;
       const { data } = await supabase.from("runs")
-        .select("id, name, slug, is_active, date_from")
+        .select("id, name, slug, run_number, is_active, date_from")
         .eq("larp_id", l.id)
         .order("date_from", { ascending: false });
-      setRuns(data ?? []);
+      setRuns((data as any) ?? []);
     })();
   }, [larpSlug]);
 
@@ -186,7 +186,7 @@ function V2Breadcrumb({ larpName, runName }: { larpName?: string; runName?: stri
   );
 }
 
-interface RunMini { id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }
+interface RunMini { id: string; name: string; slug: string; run_number: number | null; is_active: boolean | null; date_from: string | null }
 
 function V2RunsNavSection({
   larpSlug,
@@ -279,6 +279,19 @@ function V2RunsNavSection({
 }
 
 function formatRunLabel(r: RunMini): string {
+  if (r.run_number) {
+    if (r.date_from) {
+      try {
+        const d = new Date(r.date_from);
+        const month = d.toLocaleDateString("cs-CZ", { month: "long" });
+        const year = d.toLocaleDateString("cs-CZ", { year: "numeric" });
+        return `${r.run_number}. - ${month} ${year}`;
+      } catch {
+        // fallthrough
+      }
+    }
+    return `${r.run_number}. - ${r.name}`;
+  }
   if (r.date_from) {
     try {
       const d = new Date(r.date_from);

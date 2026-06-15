@@ -3,7 +3,7 @@ import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Loader2, Mail, FileText, KeyRound, History, Send, Plus, Copy, Trash2, RefreshCw, AlertCircle } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { useAuth } from "@/hooks/useAuth";
-import { useRun } from "../hooks/useRun";
+import { useRun, getRunDisplayName } from "../hooks/useRun";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,7 +91,7 @@ export default function V2RunCommunicationPage() {
           <Mail className="h-6 w-6 text-primary" />
           <div>
             <h1 className="text-2xl font-bold">Komunikace</h1>
-            <p className="text-sm text-muted-foreground">{run.larp_name} · {run.name}</p>
+            <p className="text-sm text-muted-foreground">{run.larp_name} · {getRunDisplayName(run)}</p>
           </div>
         </div>
 

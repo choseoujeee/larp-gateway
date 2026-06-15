@@ -2,7 +2,7 @@ import { CalendarDays, MapPin, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { RunData } from "../hooks/useRun";
-import { getRunStatus } from "../hooks/useRun";
+import { getRunStatus, getRunDisplayName } from "../hooks/useRun";
 
 interface Props {
   run: RunData;
@@ -23,7 +23,7 @@ export function RunHeader({ run, onEdit, onNewRun }: Props) {
   return (
     <header className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{run.name}</h1>
+        <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{getRunDisplayName(run)}</h1>
         <Badge variant={s.variant}>{s.label}</Badge>
         <div className="ml-auto flex items-center gap-2">
           {onEdit && (

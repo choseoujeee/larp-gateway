@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useRun } from "../hooks/useRun";
+import { useRun, getRunDisplayName } from "../hooks/useRun";
 import { useLarpPlayerHistory } from "../hooks/useLarpPlayerHistory";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { randomPassword } from "../lib/slug";
@@ -125,7 +125,7 @@ export default function V2RunPlayersPage() {
   if (notFound) return <Navigate to={`/larp/${larpSlug}`} replace />;
 
   return (
-    <V2Shell larpName={run?.larp_name} runName={run?.name}>
+    <V2Shell larpName={run?.larp_name} runName={run ? getRunDisplayName(run) : undefined}>
       {runLoading || !run ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (

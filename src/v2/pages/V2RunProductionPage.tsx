@@ -6,7 +6,7 @@ import { ProductionMaterialsCard } from "../components/production/ProductionMate
 import { ProductionChecklistCard } from "../components/production/ProductionChecklistCard";
 import { ProductionPortalCard } from "../components/production/ProductionPortalCard";
 import { useAuth } from "@/hooks/useAuth";
-import { useRun } from "../hooks/useRun";
+import { useRun, getRunDisplayName } from "../hooks/useRun";
 
 export default function V2RunProductionPage() {
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
@@ -17,13 +17,13 @@ export default function V2RunProductionPage() {
   if (notFound) return <Navigate to={`/larp/${larpSlug}`} replace />;
 
   return (
-    <V2Shell larpName={run?.larp_name} runName={run?.name}>
+    <V2Shell larpName={run?.larp_name} runName={run ? getRunDisplayName(run) : undefined}>
       {loading || !run ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="mx-auto max-w-5xl space-y-4">
           <header>
-            <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">Produkce — {run.name}</h1>
+            <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">Produkce — {getRunDisplayName(run)}</h1>
             <p className="text-sm text-muted-foreground">
               Vše pro přípravu konkrétního běhu — checklist, soubory, odkazy, tiskoviny a přístup pro produkční tým.
             </p>
