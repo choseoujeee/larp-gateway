@@ -53,7 +53,7 @@ export default function V2Routes() {
       <Route path=":larpSlug/harmonogram" element={<SectionGuard section="schedule"><V2LarpSchedulePage /></SectionGuard>} />
       <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<SectionGuard section="schedule"><V2RunSchedulePage /></SectionGuard>} />
       <Route path=":larpSlug/beh/:runSlug/produkce" element={<SectionGuard section="production"><V2RunProductionPage /></SectionGuard>} />
-      <Route path=":larpSlug/beh/:runSlug/komunikace" element={<SectionGuard section="communication"><V2Stub title="Komunikace" description="E-mail šablony a historie odeslaných (Etapa 2)." /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/komunikace" element={<SectionGuard section="communication"><V2RunCommunicationPage /></SectionGuard>} />
       <Route path="*" element={<V2Stub title="Nenalezeno" description="Tato stránka v2 neexistuje." />} />
     </Routes>
   );
