@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Loader2, Search, Trash2, ArrowLeft, UserPlus, Copy } from "lucide-react";
+import { Loader2, Search, Trash2, ArrowLeft, UserPlus, Copy, Pencil, Mail, Phone } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
-import { ContactAutocomplete } from "../components/ContactAutocomplete";
 import { PersonFormDialog } from "../components/PersonFormDialog";
+import { PerformerEditDialog } from "../components/PerformerEditDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,10 +37,10 @@ export default function V2RunCpPage() {
   const [cps, setCps] = useState<CP[]>([]);
   const [performers, setPerformers] = useState<Record<string, Performer>>({});
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "missing">("all");
   const [personDialogOpen, setPersonDialogOpen] = useState(false);
+  const [editingCp, setEditingCp] = useState<CP | null>(null);
   const { performers: history } = useLarpPerformerHistory(run?.larp_id);
 
   const load = useCallback(async () => {
@@ -59,43 +59,8 @@ export default function V2RunCpPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function update(cpId: string, patch: Partial<Performer>) {
-    setPerformers((prev) => {
-      const existing = prev[cpId] ?? { run_id: run!.id, cp_id: cpId, performer_name: "", performer_email: "", performer_phone: "" };
-      return { ...prev, [cpId]: { ...existing, ...patch, dirty: true } };
-    });
-  }
+  // Inline editing replaced by PerformerEditDialog
 
-  async function save(cpId: string) {
-    const p = performers[cpId];
-    if (!p?.performer_name?.trim()) { toast.error("Vyplň jméno performera"); return; }
-    setSavingId(cpId);
-    try {
-      if (p.id) {
-        const { error } = await supabase.from("cp_performers").update({
-          performer_name: p.performer_name.trim(),
-          performer_email: p.performer_email?.trim() || null,
-          performer_phone: p.performer_phone?.trim() || null,
-        }).eq("id", p.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("cp_performers").insert({
-          run_id: run!.id,
-          cp_id: cpId,
-          performer_name: p.performer_name.trim(),
-          performer_email: p.performer_email?.trim() || null,
-          performer_phone: p.performer_phone?.trim() || null,
-        });
-        if (error) throw error;
-      }
-      toast.success("Uloženo");
-      await load();
-    } catch (e) {
-      toast.error("Chyba: " + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setSavingId(null);
-    }
-  }
 
   async function remove(cpId: string) {
     const p = performers[cpId];
@@ -198,64 +163,42 @@ export default function V2RunCpPage() {
           ) : (
             <div className="space-y-2">
               {filtered.map((c) => {
-                const p = performers[c.id] ?? { run_id: run.id, cp_id: c.id, performer_name: "", performer_email: "", performer_phone: "" };
-                const hasPerformer = !!p.id;
+                const p = performers[c.id];
+                const hasPerformer = !!p?.id;
                 return (
                   <Card key={c.id} className={hasPerformer ? "border-l-4 border-l-green-500" : ""}>
-                    <CardContent className="space-y-2 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="font-typewriter text-base">{c.name}</div>
-                          {c.group_name && <div className="text-xs text-muted-foreground">{c.group_name}</div>}
-                        </div>
-                        <div className="flex gap-1">
-                          {hasPerformer && (
-                            <Button size="sm" variant="ghost" onClick={() => remove(c.id)} className="text-destructive">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
+                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-typewriter text-base">{c.name}</div>
+                        {c.group_name && <div className="text-xs text-muted-foreground">{c.group_name}</div>}
+                        {hasPerformer ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                            <span className="font-medium">{p!.performer_name}</span>
+                            {p!.performer_email && (
+                              <a href={`mailto:${p!.performer_email}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                                <Mail className="h-3 w-3" />{p!.performer_email}
+                              </a>
+                            )}
+                            {p!.performer_phone && (
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />{p!.performer_phone}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-1"><Badge variant="outline" className="text-[10px]">Bez performera</Badge></div>
+                        )}
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <ContactAutocomplete
-                          field="name"
-                          suggestions={history}
-                          value={p.performer_name ?? ""}
-                          onChange={(v) => update(c.id, { performer_name: v })}
-                          onPick={(s) => update(c.id, { performer_name: s.display_name, performer_email: p.performer_email || s.email || "", performer_phone: p.performer_phone || s.phone || "" })}
-                          placeholder="Jméno performera"
-                        />
-                        <ContactAutocomplete
-                          field="email"
-                          suggestions={history}
-                          value={p.performer_email ?? ""}
-                          onChange={(v) => update(c.id, { performer_email: v })}
-                          onPick={(s) => update(c.id, { performer_name: p.performer_name || s.display_name, performer_email: s.email ?? "", performer_phone: p.performer_phone || s.phone || "" })}
-                          placeholder="E-mail"
-                          type="email"
-                        />
-                        <ContactAutocomplete
-                          field="phone"
-                          suggestions={history}
-                          value={p.performer_phone ?? ""}
-                          onChange={(v) => update(c.id, { performer_phone: v })}
-                          onPick={(s) => update(c.id, { performer_name: p.performer_name || s.display_name, performer_email: p.performer_email || s.email || "", performer_phone: s.phone ?? "" })}
-                          placeholder="Telefon"
-                        />
-                      </div>
-                      {p.dirty && (
-                        <div className="flex justify-end">
-                          <Button size="sm" onClick={() => save(c.id)} disabled={savingId === c.id}>
-                            {savingId === c.id && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
-                            {hasPerformer ? "Uložit změny" : "Přiřadit performera"}
+                      <div className="flex gap-1">
+                        <Button size="sm" variant={hasPerformer ? "ghost" : "default"} onClick={() => setEditingCp(c)}>
+                          {hasPerformer ? <Pencil className="h-3.5 w-3.5" /> : <><UserPlus className="mr-1 h-3.5 w-3.5" />Přiřadit</>}
+                        </Button>
+                        {hasPerformer && (
+                          <Button size="sm" variant="ghost" onClick={() => remove(c.id)} className="text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        </div>
-                      )}
-                      {!p.dirty && !hasPerformer && (
-                        <div className="text-right">
-                          <Badge variant="outline" className="text-[10px]">Bez performera</Badge>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -271,6 +214,24 @@ export default function V2RunCpPage() {
             person={null}
             onSaved={() => load()}
           />
+
+          {editingCp && (
+            <PerformerEditDialog
+              open={!!editingCp}
+              onOpenChange={(v) => { if (!v) setEditingCp(null); }}
+              runId={run.id}
+              cpId={editingCp.id}
+              cpName={editingCp.name}
+              existing={performers[editingCp.id] ? {
+                id: performers[editingCp.id].id,
+                performer_name: performers[editingCp.id].performer_name,
+                performer_email: performers[editingCp.id].performer_email,
+                performer_phone: performers[editingCp.id].performer_phone,
+              } : null}
+              history={history}
+              onSaved={() => { setEditingCp(null); load(); }}
+            />
+          )}
         </div>
       )}
     </V2Shell>
