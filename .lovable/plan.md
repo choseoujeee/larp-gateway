@@ -1,55 +1,58 @@
 ## Cíl
-Per-sekce role pro každého organizátora s úrovní `view` / `edit` / `none`. Vlastník LARPu (`larps.owner_id`) má vždy plný přístup a v UI se mu nic nedá omezit. Super-admin zůstává nadřazený všemu.
 
-## Sekce (s českými názvy v UI)
-| Klíč          | UI label        | Pokrývá tabulky / stránky |
-|---------------|-----------------|---------------------------|
-| `documents`   | Dokumenty       | `documents`, hidden_*     |
-| `characters`  | Postavy         | `persons` type='postava', `printables` |
-| `groups`      | Skupiny         | group editor              |
-| `cp`          | CP              | `persons` type='cp', `cp_scenes`, `cp_performers` |
-| `players`     | Hráči           | `run_person_assignments` (LARP přehled) |
-| `production`  | Produkce        | `production_materials`, `production_links`, `production_portal_access` |
-| `design`      | Design          | `larp_design_settings`, `larps.theme/motto/footer_text` |
-| `schedule`    | Harmonogram     | `schedule_events`, `schedule_portal_access` |
-| `communication` | Komunikace    | `email_log_v2`, `email_templates`, `larp_email_config`, `magic_links` |
-| `runs`        | Správa běhů     | `runs`, `run_checklist`     |
-| `organizers`  | Organizátoři    | jen super-admin (nevolitelné) |
+V archivu V1 existuje propracovaný harmonogram (`/_archiv/admin/harmonogram` → `src/pages/admin/SchedulePage.tsx`, 1029 řádků). V novém v2 je dnes na `:larpSlug/beh/:runSlug/harmonogram` jen `V2Stub`. Postavíme plnohodnotný harmonogram v2 a převezmeme všechny funkce z V1.
+
+## Funkce, které přebíráme z V1
+
+- **Časová osa** — vertikální mřížka po dnech (1 min = 4 px, slot = 5 min), s popisky času, půlhodinovými a hodinovými linkami, „live" ukazatelem aktuálního času.
+- **Drag & drop v gridu** — událost se chytne a pustí do jiného slotu/dne; auto-update `start_time` a `day_number`. Při tažení CP události se synchronizuje i `cp_scenes.start_time/day_number`.
+- **Seznam (list) view s D&D** — alternativní pohled s přetahováním celého pořadí; po pádu se časy přepočítají od 08:00 s respektem k `duration_minutes`.
+- **Lanes (vícestopé řazení)** — kolidující události se zobrazí vedle sebe (`assignLanes`).
+- **Popovery na blocích** — detail s CP, lokací, performerem, popisem; akce Upravit / Scéna / Odebrat.
+- **Vstupy CP (CP scény)** — pre-fill events ze seznamu `cp_scenes` daného běhu (scény ještě nezařazené do harmonogramu), s vazbou `cp_scene_id` a obousměrnou synchronizací času.
+- **Vstupy dalších událostí** — pre-fill z LARP `production_materials` (typ `material`) a `documents` doc_type = `produkční` (typ `organizacni`). Také ruční typy: `programovy_blok`, `jidlo`, `presun`, `informace`, `vystoupeni_cp`, `material`, `organizacni`.
+- **CRUD dialog** — den, čas, trvání, typ, název, popis (rich), místo, CP, scéna, materiál, dokument, barva CP v gridu, performer (volný text + autocomplete z minulých běhů).
+- **Filtry** — fulltext, den, typ + přepínač Grid / Seznam.
+- **Live mode** — „Spustit běh" zobrazí červenou linku aktuálního času + zvýrazní právě běžící blok.
+- **Portal access** — vytvoření veřejného odkazu `/{larpSlug}/harmonogram/{token}` s heslem nebo bez (RPC `create_schedule_portal_access[_no_password]`, `set/remove_schedule_portal_password`). Read-only verze už existuje (`SchedulePortalPage`) a zůstává.
+
+## Nové vs. V1
+
+1. **Routování v2** — místo kontextů `useRunContext`/`useLarpContext` čteme `larpSlug` + `runSlug` z URL a doplníme query na `larps`/`runs` pro `larp_id` a `run_id`. Stejný vzor jako `V2RunProductionPage`.
+2. **LARP úroveň harmonogramu** — `:larpSlug/harmonogram` přidat jako přehled: select běhu (jako u produkce) → render stejné komponenty s vybraným `run_id`. Sdílené pre-fill zdroje (materiály, produkční dokumenty) zůstávají LARP-scoped.
+3. **Layout** — použít `V2Shell` + `RunHeader` (pro běh) / standardní LARP header.
+
+## Soubory
+
+Nové:
+- `src/v2/pages/V2RunSchedulePage.tsx` — harmonogram konkrétního běhu (port z V1 SchedulePage s v2 routováním).
+- `src/v2/pages/V2LarpSchedulePage.tsx` — wrapper s výběrem běhu (analogie `V2LarpProductionPage`).
+- `src/v2/components/schedule/ScheduleEventDialog.tsx` — vytažený create/edit dialog (rozdělení 1000řádkového souboru pro čitelnost).
+- `src/v2/components/schedule/SchedulePortalAccessBar.tsx` — vytažený portal access bar.
+
+Znovupoužito beze změny:
+- `src/components/schedule/*` (ScheduleGridDay, AdminScheduleEventBox, GridSlotDroppable, konstanty, typy, utils) — komponenty jsou prezentační, fungují i v v2.
+- `src/lib/scheduleGridUtils.ts` (assignLanes, timeToMinutes).
+- `src/components/admin/CpSceneDialog.tsx` pro editaci scény z popoveru.
+
+Upravené:
+- `src/v2/V2Routes.tsx` — `/:larpSlug/beh/:runSlug/harmonogram` → `V2RunSchedulePage`; přidat `/:larpSlug/harmonogram` → `V2LarpSchedulePage`.
+- `src/v2/pages/V2LarpHome.tsx` + případně `V2RunCockpit.tsx` / navigaci — odkaz na nový harmonogram (pokud chybí).
 
 ## Datový model
-Přidat na `larp_organizers` sloupec `permissions JSONB NOT NULL DEFAULT '{}'::jsonb`.
-Tvar:
-```json
-{ "documents": "edit", "characters": "view", "production": "none", ... }
-```
-Chybějící klíč = `none`. Při zakládání nového organizátora default = všechny sekce `edit` (zpětně kompatibilní).
 
-## Backend
-1. **Migrace**: přidat sloupec, naplnit existující řádky `'{"documents":"edit",...}'` (vše edit).
-2. **Helper funkce** (security definer, stable, `set search_path=public`):
-   - `public.larp_section_level(p_larp_id uuid, p_section text)` → `text` (`'edit'|'view'|'none'`). Vrací `edit`, pokud je uživatel vlastník LARPu, super-admin (`chousef@gmail.com`) nebo má v `permissions` `edit`/`view`.
-   - `public.can_edit_larp_section(p_larp_id, p_section)` → `bool`.
-   - `public.can_view_larp_section(p_larp_id, p_section)` → `bool`.
-3. **RLS update** na všech zasažených tabulkách: stávající `can_access_larp(larp_id)` v INSERT/UPDATE/DELETE policy nahradit `can_edit_larp_section(larp_id, '<section>')`; v SELECT policy `can_view_larp_section(...)`. (Super-admin a vlastník zůstanou plně přístupní díky logice helperu.) Tabulky bez `larp_id` (např. `cp_scenes`, `schedule_events`) napojím přes `run_id → runs.larp_id`, `run_person_assignments` přes run, atd.
-4. **`larp_organizers` policies**: vlastník LARPu (nejen super-admin) smí číst seznam a měnit permissions svých organizátorů → přidám policy `is_larp_owner_or_super(larp_id)` pro INSERT/UPDATE/DELETE/SELECT. Super-admin pravidla zůstávají.
+Beze změn — používáme existující tabulky `schedule_events`, `cp_scenes`, `production_materials`, `documents`, `persons`, `run_person_assignments`, `schedule_portal_access` a stávající RPC funkce.
 
-## Frontend
-1. **Hook `useLarpPermissions(larpSlug)`** (`src/v2/hooks/useLarpPermissions.ts`): načte `larps.owner_id`, super-admin flag a `larp_organizers.permissions` pro aktuálního usera. Vrací `{ isOwner, isSuperAdmin, canView(section), canEdit(section), loading }`.
-2. **`V2Shell` navigace**: filtrovat `larpNav` a `runNav` podle `canView`. Položku „Organizátoři“ zpřístupnit i vlastníkovi (nejen super-adminovi).
-3. **Stránky** (Dokumenty, Postavy, Skupiny, CP, Hráči, Produkce, Design, Harmonogram, Komunikace, Produkce-run, Hráči-run):
-   - Pokud `!canView` → redirect na `/larp/:slug` + toast „Nemáš přístup“.
-   - Pokud `canView && !canEdit` → schovat tlačítka „Nový/Smazat/Uložit“, vypnout inline edit (`InlineEditField`/`InlineEditRich` dostanou prop `readOnly`).
-4. **`V2OrganizersPage`** přístupná vlastníkovi LARPu i super-adminovi. Přidat sekci „Oprávnění“ v edit dialogu: tabulka sekce × radio (`Žádný` / `Zobrazit` / `Editovat`) + tlačítka „Vše editovat“ / „Jen čtení“ / „Nic“ pro hromadné nastavení. Uložit do `permissions`. U vlastníka místo formuláře zobrazit badge „Vlastník — plný přístup“.
+## Postup implementace
 
-## Pořadí prací
-1. Migrace (sloupec + helper funkce + RLS update + policies na `larp_organizers`).
-2. Hook `useLarpPermissions` + úprava `V2Shell` (skrytí nav položek).
-3. UI v `V2OrganizersPage` — matrix oprávnění.
-4. Stránky: redirect při `!canView` + skrytí akcí při `!canEdit`.
-5. Test (vlastník vidí vše, organizátor s `documents=view, characters=edit` se chová správně, super-admin vidí vše).
+1. Vytvořit `V2RunSchedulePage.tsx` portem `SchedulePage.tsx` — nahradit `AdminLayout` za v2 shell, `useRunContext`/`useLarpContext` za URL params + ad-hoc fetche `larp_id`/`run_id`/`larp.slug`.
+2. Vytáhnout dialog a portal-bar do vlastních komponent (zachovat chování 1:1).
+3. Vytvořit `V2LarpSchedulePage.tsx` s `Select` běhu (vzor `V2LarpProductionPage`).
+4. Přidat obě routy do `V2Routes.tsx`.
+5. Propojit z V2 navigace (LARP home → „Harmonogram", běh cockpit → „Harmonogram"), pokud odkaz chybí.
+6. Smoke-test: otevřít stránku, přidat událost, drag & drop v gridu, list-mode reorder, vstup CP scény, materiálu, dokumentu, live mode, portal odkaz.
 
-## Poznámky / kompromisy
-- Sekce `players` na LARP úrovni a `players` na Run úrovni používají stejný klíč — kdo nemůže `players`, neuvidí ani jednu.
-- `runs` sekce řídí mazání/zakládání běhů; samotný obsah běhu (harmonogram/produkce/komunikace) má vlastní klíče.
-- Granularita per-LARP, ne per-Run.
-- Pokud někdo bude potřebovat „smí editovat jen jednu sekci“, stačí nastavit ostatní na `none`.
+## Mimo rozsah
+
+- Read-only portal stránka `SchedulePortalPage` zůstává beze změn.
+- Žádné DB migrace.
