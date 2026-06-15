@@ -75,7 +75,7 @@ export function ProductionMaterialsCard({ larpId, runId, newItemRunId }: Props) 
       ...((mats ?? []) as any[]).map((m) => ({ ...m, run_name: m.runs?.name ?? null, _kind: "material" as const })),
       ...((prints ?? []) as any[]).map((p) => ({ ...p, run_name: p.runs?.name ?? null, _kind: "printable" as const })),
     ];
-    merged.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || (a.title ?? "").localeCompare(b.title ?? "", "cs"));
+    merged.sort((a, b) => (((a as any).sort_order ?? 0) - ((b as any).sort_order ?? 0)) || (a.title ?? "").localeCompare(b.title ?? "", "cs"));
     setItems(merged);
     setLoading(false);
   }, [larpId, runId]);
