@@ -78,6 +78,7 @@ export default function CpPortalPage() {
   const [cpScenesByCpId, setCpScenesByCpId] = useState<Record<string, { day_number: number; start_time: string; title: string | null }[]>>({});
   const [playerPersons, setPlayerPersons] = useState<PlayerPerson[]>([]);
   const [cpDocuments, setCpDocuments] = useState<Document[]>([]);
+  const [sharedDocuments, setSharedDocuments] = useState<Document[]>([]);
   
   const [cpSearch, setCpSearch] = useState("");
   const [filterPerformer, setFilterPerformer] = useState<string>("");
