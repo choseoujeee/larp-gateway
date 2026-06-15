@@ -112,19 +112,24 @@ export function PersonDocumentsList({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const select = "id, title, doc_category, is_personal, target_type, priority, sort_order";
-    const q1 = supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "vsichni");
-    const q2 = supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "osoba").eq("target_person_id", personId);
-    const q3 = personGroupName
-      ? supabase.from("documents").select(select).eq("larp_id", larpId).eq("target_type", "skupina").eq("target_group", personGroupName)
-      : Promise.resolve({ data: [] as Doc[] });
-    const [r1, r2, r3] = await Promise.all([q1, q2, q3 as Promise<{ data: Doc[] | null }>]);
-    const all = ([...(r1.data ?? []), ...(r2.data ?? []), ...(r3.data ?? [])] as Doc[])
-      .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
-      .sort((a, b) => a.sort_order - b.sort_order || a.priority - b.priority);
-    setDocs(all);
+    const select = "id, title, doc_category, is_personal, target_type, priority, sort_order, audience";
+    // Build the audience tags this person should see
+    const myTags = personType === "cp"
+      ? ["cp:all", `cp:person:${personId}`]
+      : ["players:all", `players:person:${personId}`, ...(personGroupName ? [`players:group:${personGroupName}`] : [])];
+    const { data, error } = await supabase
+      .from("documents")
+      .select(select)
+      .eq("larp_id", larpId)
+      .overlaps("audience", myTags);
+    if (error) {
+      toast.error("Načtení dokumentů selhalo");
+      setDocs([]);
+    } else {
+      setDocs(((data ?? []) as Doc[]).sort((a, b) => a.sort_order - b.sort_order || a.priority - b.priority));
+    }
     setLoading(false);
-  }, [larpId, personId, personGroupName]);
+  }, [larpId, personId, personType, personGroupName]);
 
   useEffect(() => { void load(); }, [load]);
 
