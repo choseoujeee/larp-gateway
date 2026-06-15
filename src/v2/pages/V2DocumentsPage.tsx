@@ -21,6 +21,8 @@ interface DocRow {
   target_type: "vsichni" | "skupina" | "osoba";
   target_group: string | null;
   target_person_id: string | null;
+  extra_target_person_ids: string[] | null;
+  extra_target_group_names: string[] | null;
   priority: number;
   sort_order: number | null;
   updated_at: string;
@@ -56,7 +58,7 @@ export default function V2DocumentsPage() {
       const [{ data: d }, { data: p }] = await Promise.all([
         supabase
           .from("documents")
-          .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, priority, sort_order, updated_at")
+          .select("id, title, doc_category, is_personal, target_type, target_group, target_person_id, extra_target_person_ids, extra_target_group_names, priority, sort_order, updated_at")
           .eq("larp_id", l.id)
           .order("doc_category")
           .order("priority")
@@ -146,10 +148,11 @@ export default function V2DocumentsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-typewriter text-base">{d.title}</span>
-                        <Badge variant="default" className="text-[10px]">
-                          <TargetIcon t={d.target_type} />
-                          <span className="ml-1">{targetLabel(d, personNames)}</span>
-                        </Badge>
+                        {targetChips(d, personNames).map((c, i) => (
+                          <Badge key={i} variant={c.variant} className="text-[10px]">
+                            {c.icon}<span className={c.icon ? "ml-1" : ""}>{c.label}</span>
+                          </Badge>
+                        ))}
                         <Badge variant="outline" className="text-[10px] uppercase">{CATEGORY_LABEL[d.doc_category]}</Badge>
                         {d.is_personal && <Badge variant="secondary" className="text-[10px]">Osobní</Badge>}
                       </div>
@@ -174,9 +177,29 @@ function TargetIcon({ t }: { t: DocRow["target_type"] }) {
   return <User className="h-3 w-3" />;
 }
 
-function targetLabel(d: DocRow, names: Record<string, string>): string {
-  if (d.target_type === "vsichni") return "Všichni";
-  if (d.target_type === "skupina") return d.target_group ?? "Skupina";
-  return (d.target_person_id && names[d.target_person_id]) || "Osoba";
+type Chip = { label: string; icon?: JSX.Element; variant: "default" | "secondary" | "outline" | "destructive" };
+
+function targetChips(d: DocRow, names: Record<string, string>): Chip[] {
+  const chips: Chip[] = [];
+  const extraPersons = d.extra_target_person_ids ?? [];
+  const extraGroups = d.extra_target_group_names ?? [];
+
+  if (d.target_type === "vsichni") {
+    chips.push({ label: "Všem", icon: <Eye className="h-3 w-3" />, variant: "default" });
+  } else {
+    // collect groups
+    const groups = new Set<string>(extraGroups);
+    if (d.target_type === "skupina" && d.target_group) groups.add(d.target_group);
+    groups.forEach((g) => chips.push({ label: g, icon: <UsersIcon className="h-3 w-3" />, variant: "default" }));
+
+    // collect persons
+    const persons = new Set<string>(extraPersons);
+    if (d.target_type === "osoba" && d.target_person_id) persons.add(d.target_person_id);
+    persons.forEach((pid) => chips.push({ label: names[pid] ?? "Osoba", icon: <User className="h-3 w-3" />, variant: "default" }));
+
+    if (chips.length === 0) chips.push({ label: "Bez příjemce", variant: "outline" });
+  }
+  return chips;
 }
+
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Navigate, useNavigate, Link } from "react-router-dom";
-import { Loader2, ArrowLeft, Save, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Trash2, X, Plus } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
@@ -27,10 +28,12 @@ interface DocRow {
   target_type: TargetType;
   target_group: string | null;
   target_person_id: string | null;
+  extra_target_person_ids: string[];
+  extra_target_group_names: string[];
   priority: number;
 }
 
-interface PersonRow { id: string; name: string; type: string; }
+interface PersonRow { id: string; name: string; type: string; group_name: string | null; }
 
 export default function V2DocumentEditorPage() {
   const { larpSlug, docId } = useParams<{ larpSlug: string; docId: string }>();
@@ -39,6 +42,8 @@ export default function V2DocumentEditorPage() {
   const [doc, setDoc] = useState<DocRow | null>(null);
   const [persons, setPersons] = useState<PersonRow[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
+  const [hiddenPersonIds, setHiddenPersonIds] = useState<string[]>([]);
+  const [hiddenGroupNames, setHiddenGroupNames] = useState<string[]>([]);
   const [larpName, setLarpName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,13 +58,23 @@ export default function V2DocumentEditorPage() {
       const { data: l } = await supabase.from("larps").select("id, name").eq("slug", larpSlug).maybeSingle();
       if (l) setLarpName(l.name);
       const { data: d } = await supabase.from("documents").select("*").eq("id", docId).maybeSingle();
-      if (d) setDoc(d as DocRow);
+      if (d) setDoc({
+        ...(d as any),
+        extra_target_person_ids: (d as any).extra_target_person_ids ?? [],
+        extra_target_group_names: (d as any).extra_target_group_names ?? [],
+      } as DocRow);
       if (l) {
         const { data: p } = await supabase.from("persons").select("id, name, type, group_name").eq("larp_id", l.id).order("name");
         setPersons((p ?? []) as PersonRow[]);
         const gs = Array.from(new Set((p ?? []).map((x: any) => x.group_name).filter(Boolean))) as string[];
-        setGroups(gs);
+        setGroups(gs.sort());
       }
+      const [{ data: hp }, { data: hg }] = await Promise.all([
+        supabase.from("hidden_documents").select("person_id").eq("document_id", docId),
+        supabase.from("hidden_document_groups").select("group_name").eq("document_id", docId),
+      ]);
+      setHiddenPersonIds((hp ?? []).map((r: any) => r.person_id));
+      setHiddenGroupNames((hg ?? []).map((r: any) => r.group_name));
       setLoading(false);
     })();
   }, [user, docId, larpSlug]);
@@ -73,7 +88,7 @@ export default function V2DocumentEditorPage() {
   async function save() {
     if (!doc) return;
     setSaving(true);
-    const { error } = await supabase.from("documents").update({
+    const payload: any = {
       title: doc.title,
       content: doc.content,
       doc_category: doc.doc_category,
@@ -81,10 +96,24 @@ export default function V2DocumentEditorPage() {
       target_type: doc.target_type,
       target_group: doc.target_type === "skupina" ? doc.target_group : null,
       target_person_id: doc.target_type === "osoba" ? doc.target_person_id : null,
+      extra_target_person_ids: doc.extra_target_person_ids,
+      extra_target_group_names: doc.extra_target_group_names,
       priority: doc.priority,
-    }).eq("id", doc.id);
+    };
+    const { error } = await supabase.from("documents").update(payload).eq("id", doc.id);
+    if (error) { setSaving(false); toast.error("Ukládání selhalo: " + error.message); return; }
+
+    // Sync hidden tables
+    await supabase.from("hidden_documents").delete().eq("document_id", doc.id);
+    if (hiddenPersonIds.length) {
+      await supabase.from("hidden_documents").insert(hiddenPersonIds.map((pid) => ({ document_id: doc.id, person_id: pid })));
+    }
+    await supabase.from("hidden_document_groups").delete().eq("document_id", doc.id);
+    if (hiddenGroupNames.length) {
+      await supabase.from("hidden_document_groups").insert(hiddenGroupNames.map((g) => ({ document_id: doc.id, group_name: g })));
+    }
+
     setSaving(false);
-    if (error) { toast.error("Ukládání selhalo: " + error.message); return; }
     setDirty(false);
     toast.success("Uloženo");
   }
@@ -161,41 +190,16 @@ export default function V2DocumentEditorPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label>Cílení</Label>
-                    <Select value={doc.target_type} onValueChange={(v) => update("target_type", v as TargetType)}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="vsichni">Všichni</SelectItem>
-                        <SelectItem value="skupina">Skupina</SelectItem>
-                        <SelectItem value="osoba">Konkrétní osoba</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {doc.target_type === "skupina" && (
-                    <div>
-                      <Label>Skupina</Label>
-                      <Select value={doc.target_group ?? ""} onValueChange={(v) => update("target_group", v)}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Vyberte…" /></SelectTrigger>
-                        <SelectContent>
-                          {groups.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {doc.target_type === "osoba" && (
-                    <div>
-                      <Label>Osoba</Label>
-                      <Select value={doc.target_person_id ?? ""} onValueChange={(v) => update("target_person_id", v)}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Vyberte…" /></SelectTrigger>
-                        <SelectContent>
-                          {persons.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.type})</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
+                <TargetingSection
+                  doc={doc}
+                  persons={persons}
+                  groups={groups}
+                  hiddenPersonIds={hiddenPersonIds}
+                  hiddenGroupNames={hiddenGroupNames}
+                  onDocChange={(patch) => { setDoc({ ...doc, ...patch }); setDirty(true); }}
+                  onHiddenPersonsChange={(ids) => { setHiddenPersonIds(ids); setDirty(true); }}
+                  onHiddenGroupsChange={(gs) => { setHiddenGroupNames(gs); setDirty(true); }}
+                />
               </CardContent>
             </Card>
 
@@ -214,5 +218,171 @@ export default function V2DocumentEditorPage() {
         )}
       </div>
     </V2Shell>
+  );
+}
+
+function TargetingSection({
+  doc, persons, groups, hiddenPersonIds, hiddenGroupNames,
+  onDocChange, onHiddenPersonsChange, onHiddenGroupsChange,
+}: {
+  doc: DocRow;
+  persons: PersonRow[];
+  groups: string[];
+  hiddenPersonIds: string[];
+  hiddenGroupNames: string[];
+  onDocChange: (patch: Partial<DocRow>) => void;
+  onHiddenPersonsChange: (ids: string[]) => void;
+  onHiddenGroupsChange: (gs: string[]) => void;
+}) {
+  const personMap = useMemo(() => {
+    const m: Record<string, PersonRow> = {};
+    persons.forEach((p) => { m[p.id] = p; });
+    return m;
+  }, [persons]);
+
+  // Build "include persons" list (base osoba + extras)
+  const includePersons = useMemo(() => {
+    const ids = new Set<string>(doc.extra_target_person_ids ?? []);
+    if (doc.target_type === "osoba" && doc.target_person_id) ids.add(doc.target_person_id);
+    return Array.from(ids);
+  }, [doc]);
+
+  const includeGroups = useMemo(() => {
+    const gs = new Set<string>(doc.extra_target_group_names ?? []);
+    if (doc.target_type === "skupina" && doc.target_group) gs.add(doc.target_group);
+    return Array.from(gs);
+  }, [doc]);
+
+  function setMode(mode: "vsichni" | "vyber") {
+    if (mode === "vsichni") {
+      onDocChange({ target_type: "vsichni", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
+    } else {
+      onDocChange({ target_type: "osoba", target_group: null, target_person_id: null, extra_target_person_ids: [], extra_target_group_names: [] });
+    }
+  }
+
+  function addPerson(id: string) {
+    if (!id || includePersons.includes(id)) return;
+    // Always store via extras for consistency. Keep base target_type as osoba placeholder.
+    const next = [...(doc.extra_target_person_ids ?? []), id];
+    onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_person_ids: next });
+  }
+  function removePerson(id: string) {
+    const patch: Partial<DocRow> = {};
+    patch.extra_target_person_ids = (doc.extra_target_person_ids ?? []).filter((x) => x !== id);
+    if (doc.target_person_id === id) patch.target_person_id = null;
+    onDocChange(patch);
+  }
+
+  function addGroup(g: string) {
+    if (!g || includeGroups.includes(g)) return;
+    const next = [...(doc.extra_target_group_names ?? []), g];
+    onDocChange({ target_type: "osoba", target_person_id: null, target_group: null, extra_target_group_names: next });
+  }
+  function removeGroup(g: string) {
+    const patch: Partial<DocRow> = {};
+    patch.extra_target_group_names = (doc.extra_target_group_names ?? []).filter((x) => x !== g);
+    if (doc.target_group === g) patch.target_group = null;
+    onDocChange(patch);
+  }
+
+  const mode: "vsichni" | "vyber" = doc.target_type === "vsichni" ? "vsichni" : "vyber";
+
+  return (
+    <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
+      <div>
+        <Label>Komu</Label>
+        <Select value={mode} onValueChange={(v) => setMode(v as "vsichni" | "vyber")}>
+          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="vsichni">Všem</SelectItem>
+            <SelectItem value="vyber">Vybraným skupinám / osobám</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {mode === "vyber" && (
+        <>
+          <PickerRow
+            label="Skupiny, které dokument uvidí"
+            chips={includeGroups.map((g) => ({ key: g, label: g, onRemove: () => removeGroup(g) }))}
+            options={groups.filter((g) => !includeGroups.includes(g)).map((g) => ({ value: g, label: g }))}
+            onAdd={addGroup}
+            placeholder="Přidat skupinu…"
+            emptyText="Žádná skupina"
+          />
+          <PickerRow
+            label="Konkrétní osoby, které dokument uvidí"
+            chips={includePersons.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => removePerson(id) }))}
+            options={persons.filter((p) => !includePersons.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+            onAdd={addPerson}
+            placeholder="Přidat osobu…"
+            emptyText="Žádná osoba"
+          />
+        </>
+      )}
+
+      <div className="border-t border-border pt-3">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Skrýt před</p>
+        <PickerRow
+          label="Skupiny, kterým se NEzobrazí"
+          chips={hiddenGroupNames.map((g) => ({ key: g, label: g, onRemove: () => onHiddenGroupsChange(hiddenGroupNames.filter((x) => x !== g)) }))}
+          options={groups.filter((g) => !hiddenGroupNames.includes(g)).map((g) => ({ value: g, label: g }))}
+          onAdd={(g) => onHiddenGroupsChange([...hiddenGroupNames, g])}
+          placeholder="Skrýt před skupinou…"
+          emptyText="Nikdo nevyloučen"
+        />
+        <PickerRow
+          label="Osoby, kterým se NEzobrazí"
+          chips={hiddenPersonIds.map((id) => ({ key: id, label: personMap[id]?.name ?? "Osoba", onRemove: () => onHiddenPersonsChange(hiddenPersonIds.filter((x) => x !== id)) }))}
+          options={persons.filter((p) => !hiddenPersonIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.name}${p.group_name ? ` (${p.group_name})` : ""}` }))}
+          onAdd={(id) => onHiddenPersonsChange([...hiddenPersonIds, id])}
+          placeholder="Skrýt před osobou…"
+          emptyText="Nikdo nevyloučen"
+        />
+      </div>
+    </div>
+  );
+}
+
+function PickerRow({
+  label, chips, options, onAdd, placeholder, emptyText,
+}: {
+  label: string;
+  chips: { key: string; label: string; onRemove: () => void }[];
+  options: { value: string; label: string }[];
+  onAdd: (v: string) => void;
+  placeholder: string;
+  emptyText: string;
+}) {
+  const [val, setVal] = useState("");
+  return (
+    <div className="mt-2">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {chips.length === 0 ? (
+          <span className="text-xs italic text-muted-foreground">{emptyText}</span>
+        ) : (
+          chips.map((c) => (
+            <Badge key={c.key} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+              {c.label}
+              <button type="button" onClick={c.onRemove} className="ml-1 rounded hover:bg-background/50 p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))
+        )}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <Select value={val} onValueChange={(v) => { onAdd(v); setVal(""); }}>
+          <SelectTrigger className="h-9"><SelectValue placeholder={placeholder} /></SelectTrigger>
+          <SelectContent>
+            {options.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">Žádné další možnosti</div>
+            ) : options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 }

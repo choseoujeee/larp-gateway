@@ -247,6 +247,8 @@ export type Database = {
           created_at: string
           doc_category: Database["public"]["Enums"]["doc_category"]
           doc_type: Database["public"]["Enums"]["document_type"]
+          extra_target_group_names: string[]
+          extra_target_person_ids: string[]
           id: string
           is_personal: boolean
           larp_id: string | null
@@ -267,6 +269,8 @@ export type Database = {
           created_at?: string
           doc_category: Database["public"]["Enums"]["doc_category"]
           doc_type: Database["public"]["Enums"]["document_type"]
+          extra_target_group_names?: string[]
+          extra_target_person_ids?: string[]
           id?: string
           is_personal?: boolean
           larp_id?: string | null
@@ -287,6 +291,8 @@ export type Database = {
           created_at?: string
           doc_category?: Database["public"]["Enums"]["doc_category"]
           doc_type?: Database["public"]["Enums"]["document_type"]
+          extra_target_group_names?: string[]
+          extra_target_person_ids?: string[]
           id?: string
           is_personal?: boolean
           larp_id?: string | null
