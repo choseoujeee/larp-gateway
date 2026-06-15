@@ -140,7 +140,7 @@ function V2NavLink({ to, icon: Icon, label, onClick }: NavItem & { onClick?: () 
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end={true}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
