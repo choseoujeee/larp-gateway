@@ -103,9 +103,9 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   );
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* Desktop sidebar */}
-      <div className="hidden md:flex">{Sidebar}</div>
+      <div className="hidden md:flex h-full">{Sidebar}</div>
 
       {/* Mobile drawer */}
       {mobileOpen && (
@@ -115,7 +115,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         </div>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur md:px-6">
           <Button
             variant="ghost"
