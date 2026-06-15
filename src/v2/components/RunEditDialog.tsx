@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,14 +29,19 @@ interface RunForm {
   contact: string;
   mission_briefing: string;
   footer_text: string;
+  payment_account: string;
   is_active: boolean;
 }
 
 const empty: RunForm = {
   name: "", slug: "", date_from: "", date_to: "",
   location: "", address: "", contact: "",
-  mission_briefing: "", footer_text: "", is_active: false,
+  mission_briefing: "", footer_text: "", payment_account: "",
+  is_active: false,
 };
+
+/** Fields that make sense to copy to other runs of the same LARP. Identity fields stay per-run. */
+const SHARED_FIELDS = ["location", "address", "contact", "mission_briefing", "footer_text", "payment_account"] as const;
 
 export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: Props) {
   const navigate = useNavigate();
