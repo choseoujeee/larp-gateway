@@ -118,7 +118,14 @@ export default function V2LarpPlayersPage() {
 }
 
 function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larpSlug: string; emptyText: string }) {
-  if (rows.length === 0) {
+  const [localRows, setLocalRows] = useState(rows);
+  useEffect(() => { setLocalRows(rows); }, [rows]);
+  const togglePaid = async (r: AssignmentRow) => {
+    const newVal = r.paid_at ? null : new Date().toISOString();
+    setLocalRows((prev) => prev.map((x) => x.id === r.id ? { ...x, paid_at: newVal } : x));
+    await supabase.from("run_person_assignments").update({ paid_at: newVal }).eq("id", r.id);
+  };
+  if (localRows.length === 0) {
     return <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{emptyText}</CardContent></Card>;
   }
   return (
