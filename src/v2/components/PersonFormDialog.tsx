@@ -130,16 +130,14 @@ export function PersonFormDialog({ open, onOpenChange, larpId, type, person, onS
               </div>
             </>
           )}
-          {!isEdit && (
-            <div>
-              <Label htmlFor="pw">Heslo do portálu *</Label>
-              <div className="flex gap-2">
-                <Input id="pw" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <Button type="button" variant="outline" onClick={() => setPassword(randomPassword())}>Nové</Button>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Hráč ho použije pro přístup do portálu.</p>
+          <div>
+            <Label htmlFor="pw">Heslo do portálu {isEdit ? "(vyplň pro změnu)" : "*"}</Label>
+            <div className="flex gap-2">
+              <Input id="pw" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isEdit ? "Ponech prázdné = beze změny" : ""} />
+              <Button type="button" variant="outline" onClick={() => setPassword(randomPassword())}>Nové</Button>
             </div>
-          )}
+            <p className="mt-1 text-xs text-muted-foreground">{isEdit ? "Nové heslo přepíše stávající. Hash se neukazuje." : "Hráč/CP ho použije pro přístup do portálu."}</p>
+          </div>
         </div>
 
         <DialogFooter>
