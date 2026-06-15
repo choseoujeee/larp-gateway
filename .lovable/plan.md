@@ -1,70 +1,69 @@
-# Etapa 2 — Běh kompletně (bez harmonogramu)
+## Cíl
 
-Postavím všechny stránky a komponenty pro správu běhu kromě harmonogramu. Magic linky a e-maily zůstávají na samostatný sub-sprint (jsou velké a vyžadují email-domain setup) — připravím ale DB hooky tak, aby se to napojilo později bez refaktoru.
+V2 sekce „Produkce" — jednotná pracovní plocha pro produkční přípravu LARPu + běhu, plus veřejný portál pro produkční tým (sdílí se odkazem, volitelně heslo).
 
-## Co tato dávka přináší
+V databázi už existuje vše potřebné (`production_materials`, `production_links`, `printables`, `run_checklist`, `production_portal_access` + příslušné security-definer RPC), nepřidávám tedy žádné migrace.
 
-Zakládání profilů lidí - možnost vytvářet nové hráče a performery přes relevantní stránky (přes CP, přes Hráče i přes běh. 
+## Architektura
 
-### 1. Stránka Hráči v běhu — `/larp/:larpSlug/beh/:runSlug/hraci`
+Dvě V2 stránky pro produkci (LARP-úroveň + Běh-úroveň) sdílí stejné moduly:
 
-Plnohodnotná tabulka postav v běhu (zdroj pravdy = `run_person_assignments`):
+```
+/larp/:slug/produkce              ← V2LarpProductionPage (globální)
+/larp/:slug/beh/:runSlug/produkce ← V2RunProductionPage  (běh-specifické)
+```
 
-- Řádek = postava z LARPu (typ `postava`), s případným přiřazeným hráčem.
-- Sloupce: postava (+ skupina), jméno hráče, e-mail, telefon, stav platby, akce.
-- **Přiřazení hráče** — inline edit (jméno/email/telefon), uložení vytvoří/updatuje řádek v `run_person_assignments`.
-- **Z dřívějších běhů** — autocomplete při vyplňování jména/emailu nabídne hráče, kteří už hráli některý běh tohoto LARPu (využiju logiku z `V2LarpPlayersPage`).
-- **Platba** — toggle "Zaplaceno" → `paid_at = now()` / `null`.
-- **Heslo do portálu** — tlačítko "Vygenerovat heslo" (přes RPC `create_person_assignment_with_password`), zobrazí náhled hesla.
-- **Hromadné akce** — "Přiřadit všechny postavy" (založí prázdné assignmenty), "Označit všechny zaplacené".
-- **Filtry** — vyhledávání + filtr "jen nepřiřazené" / "jen nezaplacené".
-- **Souhrn nahoře** — N/M přiřazeno, K zaplaceno.
+Logika:
+- **Dokumenty produkční**: čte z `documents` kde `doc_category = 'produkcni'`. Editace je v Dokumentech (jen výpis + odkaz na editor).
+- **Tiskoviny** (`printables`): vázané na běh, ale v LARP-pohledu zobrazím za všechny běhy s badgem běhu.
+- **Soubory / odkazy** (`production_materials`): Google Drive, audio, video, ostatní. `material_type` = doc/audio/video/other. Pole: title, url, note. Na LARP-úrovni `run_id = null` = globální materiál; v běhu se filtruje na `run_id = current OR null`.
+- **Externí odkazy** (`production_links`): jednodušší pomocné odkazy (volitelně, sloučím do „Soubory" sekce jako kategorii „other").
+- **Checklist** (`run_checklist`): jen Běh-úroveň. Skupiny (`checklist_group`), drag-and-drop pořadí (jen pomocí šipek pro jednoduchost), `completed` toggle.
+- **Portál produkce**: panel pro správu přístupu — generuj odkaz `/produkce/:token`, nastav/odstraň heslo, kopíruj URL. Reuse existující `create_production_portal_access*` + `set_production_portal_password` RPCs.
 
-### 2. Stránka CP performeři v běhu — `/larp/:larpSlug/beh/:runSlug/cp`
+## Komponenty
 
-Zdroj pravdy = `cp_performers`:
+```
+src/v2/pages/V2LarpProductionPage.tsx
+src/v2/pages/V2RunProductionPage.tsx
+src/v2/components/production/
+  ProductionDocsList.tsx       (čte documents.doc_category='produkcni')
+  ProductionMaterialsCard.tsx  (CRUD production_materials + production_links)
+  ProductionPrintablesCard.tsx (CRUD printables)
+  ProductionChecklistCard.tsx  (CRUD run_checklist + toggle + skupiny) — jen v Běh
+  ProductionPortalCard.tsx     (přístup do portálu — token, heslo, URL)
+  MaterialEditDialog.tsx
+  PrintableEditDialog.tsx
+src/v2/pages/V2ProductionPortalPage.tsx ← /produkce/:token (veřejný)
+  + login formulář pokud má heslo
+  + read-only seznam dokumentů, tiskovin, materiálů, checklist (interaktivní toggle přes set_checklist_item_completed RPC)
+```
 
-- Řádek = CP z LARPu (typ `cp`).
-- Sloupce: CP (+ skupina), performer (jméno/email/telefon), akce.
-- **Inline edit** performer dat, uložení vytvoří/updatuje řádek v `cp_performers`.
-- **Návrh performera z minulých běhů** — autocomplete (cross-run aggregation podobně jako hráči, pouze pro CP).
-- **Hromadné akce** — "Zkopírovat performery z předchozího běhu" (vezme nejnovější uplynulý běh a překlopí přiřazení 1:1).
+V2Shell už má položku „Produkce" v larpNav i v běh-navu, jen je zatím prázdná.
 
-### 3. Detail postavy — sjednocení
+## Routing
 
-- `PlayerAssignmentsCard` dnes existuje na detailu postavy. Nechávám, ale přidám tlačítko "Otevřít v běhu →" které odkáže na novou stránku Hráči konkrétního běhu.
+```ts
+// V2Routes.tsx
+<Route path="/larp/:larpSlug/produkce" element={<V2LarpProductionPage />} />
+<Route path="/larp/:larpSlug/beh/:runSlug/produkce" element={<V2RunProductionPage />} />
+<Route path="/produkce/:token" element={<V2ProductionPortalPage />} />
+```
 
-### 4. Cockpit běhu — vylepšení
+## Vzhled
 
-- Stat "Hráči" linkuje na novou stránku.
-- Stat "CP performeři" linkuje na novou stránku.
-- V issues přibude přesnější rozpis nezaplacených / bez performera.
+- Stejný styl jako Dokumenty/Hráči: `max-w-5xl`, hlavička `Produkce` + tmavé tlačítko „Nový…" vpravo nahoře (kontextové podle aktivní sekce).
+- Sekce v kartách (Card + CardHeader): Dokumenty, Tiskoviny, Soubory & odkazy, Checklist (jen běh), Portál produkce.
+- Pro materiály a tiskoviny jednoduchá tabulka (Tabulka name | typ | náhled URL | poznámka | akce).
+- Portál: kompaktní karta s URL (read-only Input + Copy), Switch „Heslo vyžadováno" a tlačítka „Nový odkaz" / „Otevřít".
 
-### 5. Hraci v LARPu (cross-run directory)
+## Test data
 
-- Stávající `V2LarpPlayersPage` rozšířím o tlačítko "Pozvat do běhu" které otevře dialog s výběrem běhu + postavy → vytvoří assignment s prefill daty.
+Po dokončení vložím 3–4 ukázkové soubory (Google Drive doc, audio, video), 2 tiskoviny a checklist se 2 skupinami × 4 položkami pro běh duben-2026.
 
-## Co teď NESTAVÍM (oddělím do dalšího sub-sprintu, abychom dokončili tuto dávku rychle)
+## Mimo rozsah (do dalších iterací)
 
-- Magic linky + veřejné `/m/:token` routy.
-- E-mailové šablony, odesílání pozvánek.
-- Hráčský portál na `/p/:larpSlug/:personSlug` (zůstává stávající `/portal/...`).
-- Harmonogram (next sprint dle uživatele).
-
-Po schválení tohoto kroku ti potvrdím a hned přejdeme na magic linky + e-maily jako samostatný PR.
-
-## Technické poznámky
-
-- Žádné DB změny — schéma `run_person_assignments` a `cp_performers` stačí.
-- Pro autocomplete dřívějších hráčů použiju agregaci přes všechny runy LARPu (existuje již v `V2LarpPlayersPage`) — vytáhnu do hooku `useLarpPlayerHistory(larpId)`.
-- Komponenty: `V2RunPlayersPage.tsx`, `V2RunCpPage.tsx`, sdílený `PlayerAutocompleteInput.tsx`, `PerformerAutocompleteInput.tsx`.
-- Tlačítka stylem jednotná (variant="outline" + ikona, jak jsme sjednotili dříve).
-
-## Akceptace
-
-- Můžu otevřít běh → Hráči, vidím všechny postavy, přiřadím hráče, označím platbu.
-- Můžu otevřít běh → CP, přiřadím performery.
-- Při psaní jména/emailu mi to navrhne hráče z minulých běhů.
-- Cockpit ukazuje správná čísla a odkazy fungují.
-
-Mám stavět?
+- Bulk upload souborů (jen externí odkazy zatím).
+- Editor produkčních dokumentů — vede do stávajícího V2DocumentEditorPage.
+- Real-time sync checklistu mezi portálem a adminem (stačí refetch při focus).
+- Drag-and-drop řazení (jen šipky / sort_order updaty).
