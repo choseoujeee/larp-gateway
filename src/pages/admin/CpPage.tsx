@@ -136,14 +136,14 @@ export default function CpPage() {
   };
 
   const fetchScenes = async () => {
-    if (!selectedRunId) {
+    if (!currentLarpId) {
       setScenes([]);
       return;
     }
     const { data } = await supabase
       .from("cp_scenes")
       .select("cp_id, day_number, start_time")
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("day_number")
       .order("start_time");
     setScenes((data as CpSceneRow[]) || []);
@@ -167,19 +167,22 @@ export default function CpPage() {
 
   useEffect(() => {
     fetchPerformers();
-    fetchScenes();
     fetchRunAssignmentsPerformer();
   }, [selectedRunId]);
 
   useEffect(() => {
-    if (!selectedRunId) {
+    fetchScenes();
+  }, [currentLarpId]);
+
+  useEffect(() => {
+    if (!selectedRunId || !currentLarpId) {
       setConflictCpIds(new Set());
       return;
     }
-    detectPerformerConflicts(selectedRunId).then((conflicts) => {
+    detectPerformerConflicts(selectedRunId, currentLarpId).then((conflicts) => {
       setConflictCpIds(getCpIdsWithConflicts(conflicts));
     });
-  }, [selectedRunId, performers, scenes]);
+  }, [selectedRunId, currentLarpId, performers, scenes]);
 
   const getPerformer = (cpId: string) => performers.find((p) => p.cp_id === cpId);
 

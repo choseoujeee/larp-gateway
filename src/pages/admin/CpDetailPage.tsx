@@ -181,7 +181,7 @@ export default function CpDetailPage() {
   }, [currentLarpId, slug]);
 
   const fetchScenes = async () => {
-    if (!cp?.id || !selectedRunId) {
+    if (!cp?.id || !currentLarpId) {
       setScenes([]);
       return;
     }
@@ -190,7 +190,7 @@ export default function CpDetailPage() {
       .from("cp_scenes")
       .select("*")
       .eq("cp_id", cp.id)
-      .eq("run_id", selectedRunId)
+      .eq("larp_id", currentLarpId)
       .order("day_number")
       .order("start_time");
 
