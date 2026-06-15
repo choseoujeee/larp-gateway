@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { randomPassword } from "../lib/slug";
 import { toast } from "sonner";
 import { ContactAutocomplete } from "./ContactAutocomplete";
-import type { PlayerHistoryEntry } from "../hooks/usePlayerHistoryEntryHistory";
+import type { PlayerHistoryEntry } from "../hooks/useLarpPlayerHistory";
 
 interface CharacterOption {
   id: string;
