@@ -35,6 +35,7 @@ import OrganizersPage from "./pages/admin/OrganizersPage";
 import NotFound from "./pages/NotFound";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import V2Routes from "./v2/V2Routes";
 
 const queryClient = new QueryClient();
 
