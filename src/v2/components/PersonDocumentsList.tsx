@@ -185,7 +185,7 @@ export function PersonDocumentsList({
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(key, e)}>
                   <SortableContext items={list.map((d) => d.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-1.5">
-                      {list.map((d) => <SortableRow key={d.id} doc={d} larpSlug={larpSlug} />)}
+                      {list.map((d) => <SortableRow key={d.id} doc={d} larpSlug={larpSlug} personId={personId} personType={personType} />)}
                     </div>
                   </SortableContext>
                 </DndContext>
