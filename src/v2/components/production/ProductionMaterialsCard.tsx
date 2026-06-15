@@ -9,8 +9,9 @@ import { MaterialEditDialog, type MaterialRow } from "./MaterialEditDialog";
 
 interface Props {
   larpId: string;
-  /** when null → only run_id IS NULL (LARP-scope). When uuid → run_id = uuid OR run_id IS NULL */
-  runId: string | null;
+  /** when null → only run_id IS NULL (LARP-scope). When uuid → run_id = uuid OR run_id IS NULL.
+   *  When "all" → all materials across LARP (run-scoped + LARP-scoped). */
+  runId: string | null | "all";
   /** Default run_id assigned to new materials created from this card */
   newItemRunId: string | null;
 }
@@ -22,20 +23,30 @@ function typeIcon(t: string) {
   return <FileQuestion className="h-4 w-4 text-muted-foreground" />;
 }
 
+interface MaterialRowExt extends MaterialRow { run_name?: string | null }
+
 export function ProductionMaterialsCard({ larpId, runId, newItemRunId }: Props) {
-  const [items, setItems] = useState<MaterialRow[]>([]);
+  const [items, setItems] = useState<MaterialRowExt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MaterialRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    let q = supabase.from("production_materials").select("id, larp_id, run_id, title, url, note, material_type, sort_order").eq("larp_id", larpId);
-    if (runId) q = q.or(`run_id.eq.${runId},run_id.is.null`);
-    else q = q.is("run_id", null);
+    let q = supabase
+      .from("production_materials")
+      .select("id, larp_id, run_id, title, url, note, material_type, sort_order, runs:run_id(name)")
+      .eq("larp_id", larpId);
+    if (runId === "all") {
+      // no run filter — show everything across the LARP
+    } else if (runId) {
+      q = q.or(`run_id.eq.${runId},run_id.is.null`);
+    } else {
+      q = q.is("run_id", null);
+    }
     const { data, error } = await q.order("sort_order").order("title");
     if (error) toast.error(error.message);
-    setItems((data ?? []) as MaterialRow[]);
+    setItems(((data ?? []) as any[]).map((m) => ({ ...m, run_name: m.runs?.name ?? null })));
     setLoading(false);
   }, [larpId, runId]);
 
