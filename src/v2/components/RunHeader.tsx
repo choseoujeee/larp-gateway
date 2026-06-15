@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, Pencil } from "lucide-react";
+import { CalendarDays, MapPin, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { RunData } from "../hooks/useRun";
@@ -7,6 +7,7 @@ import { getRunStatus } from "../hooks/useRun";
 interface Props {
   run: RunData;
   onEdit?: () => void;
+  onNewRun?: () => void;
 }
 
 const statusLabel: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -16,7 +17,7 @@ const statusLabel: Record<string, { label: string; variant: "default" | "seconda
   unknown: { label: "Bez termínu", variant: "outline" },
 };
 
-export function RunHeader({ run, onEdit }: Props) {
+export function RunHeader({ run, onEdit, onNewRun }: Props) {
   const status = getRunStatus(run);
   const s = statusLabel[status];
   return (
@@ -24,11 +25,18 @@ export function RunHeader({ run, onEdit }: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{run.name}</h1>
         <Badge variant={s.variant}>{s.label}</Badge>
-        {onEdit && (
-          <Button variant="outline" size="sm" onClick={onEdit} className="ml-auto">
-            <Pencil className="mr-1 h-4 w-4" />Upravit
-          </Button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {onEdit && (
+            <Button size="sm" onClick={onEdit}>
+              <Pencil className="mr-2 h-4 w-4" />Upravit
+            </Button>
+          )}
+          {onNewRun && (
+            <Button size="sm" onClick={onNewRun}>
+              <Plus className="mr-2 h-4 w-4" />Nový běh
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
         {(run.date_from || run.date_to) && (
