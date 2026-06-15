@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Loader2, Folder } from "lucide-react";
+import { Plus, Trash2, Loader2, Folder, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ export function ProductionChecklistCard({ runId }: Props) {
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
   const [newGroup, setNewGroup] = useState("Hlavní");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editGroup, setEditGroup] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,8 +60,26 @@ export function ProductionChecklistCard({ runId }: Props) {
   }
 
   async function remove(id: string) {
+    if (!confirm("Smazat položku?")) return;
     const { error } = await supabase.from("run_checklist").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
+    load();
+  }
+
+  function startEdit(item: Item) {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditGroup(item.checklist_group);
+  }
+  function cancelEdit() { setEditingId(null); setEditTitle(""); setEditGroup(""); }
+  async function saveEdit(item: Item) {
+    if (!editTitle.trim()) { toast.error("Vyplň název"); return; }
+    const { error } = await supabase.from("run_checklist").update({
+      title: editTitle.trim(),
+      checklist_group: editGroup.trim() || "Hlavní",
+    }).eq("id", item.id);
+    if (error) { toast.error(error.message); return; }
+    cancelEdit();
     load();
   }
 
@@ -113,15 +134,55 @@ export function ProductionChecklistCard({ runId }: Props) {
                     <span>· {done}/{groupItems.length}</span>
                   </div>
                   <ul className="space-y-1">
-                    {groupItems.map((item) => (
-                      <li key={item.id} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-1.5">
-                        <Checkbox checked={item.completed} onCheckedChange={() => toggle(item)} aria-label={item.title} />
-                        <span className={`flex-1 text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>{item.title}</span>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(item.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </li>
-                    ))}
+                    {groupItems.map((item) => {
+                      const isEditing = editingId === item.id;
+                      return (
+                        <li key={item.id} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-1.5">
+                          <Checkbox checked={item.completed} onCheckedChange={() => toggle(item)} aria-label={item.title} disabled={isEditing} />
+                          {isEditing ? (
+                            <>
+                              <Input
+                                value={editGroup}
+                                onChange={(e) => setEditGroup(e.target.value)}
+                                list="cl-groups"
+                                className="h-7 w-28 text-sm"
+                                placeholder="Skupina"
+                              />
+                              <Input
+                                autoFocus
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") saveEdit(item); if (e.key === "Escape") cancelEdit(); }}
+                                className="h-7 flex-1 text-sm"
+                              />
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => saveEdit(item)} title="Uložit">
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} title="Zrušit">
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(item)}
+                                className={`flex-1 text-left text-sm hover:underline ${item.completed ? "line-through text-muted-foreground" : ""}`}
+                                title="Upravit"
+                              >
+                                {item.title}
+                              </button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(item)} title="Upravit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(item.id)} title="Smazat">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               );
