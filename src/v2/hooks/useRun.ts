@@ -85,7 +85,7 @@ export function useRunCockpitStats(runId?: string) {
       setLoading(true);
       const { data } = await supabase.rpc("get_run_cockpit_stats", { p_run_id: runId });
       if (cancelled) return;
-      setStats((data as RunCockpitStats | null) ?? null);
+      setStats((data as unknown as RunCockpitStats | null) ?? null);
       setLoading(false);
     })();
     return () => { cancelled = true; };
