@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Loader2, Search, Trash2, ArrowLeft, UserPlus, Copy } from "lucide-react";
+import { Loader2, Search, Trash2, ArrowLeft, UserPlus, Copy, Pencil, Mail, Phone } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
-import { ContactAutocomplete } from "../components/ContactAutocomplete";
 import { PersonFormDialog } from "../components/PersonFormDialog";
+import { PerformerEditDialog } from "../components/PerformerEditDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
