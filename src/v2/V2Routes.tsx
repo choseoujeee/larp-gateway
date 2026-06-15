@@ -15,6 +15,7 @@ import V2RunPlayersPage from "./pages/V2RunPlayersPage";
 import V2RunCpPage from "./pages/V2RunCpPage";
 import V2LarpProductionPage from "./pages/V2LarpProductionPage";
 import V2RunProductionPage from "./pages/V2RunProductionPage";
+import { SectionGuard } from "./components/SectionGuard";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
@@ -30,24 +31,24 @@ export default function V2Routes() {
   return (
     <Routes>
       <Route path=":larpSlug" element={<V2LarpHome />} />
-      <Route path=":larpSlug/dokumenty" element={<V2DocumentsPage />} />
-      <Route path=":larpSlug/dokumenty/:docId" element={<V2DocumentEditorPage />} />
-      <Route path=":larpSlug/postavy" element={<V2PersonsListPage kind="postava" />} />
-      <Route path=":larpSlug/postavy/:personId" element={<V2PersonDetailPage />} />
-      <Route path=":larpSlug/cp" element={<V2PersonsListPage kind="cp" />} />
-      <Route path=":larpSlug/cp/:personId" element={<V2PersonDetailPage />} />
-      <Route path=":larpSlug/skupiny" element={<V2GroupsPage />} />
-      <Route path=":larpSlug/hraci" element={<V2LarpPlayersPage />} />
+      <Route path=":larpSlug/dokumenty" element={<SectionGuard section="documents"><V2DocumentsPage /></SectionGuard>} />
+      <Route path=":larpSlug/dokumenty/:docId" element={<SectionGuard section="documents"><V2DocumentEditorPage /></SectionGuard>} />
+      <Route path=":larpSlug/postavy" element={<SectionGuard section="characters"><V2PersonsListPage kind="postava" /></SectionGuard>} />
+      <Route path=":larpSlug/postavy/:personId" element={<SectionGuard section="characters"><V2PersonDetailPage /></SectionGuard>} />
+      <Route path=":larpSlug/cp" element={<SectionGuard section="cp"><V2PersonsListPage kind="cp" /></SectionGuard>} />
+      <Route path=":larpSlug/cp/:personId" element={<SectionGuard section="cp"><V2PersonDetailPage /></SectionGuard>} />
+      <Route path=":larpSlug/skupiny" element={<SectionGuard section="groups"><V2GroupsPage /></SectionGuard>} />
+      <Route path=":larpSlug/hraci" element={<SectionGuard section="players"><V2LarpPlayersPage /></SectionGuard>} />
       <Route path=":larpSlug/organizatori" element={<V2OrganizersPage />} />
-      <Route path=":larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." />} />
-      <Route path=":larpSlug/produkce" element={<V2LarpProductionPage />} />
+      <Route path=":larpSlug/design" element={<SectionGuard section="design"><V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." /></SectionGuard>} />
+      <Route path=":larpSlug/produkce" element={<SectionGuard section="production"><V2LarpProductionPage /></SectionGuard>} />
       <Route path=":larpSlug/drivejsi-behy" element={<V2PastRunsPage />} />
       <Route path=":larpSlug/beh/:runSlug" element={<V2RunCockpit />} />
-      <Route path=":larpSlug/beh/:runSlug/hraci" element={<V2RunPlayersPage />} />
-      <Route path=":larpSlug/beh/:runSlug/cp" element={<V2RunCpPage />} />
-      <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<V2Stub title="Harmonogram" description="Harmonogram běhu (Etapa 2)." />} />
-      <Route path=":larpSlug/beh/:runSlug/produkce" element={<V2RunProductionPage />} />
-      <Route path=":larpSlug/beh/:runSlug/komunikace" element={<V2Stub title="Komunikace" description="E-mail šablony a historie odeslaných (Etapa 2)." />} />
+      <Route path=":larpSlug/beh/:runSlug/hraci" element={<SectionGuard section="players"><V2RunPlayersPage /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/cp" element={<SectionGuard section="cp"><V2RunCpPage /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<SectionGuard section="schedule"><V2Stub title="Harmonogram" description="Harmonogram běhu (Etapa 2)." /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/produkce" element={<SectionGuard section="production"><V2RunProductionPage /></SectionGuard>} />
+      <Route path=":larpSlug/beh/:runSlug/komunikace" element={<SectionGuard section="communication"><V2Stub title="Komunikace" description="E-mail šablony a historie odeslaných (Etapa 2)." /></SectionGuard>} />
       <Route path="*" element={<V2Stub title="Nenalezeno" description="Tato stránka v2 neexistuje." />} />
     </Routes>
   );
