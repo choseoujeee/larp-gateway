@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle, Plus } from "lucide-react";
+import { Loader2, Users, Theater, Calendar, ClipboardCheck, ArrowRight, AlertTriangle, Plus, MessageSquare } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { RunHeader } from "../components/RunHeader";
 import { RunEditDialog } from "../components/RunEditDialog";
