@@ -30,6 +30,7 @@ export function useRun(larpSlug?: string, runSlug?: string) {
   const [run, setRun] = useState<RunData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!larpSlug || !runSlug) { setLoading(false); return; }
@@ -58,9 +59,9 @@ export function useRun(larpSlug?: string, runSlug?: string) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [larpSlug, runSlug]);
+  }, [larpSlug, runSlug, reloadKey]);
 
-  return { run, loading, notFound };
+  return { run, loading, notFound, reload: () => setReloadKey((k) => k + 1) };
 }
 
 export interface RunCockpitStats {
