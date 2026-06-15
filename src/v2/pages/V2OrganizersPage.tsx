@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Trash2, Loader2, Pencil, UserCog, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil, UserCog, ShieldAlert, Crown } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -14,13 +15,18 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminRole } from "@/hooks/useAdminRole";
+import { useLarpPermissions } from "../hooks/useLarpPermissions";
+import {
+  ALL_SECTIONS, SECTION_LABELS, type PermissionsMap, type SectionLevel, type SectionKey,
+} from "../hooks/useLarpPermissions";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface OrgRow {
   larp_id: string;
   user_id: string;
   email: string | null;
+  permissions: PermissionsMap;
 }
 interface AccountRow {
   user_id: string;
@@ -31,10 +37,16 @@ interface AccountRow {
   auth_email: string | null;
 }
 
+const DEFAULT_PERMS: PermissionsMap = ALL_SECTIONS.reduce(
+  (acc, s) => ({ ...acc, [s]: "edit" as SectionLevel }),
+  {} as PermissionsMap,
+);
+
 export default function V2OrganizersPage() {
   const { larpSlug } = useParams<{ larpSlug: string }>();
-  const { isSuperAdmin, loading: roleLoading } = useAdminRole();
-  const [larp, setLarp] = useState<{ id: string; name: string } | null>(null);
+  const { canManageOrganizers, isSuperAdmin, loading: permLoading } = useLarpPermissions(larpSlug);
+  const [larp, setLarp] = useState<{ id: string; name: string; owner_id: string } | null>(null);
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [rows, setRows] = useState<OrgRow[]>([]);
   const [accounts, setAccounts] = useState<Record<string, AccountRow>>({});
   const [loading, setLoading] = useState(true);
@@ -48,6 +60,7 @@ export default function V2OrganizersPage() {
   const [editDisplay, setEditDisplay] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editPerms, setEditPerms] = useState<PermissionsMap>({});
 
   const [selected, setSelected] = useState<OrgRow | null>(null);
 
@@ -62,10 +75,13 @@ export default function V2OrganizersPage() {
 
   const reload = async (larpId: string) => {
     const [{ data: orgs }, { data: accs }] = await Promise.all([
-      supabase.from("larp_organizers").select("larp_id, user_id, email").eq("larp_id", larpId),
+      supabase.from("larp_organizers").select("larp_id, user_id, email, permissions").eq("larp_id", larpId),
       supabase.from("organizer_accounts").select("user_id, login, display_name, contact_email, contact_phone, auth_email"),
     ]);
-    setRows((orgs ?? []) as OrgRow[]);
+    setRows(((orgs ?? []) as any[]).map((o) => ({
+      ...o,
+      permissions: (o.permissions && typeof o.permissions === "object" ? o.permissions : {}) as PermissionsMap,
+    })));
     const map: Record<string, AccountRow> = {};
     (accs ?? []).forEach((a) => { map[a.user_id] = a as AccountRow; });
     setAccounts(map);
@@ -74,9 +90,16 @@ export default function V2OrganizersPage() {
   useEffect(() => {
     if (!larpSlug) return;
     (async () => {
-      const { data: l } = await supabase.from("larps").select("id, name").eq("slug", larpSlug).maybeSingle();
+      const { data: l } = await supabase.from("larps").select("id, name, owner_id").eq("slug", larpSlug).maybeSingle();
       if (!l) { setLoading(false); return; }
       setLarp(l);
+      // try to resolve owner email via organizer_accounts (best-effort)
+      const { data: ownerAcc } = await supabase
+        .from("organizer_accounts")
+        .select("contact_email, auth_email, display_name, login")
+        .eq("user_id", l.owner_id)
+        .maybeSingle();
+      setOwnerEmail(ownerAcc?.contact_email || ownerAcc?.auth_email || ownerAcc?.display_name || ownerAcc?.login || null);
       await reload(l.id);
       setLoading(false);
     })();
@@ -97,7 +120,7 @@ export default function V2OrganizersPage() {
       },
     });
     setSaving(false);
-    if (error || data?.error) { toast.error(error?.message || data?.error || "Chyba"); return; }
+    if (error || (data as any)?.error) { toast.error(error?.message || (data as any)?.error || "Chyba"); return; }
     toast.success(`Organizátor „${login}“ vytvořen`);
     setCreateOpen(false);
     setNLogin(""); setNPass(""); setNName(""); setNMail(""); setNPhone("");
@@ -112,7 +135,7 @@ export default function V2OrganizersPage() {
       .select("user_id").eq("auth_email", email).maybeSingle();
     if (!acc) { setSaving(false); toast.error("Uživatel nenalezen"); return; }
     const { error } = await supabase.from("larp_organizers")
-      .insert({ user_id: acc.user_id, larp_id: larp.id, email });
+      .insert({ user_id: acc.user_id, larp_id: larp.id, email, permissions: DEFAULT_PERMS as any });
     setSaving(false);
     if (error) { toast.error(error.code === "23505" ? "Již je přiřazen" : error.message); return; }
     toast.success("Organizátor přiřazen");
@@ -126,19 +149,31 @@ export default function V2OrganizersPage() {
     setEditDisplay(a?.display_name ?? "");
     setEditEmail(a?.contact_email ?? "");
     setEditPhone(a?.contact_phone ?? "");
+    setEditPerms({ ...row.permissions });
     setEditOpen(true);
+  };
+
+  const setLevel = (section: SectionKey, level: SectionLevel) => {
+    setEditPerms((p) => ({ ...p, [section]: level }));
+  };
+  const setAllLevels = (level: SectionLevel) => {
+    setEditPerms(ALL_SECTIONS.reduce((acc, s) => ({ ...acc, [s]: level }), {} as PermissionsMap));
   };
 
   const handleSaveEdit = async () => {
     if (!editing || !larp) return;
     setSaving(true);
-    const { error } = await supabase.from("organizer_accounts").update({
+    const { error: e1 } = await supabase.from("organizer_accounts").update({
       display_name: editDisplay.trim() || null,
       contact_email: editEmail.trim() || null,
       contact_phone: editPhone.trim() || null,
     }).eq("user_id", editing.user_id);
+    const { error: e2 } = await supabase.from("larp_organizers")
+      .update({ permissions: editPerms as any })
+      .eq("larp_id", editing.larp_id)
+      .eq("user_id", editing.user_id);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (e1 || e2) { toast.error((e1 || e2)!.message); return; }
     toast.success("Uloženo");
     setEditOpen(false); setEditing(null);
     reload(larp.id);
@@ -156,17 +191,17 @@ export default function V2OrganizersPage() {
     reload(larp.id);
   };
 
-  if (roleLoading || loading) {
+  if (permLoading || loading) {
     return <V2Shell larpName={larp?.name}><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div></V2Shell>;
   }
 
-  if (!isSuperAdmin) {
+  if (!canManageOrganizers) {
     return (
       <V2Shell larpName={larp?.name}>
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
             <ShieldAlert className="h-5 w-5" />
-            Správa organizátorů je dostupná jen super-adminovi.
+            Správu organizátorů smí používat jen vlastník LARPu nebo super-admin.
           </CardContent>
         </Card>
       </V2Shell>
@@ -179,16 +214,30 @@ export default function V2OrganizersPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-semibold"><UserCog className="h-6 w-6" /> Organizátoři</h1>
-            <p className="text-sm text-muted-foreground">Přístup k LARPu „{larp?.name}“.</p>
+            <p className="text-sm text-muted-foreground">Spravujte přístup a oprávnění k LARPu „{larp?.name}“.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Nový</Button>
+            {isSuperAdmin && <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Nový účet</Button>}
             <Button variant="outline" onClick={() => setAssignOpen(true)}>Přiřadit podle e-mailu</Button>
           </div>
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Přiřazení k tomuto LARPu</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Vlastník</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3 py-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{ownerEmail || larp?.owner_id}</div>
+                <div className="text-xs text-muted-foreground">Plný přístup ke všem sekcím (nelze omezit)</div>
+              </div>
+              <Badge variant="secondary">Vlastník</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Organizátoři</CardTitle></CardHeader>
           <CardContent>
             {rows.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Zatím nejsou přiřazeni žádní organizátoři.</p>
@@ -198,11 +247,18 @@ export default function V2OrganizersPage() {
                   const a = accounts[r.user_id];
                   const title = a?.display_name?.trim() || a?.login || r.email || r.user_id;
                   const sub = [a?.login && `@${a.login}`, a?.contact_email || r.email, a?.contact_phone].filter(Boolean).join(" · ");
+                  const editCount = ALL_SECTIONS.filter((s) => r.permissions[s] === "edit").length;
+                  const viewCount = ALL_SECTIONS.filter((s) => r.permissions[s] === "view").length;
                   return (
                     <li key={`${r.larp_id}-${r.user_id}`} className="flex items-center justify-between gap-2 py-3">
                       <button onClick={() => openEdit(r)} className="min-w-0 flex-1 text-left">
                         <div className="truncate font-medium">{title}</div>
                         {sub && <div className="truncate text-xs text-muted-foreground">{sub}</div>}
+                        <div className="mt-1 flex gap-1.5 text-[11px]">
+                          <Badge variant="default" className="px-1.5 py-0">{editCount} editovat</Badge>
+                          <Badge variant="secondary" className="px-1.5 py-0">{viewCount} zobrazit</Badge>
+                          <Badge variant="outline" className="px-1.5 py-0">{ALL_SECTIONS.length - editCount - viewCount} žádné</Badge>
+                        </div>
                       </button>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(r)} aria-label="Upravit"><Pencil className="h-4 w-4" /></Button>
@@ -250,12 +306,71 @@ export default function V2OrganizersPage() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Upravit organizátora</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1"><Label>Jméno</Label><Input value={editDisplay} onChange={(e) => setEditDisplay(e.target.value)} /></div>
-            <div className="space-y-1"><Label>Kontaktní e-mail</Label><Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} /></div>
-            <div className="space-y-1"><Label>Telefon</Label><Input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} /></div>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1"><Label>Jméno</Label><Input value={editDisplay} onChange={(e) => setEditDisplay(e.target.value)} /></div>
+              <div className="space-y-1"><Label>Kontaktní e-mail</Label><Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} /></div>
+              <div className="space-y-1"><Label>Telefon</Label><Input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} /></div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <Label className="text-sm font-semibold">Oprávnění k sekcím</Label>
+                <div className="flex gap-1">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setAllLevels("edit")}>Vše editovat</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setAllLevels("view")}>Jen čtení</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setAllLevels("none")}>Nic</Button>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Sekce</th>
+                      <th className="px-2 py-2 text-center w-24">Žádný</th>
+                      <th className="px-2 py-2 text-center w-24">Zobrazit</th>
+                      <th className="px-2 py-2 text-center w-24">Editovat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ALL_SECTIONS.map((s) => {
+                      const current = editPerms[s] ?? "none";
+                      return (
+                        <tr key={s} className="border-t border-border">
+                          <td className="px-3 py-2 font-medium">{SECTION_LABELS[s]}</td>
+                          {(["none", "view", "edit"] as SectionLevel[]).map((lvl) => (
+                            <td key={lvl} className="px-2 py-1 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setLevel(s, lvl)}
+                                className={cn(
+                                  "inline-flex h-7 w-full items-center justify-center rounded text-xs transition-colors",
+                                  current === lvl
+                                    ? lvl === "edit"
+                                      ? "bg-primary text-primary-foreground"
+                                      : lvl === "view"
+                                        ? "bg-secondary text-secondary-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                    : "hover:bg-muted",
+                                )}
+                              >
+                                {current === lvl && "●"}
+                              </button>
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                <strong>Žádný</strong> – sekce je v navigaci skrytá. <strong>Zobrazit</strong> – jen čtení.
+                <strong> Editovat</strong> – plné úpravy v dané sekci.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Zrušit</Button>
