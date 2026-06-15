@@ -32,13 +32,14 @@ export default function V2LarpHome() {
       if (!larpRow) { setNotFound(true); setLoading(false); return; }
       setLarp(larpRow as LarpRow);
 
-      const [{ data: runsRows }, { count: docCount }, { count: personCount }] = await Promise.all([
+      const [{ data: runsRows }, { count: docCount }, { count: charCount }, { count: cpCount }] = await Promise.all([
         supabase.from("runs").select("id, name, slug, date_from, date_to, is_active").eq("larp_id", larpRow.id).order("date_from", { ascending: false }),
         supabase.from("documents").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id),
-        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id),
+        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id).eq("type", "postava"),
+        supabase.from("persons").select("id", { count: "exact", head: true }).eq("larp_id", larpRow.id).eq("type", "cp"),
       ]);
       setRuns((runsRows ?? []) as RunRow[]);
-      setCounts({ documents: docCount ?? 0, persons: personCount ?? 0 });
+      setCounts({ documents: docCount ?? 0, characters: charCount ?? 0, cp: cpCount ?? 0 });
       setLoading(false);
     })();
   }, [user, larpSlug]);
