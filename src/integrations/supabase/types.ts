@@ -397,7 +397,9 @@ export type Database = {
           created_at: string
           error: string | null
           id: string
+          idempotency_key: string | null
           larp_id: string
+          metadata: Json
           person_id: string | null
           recipient_email: string
           run_id: string | null
@@ -409,7 +411,9 @@ export type Database = {
           created_at?: string
           error?: string | null
           id?: string
+          idempotency_key?: string | null
           larp_id: string
+          metadata?: Json
           person_id?: string | null
           recipient_email: string
           run_id?: string | null
@@ -421,7 +425,9 @@ export type Database = {
           created_at?: string
           error?: string | null
           id?: string
+          idempotency_key?: string | null
           larp_id?: string
+          metadata?: Json
           person_id?: string | null
           recipient_email?: string
           run_id?: string | null
@@ -996,6 +1002,7 @@ export type Database = {
           access_token: string
           act_info: string | null
           created_at: string
+          email: string | null
           group_name: string | null
           id: string
           larp_id: string | null
@@ -1017,6 +1024,7 @@ export type Database = {
           access_token?: string
           act_info?: string | null
           created_at?: string
+          email?: string | null
           group_name?: string | null
           id?: string
           larp_id?: string | null
@@ -1038,6 +1046,7 @@ export type Database = {
           access_token?: string
           act_info?: string | null
           created_at?: string
+          email?: string | null
           group_name?: string | null
           id?: string
           larp_id?: string | null
@@ -1818,6 +1827,16 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      consume_magic_link: {
+        Args: { p_token: string }
+        Returns: {
+          larp_slug: string
+          person_id: string
+          person_slug: string
+          run_id: string
+          scope: string
+        }[]
+      }
       create_person_assignment_with_password: {
         Args: {
           p_password: string
@@ -1847,6 +1866,15 @@ export type Database = {
       }
       create_production_portal_access_no_password: {
         Args: { p_larp_id: string; p_run_id?: string }
+        Returns: string
+      }
+      create_run_magic_link: {
+        Args: {
+          p_person_id: string
+          p_run_id: string
+          p_scope?: string
+          p_ttl_days?: number
+        }
         Returns: string
       }
       create_schedule_portal_access: {
