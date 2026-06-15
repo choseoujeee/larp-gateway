@@ -530,7 +530,7 @@ export default function CpPortalPage() {
           <section aria-labelledby="cp-docs-heading">
             <h2 id="cp-docs-heading" className="font-typewriter text-xl tracking-wider uppercase text-foreground mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Společné dokumenty pro CP
+              Pro CP
             </h2>
             <PaperCard className="overflow-hidden">
               <Collapsible 
