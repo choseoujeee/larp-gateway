@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,11 +21,18 @@ interface Props { runId: string; }
 export function ProductionChecklistCard({ runId }: Props) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newTitle, setNewTitle] = useState("");
-  const [newGroup, setNewGroup] = useState("Hlavní");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editGroup, setEditGroup] = useState("");
+
+  // per-group inline "add item" state
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [addTitle, setAddTitle] = useState("");
+
+  // new-checklist dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogName, setDialogName] = useState("");
+  const [dialogFirstItem, setDialogFirstItem] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,16 +47,35 @@ export function ProductionChecklistCard({ runId }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function add() {
-    if (!newTitle.trim()) return;
+  async function addItem(group: string, title: string) {
+    if (!title.trim()) return;
     const { error } = await supabase.from("run_checklist").insert({
       run_id: runId,
-      title: newTitle.trim(),
-      checklist_group: newGroup.trim() || "Hlavní",
-      sort_order: items.filter((i) => i.checklist_group === (newGroup.trim() || "Hlavní")).length,
+      title: title.trim(),
+      checklist_group: group.trim() || "Hlavní",
+      sort_order: items.filter((i) => i.checklist_group === group).length,
     });
     if (error) { toast.error(error.message); return; }
-    setNewTitle("");
+    load();
+  }
+
+  async function createChecklist() {
+    const name = dialogName.trim();
+    if (!name) { toast.error("Zadej název checklistu"); return; }
+    if (groups.includes(name)) { toast.error("Checklist s tímto názvem už existuje"); return; }
+    // Insert at least one placeholder so the group exists, or a real item if provided.
+    const firstTitle = dialogFirstItem.trim() || "První bod";
+    const { error } = await supabase.from("run_checklist").insert({
+      run_id: runId,
+      title: firstTitle,
+      checklist_group: name,
+      sort_order: 0,
+    });
+    if (error) { toast.error(error.message); return; }
+    setDialogOpen(false);
+    setDialogName("");
+    setDialogFirstItem("");
+    toast.success("Checklist vytvořen");
     load();
   }
 
@@ -84,9 +111,17 @@ export function ProductionChecklistCard({ runId }: Props) {
   }
 
   const groups = Array.from(new Set(items.map((i) => i.checklist_group))).sort((a, b) => a.localeCompare(b, "cs"));
-  const groupOptions = Array.from(new Set([...groups, "Hlavní"]));
-
   const totalDone = items.filter((i) => i.completed).length;
+
+  function openAdd(group: string) {
+    setAddingTo(group);
+    setAddTitle("");
+  }
+  async function confirmAdd(group: string) {
+    await addItem(group, addTitle);
+    setAddTitle("");
+    setAddingTo(null);
+  }
 
   return (
     <Card>
@@ -94,33 +129,17 @@ export function ProductionChecklistCard({ runId }: Props) {
         <CardTitle className="font-typewriter text-base">
           Checklist <span className="ml-2 text-xs font-normal text-muted-foreground">{totalDone} / {items.length}</span>
         </CardTitle>
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus className="mr-1 h-4 w-4" />Nový checklist
+        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={newGroup}
-            onChange={(e) => setNewGroup(e.target.value)}
-            list="cl-groups"
-            className="w-32"
-            placeholder="Skupina"
-          />
-          <datalist id="cl-groups">
-            {groupOptions.map((g) => <option key={g} value={g} />)}
-          </datalist>
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") add(); }}
-            placeholder="Nová položka…"
-            className="flex-1 min-w-[180px]"
-          />
-          <Button size="sm" onClick={add}><Plus className="mr-1 h-4 w-4" />Přidat</Button>
-        </div>
-
         {loading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : items.length === 0 ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">Žádné položky.</div>
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            Zatím žádný checklist. Vytvoř první přes <strong>Nový checklist</strong>.
+          </div>
         ) : (
           <div className="space-y-4">
             {groups.map((g) => {
@@ -144,7 +163,6 @@ export function ProductionChecklistCard({ runId }: Props) {
                               <Input
                                 value={editGroup}
                                 onChange={(e) => setEditGroup(e.target.value)}
-                                list="cl-groups"
                                 className="h-7 w-28 text-sm"
                                 placeholder="Skupina"
                               />
@@ -184,12 +202,69 @@ export function ProductionChecklistCard({ runId }: Props) {
                       );
                     })}
                   </ul>
+
+                  {addingTo === g ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Input
+                        autoFocus
+                        value={addTitle}
+                        onChange={(e) => setAddTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmAdd(g);
+                          if (e.key === "Escape") { setAddingTo(null); setAddTitle(""); }
+                        }}
+                        placeholder="Název bodu…"
+                        className="h-8 flex-1 text-sm"
+                      />
+                      <Button size="sm" onClick={() => confirmAdd(g)}><Check className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setAddingTo(null); setAddTitle(""); }}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-7 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => openAdd(g)}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" />Přidat další bod
+                    </Button>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nový checklist</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Název checklistu</label>
+              <Input
+                autoFocus
+                value={dialogName}
+                onChange={(e) => setDialogName(e.target.value)}
+                placeholder="např. Catering, Lokace, Kostýmy…"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">První bod (volitelně)</label>
+              <Input
+                value={dialogFirstItem}
+                onChange={(e) => setDialogFirstItem(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") createChecklist(); }}
+                placeholder="Nech prázdné — doplníš později"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Zrušit</Button>
+            <Button onClick={createChecklist}>Vytvořit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
