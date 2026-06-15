@@ -43,8 +43,8 @@ export default function V2LarpHome() {
     })();
   }, [user, larpSlug]);
 
-  if (!authLoading && !user) return <Navigate to={`/login?next=/v2/larp/${larpSlug}`} replace />;
-  if (notFound) return <Navigate to="/v2" replace />;
+  if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}`} replace />;
+  if (notFound) return <Navigate to="/" replace />;
 
   return (
     <V2Shell larpName={larp?.name}>
@@ -60,8 +60,8 @@ export default function V2LarpHome() {
           </header>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/v2/larp/${larpSlug}/dokumenty`} />
-            <StatCard icon={Users} label="Postav" value={counts.persons} to={`/v2/larp/${larpSlug}/postavy`} />
+            <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/larp/${larpSlug}/dokumenty`} />
+            <StatCard icon={Users} label="Postav" value={counts.persons} to={`/larp/${larpSlug}/postavy`} />
             <StatCard icon={Calendar} label="Běhů" value={runs.length} to={`#runs`} />
           </div>
 
@@ -77,7 +77,7 @@ export default function V2LarpHome() {
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {runs.map((r) => (
-                  <Link key={r.id} to={`/v2/larp/${larpSlug}/beh/${r.slug}`}>
+                  <Link key={r.id} to={`/larp/${larpSlug}/beh/${r.slug}`}>
                     <Card className="transition-colors hover:border-primary">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center justify-between text-base font-typewriter">

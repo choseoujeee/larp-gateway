@@ -89,10 +89,10 @@ export default function V2DocumentsPage() {
       })
       .select("id")
       .single();
-    if (!error && data) navigate(`/v2/larp/${larpSlug}/dokumenty/${data.id}`);
+    if (!error && data) navigate(`/larp/${larpSlug}/dokumenty/${data.id}`);
   }
 
-  if (!authLoading && !user) return <Navigate to={`/login?next=/v2/larp/${larpSlug}/dokumenty`} replace />;
+  if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/dokumenty`} replace />;
 
   return (
     <V2Shell larpName={larp?.name}>
@@ -131,7 +131,7 @@ export default function V2DocumentsPage() {
         ) : (
           <div className="grid gap-2">
             {filtered.map((d) => (
-              <Link key={d.id} to={`/v2/larp/${larpSlug}/dokumenty/${d.id}`}>
+              <Link key={d.id} to={`/larp/${larpSlug}/dokumenty/${d.id}`}>
                 <Card className="transition-colors hover:border-primary">
                   <CardContent className="flex items-start gap-3 py-3">
                     <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

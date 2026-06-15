@@ -41,36 +41,36 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
 
   const larpNav: NavItem[] = larpSlug
     ? [
-        { to: `/v2/larp/${larpSlug}`, icon: LayoutDashboard, label: "Přehled" },
-        { to: `/v2/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
-        { to: `/v2/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
-        { to: `/v2/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
-        { to: `/v2/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
-        ...(isSuperAdmin ? [{ to: `/v2/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
+        { to: `/larp/${larpSlug}`, icon: LayoutDashboard, label: "Přehled" },
+        { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
+        { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
+        { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
+        { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
+        ...(isSuperAdmin ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
     : [];
 
   const runNav: NavItem[] = larpSlug && runSlug
     ? [
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}`, icon: LayoutDashboard, label: "Cockpit" },
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}/hraci`, icon: Users, label: "Hráči" },
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}/cp`, icon: Theater, label: "CP performeři" },
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/v2/larp/${larpSlug}/beh/${runSlug}/komunikace`, icon: Mail, label: "Komunikace" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}`, icon: LayoutDashboard, label: "Cockpit" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}/hraci`, icon: Users, label: "Hráči" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}/cp`, icon: Theater, label: "CP performeři" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}/harmonogram`, icon: Calendar, label: "Harmonogram" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
+        { to: `/larp/${larpSlug}/beh/${runSlug}/komunikace`, icon: Mail, label: "Komunikace" },
       ]
     : [];
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-        <Link to="/v2" className="font-typewriter text-lg tracking-wider text-foreground">
+        <Link to="/" className="font-typewriter text-lg tracking-wider text-foreground">
           LARP <span className="text-primary">v2</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto p-3">
         <V2NavGroup label="Přehled">
-          <V2NavLink to="/v2" icon={LayoutDashboard} label="Moje LARPy" onClick={() => setMobileOpen(false)} />
+          <V2NavLink to="/" icon={LayoutDashboard} label="Moje LARPy" onClick={() => setMobileOpen(false)} />
         </V2NavGroup>
 
         {larpSlug && (
@@ -88,7 +88,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
             ) : runs.map((r) => (
               <V2NavLink
                 key={r.id}
-                to={`/v2/larp/${larpSlug}/beh/${r.slug}`}
+                to={`/larp/${larpSlug}/beh/${r.slug}`}
                 icon={CalendarDays}
                 label={r.name + (r.is_active ? " ●" : "")}
                 onClick={() => setMobileOpen(false)}
@@ -164,7 +164,7 @@ function V2NavLink({ to, icon: Icon, label, onClick }: NavItem & { onClick?: () 
   return (
     <NavLink
       to={to}
-      end={to === "/v2"}
+      end={to === "/"}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
@@ -184,7 +184,7 @@ function V2NavLink({ to, icon: Icon, label, onClick }: NavItem & { onClick?: () 
 function V2Breadcrumb({ larpName, runName }: { larpName?: string; runName?: string }) {
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm text-muted-foreground">
-      <Link to="/v2" className="hover:text-foreground">LARP Portál</Link>
+      <Link to="/" className="hover:text-foreground">LARP Portál</Link>
       {larpName && (
         <>
           <ChevronRight className="h-3.5 w-3.5" />

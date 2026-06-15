@@ -83,7 +83,7 @@ export default function V2PersonsListPage({ kind }: Props) {
     await reload();
   }
 
-  if (!authLoading && !user) return <Navigate to={`/login?next=/v2/larp/${larpSlug}/${kind === "cp" ? "cp" : "postavy"}`} replace />;
+  if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/${kind === "cp" ? "cp" : "postavy"}`} replace />;
 
   const title = kind === "cp" ? "CP" : "Postavy";
   const Icon = kind === "cp" ? Theater : User;
@@ -114,7 +114,7 @@ export default function V2PersonsListPage({ kind }: Props) {
             {filtered.map((p) => (
               <Card key={p.id} className="transition-colors hover:border-primary">
                 <CardContent className="flex items-start gap-3 py-3">
-                  <Link to={`/v2/larp/${larpSlug}/${kind === "cp" ? "cp" : "postavy"}/${p.id}`} className="flex min-w-0 flex-1 items-start gap-3">
+                  <Link to={`/larp/${larpSlug}/${kind === "cp" ? "cp" : "postavy"}/${p.id}`} className="flex min-w-0 flex-1 items-start gap-3">
                     <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-typewriter text-base">{p.name}</div>
