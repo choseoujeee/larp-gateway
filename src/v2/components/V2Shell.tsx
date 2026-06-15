@@ -85,6 +85,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
             runs={runs}
             currentRunSlug={runSlug}
             onNavigate={() => setMobileOpen(false)}
+            canView={canView}
           />
         )}
       </nav>
