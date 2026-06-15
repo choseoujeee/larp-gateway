@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
-import { Loader2, Mail, Phone, Users as UsersIcon, Search } from "lucide-react";
+import { Navigate, Link, useParams } from "react-router-dom";
+import { Loader2, Mail, Phone, Search } from "lucide-react";
 import { V2Shell } from "../components/V2Shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,16 +15,8 @@ interface AssignmentRow {
   player_email: string | null;
   player_phone: string | null;
   paid_at: string | null;
-  run: { id: string; name: string; slug: string; date_from: string | null } | null;
-  person: { id: string; name: string } | null;
-}
-
-interface PlayerAggregate {
-  key: string;
-  display_name: string;
-  email: string | null;
-  phone: string | null;
-  assignments: AssignmentRow[];
+  run: { id: string; name: string; slug: string; date_from: string | null; is_active: boolean | null } | null;
+  person: { id: string; name: string; slug: string | null; type: string | null; group_name: string | null } | null;
 }
 
 export default function V2LarpPlayersPage() {
@@ -48,8 +41,9 @@ export default function V2LarpPlayersPage() {
 
       const { data } = await supabase
         .from("run_person_assignments")
-        .select("id, player_name, player_email, player_phone, paid_at, run:runs!inner(id, name, slug, date_from, larp_id), person:persons(id, name)")
-        .eq("run.larp_id", larp.id);
+        .select("id, player_name, player_email, player_phone, paid_at, run:runs!inner(id, name, slug, date_from, is_active, larp_id), person:persons(id, name, slug, type, group_name)")
+        .eq("run.larp_id", larp.id)
+        .eq("run.is_active", true);
 
       if (cancelled) return;
       setRows((data as unknown as AssignmentRow[]) ?? []);
@@ -58,18 +52,24 @@ export default function V2LarpPlayersPage() {
     return () => { cancelled = true; };
   }, [user, larpSlug]);
 
-  const aggregated = useMemo(() => aggregatePlayers(rows), [rows]);
-
-  const filtered = useMemo(() => {
+  const { players, performers } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return aggregated;
-    return aggregated.filter((p) =>
-      p.display_name.toLowerCase().includes(q) ||
-      (p.email ?? "").toLowerCase().includes(q) ||
-      (p.phone ?? "").toLowerCase().includes(q) ||
-      p.assignments.some((a) => (a.person?.name ?? "").toLowerCase().includes(q))
-    );
-  }, [aggregated, search]);
+    const match = (r: AssignmentRow) => {
+      if (!q) return true;
+      return (r.player_name ?? "").toLowerCase().includes(q)
+        || (r.player_email ?? "").toLowerCase().includes(q)
+        || (r.player_phone ?? "").toLowerCase().includes(q)
+        || (r.person?.name ?? "").toLowerCase().includes(q);
+    };
+    const sorted = [...rows]
+      .filter((r) => (r.player_name?.trim() || r.player_email?.trim()))
+      .filter(match)
+      .sort((a, b) => (a.player_name ?? "").localeCompare(b.player_name ?? "", "cs"));
+    return {
+      players: sorted.filter((r) => r.person?.type !== "cp"),
+      performers: sorted.filter((r) => r.person?.type === "cp"),
+    };
+  }, [rows, search]);
 
   if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/hraci`} replace />;
   if (notFound) return <Navigate to="/" replace />;
@@ -80,7 +80,7 @@ export default function V2LarpPlayersPage() {
         <header>
           <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">Hráči</h1>
           <p className="text-sm text-muted-foreground">
-            Všichni hráči, kteří kdy hráli v některém z běhů tohoto LARPu. Hodí se pro pozvání bývalých hráčů na nový běh.
+            Lidé přiřazení k aktivnímu běhu — hráči postav a performeři CP.
           </p>
         </header>
 
@@ -98,106 +98,70 @@ export default function V2LarpPlayersPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              {aggregated.length === 0
-                ? "Zatím žádní hráči — jakmile přiřadíte jméno a e-mail k postavě v některém běhu, objeví se tady."
-                : "Žádný hráč nevyhovuje hledání."}
-            </CardContent>
-          </Card>
         ) : (
-          <div className="space-y-3">
-            <div className="text-xs text-muted-foreground">
-              {filtered.length} {filtered.length === 1 ? "hráč" : filtered.length < 5 ? "hráči" : "hráčů"}
-            </div>
-            {filtered.map((p) => (
-              <PlayerCard key={p.key} player={p} />
-            ))}
-          </div>
+          <Tabs defaultValue="players">
+            <TabsList>
+              <TabsTrigger value="players">Hráči postav · {players.length}</TabsTrigger>
+              <TabsTrigger value="performers">Performeři CP · {performers.length}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="players" className="mt-4">
+              <PersonList rows={players} larpSlug={larpSlug!} emptyText="Žádní hráči v aktivním běhu." />
+            </TabsContent>
+            <TabsContent value="performers" className="mt-4">
+              <PersonList rows={performers} larpSlug={larpSlug!} emptyText="Žádní performeři v aktivním běhu." />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </V2Shell>
   );
 }
 
-function PlayerCard({ player }: { player: PlayerAggregate }) {
-  const sortedAssignments = [...player.assignments].sort((a, b) => {
-    const da = a.run?.date_from ?? "";
-    const db = b.run?.date_from ?? "";
-    return db.localeCompare(da);
-  });
-
+function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larpSlug: string; emptyText: string }) {
+  if (rows.length === 0) {
+    return <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{emptyText}</CardContent></Card>;
+  }
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="font-typewriter text-lg">{player.display_name}</div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {player.email && (
-                <a href={`mailto:${player.email}`} className="inline-flex items-center gap-1 hover:text-foreground">
-                  <Mail className="h-3 w-3" />{player.email}
-                </a>
-              )}
-              {player.phone && (
-                <span className="inline-flex items-center gap-1">
-                  <Phone className="h-3 w-3" />{player.phone}
-                </span>
-              )}
-            </div>
-          </div>
-          <Badge variant="secondary" className="gap-1">
-            <UsersIcon className="h-3 w-3" />
-            {player.assignments.length} {player.assignments.length === 1 ? "běh" : player.assignments.length < 5 ? "běhy" : "běhů"}
-          </Badge>
-        </div>
-
-        <ul className="divide-y divide-border rounded-md border border-border">
-          {sortedAssignments.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-              <div>
-                <span className="font-medium">{a.person?.name ?? "—"}</span>
-                <span className="text-muted-foreground"> · {a.run?.name ?? "—"}</span>
-                {a.run?.date_from && (
-                  <span className="text-muted-foreground"> · {new Date(a.run.date_from).toLocaleDateString("cs-CZ")}</span>
+    <div className="space-y-2">
+      {rows.map((r) => {
+        const isCp = r.person?.type === "cp";
+        const personPath = r.person?.slug
+          ? `/larp/${larpSlug}/${isCp ? "cp" : "postavy"}/${r.person.slug}`
+          : null;
+        return (
+          <Card key={r.id}>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <div className="font-typewriter text-base">{r.player_name || <span className="italic text-muted-foreground">bez jména</span>}</div>
+                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {r.player_email && (
+                    <a href={`mailto:${r.player_email}`} className="inline-flex items-center gap-1 hover:text-foreground">
+                      <Mail className="h-3 w-3" />{r.player_email}
+                    </a>
+                  )}
+                  {r.player_phone && (
+                    <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.player_phone}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {r.person && (
+                  personPath ? (
+                    <Link to={personPath}><Badge variant="secondary">{r.person.name}</Badge></Link>
+                  ) : (
+                    <Badge variant="secondary">{r.person.name}</Badge>
+                  )
+                )}
+                {!isCp && (
+                  r.paid_at
+                    ? <Badge className="text-[10px]">Zaplaceno</Badge>
+                    : <Badge variant="outline" className="text-[10px]">Nezaplaceno</Badge>
                 )}
               </div>
-              {a.paid_at ? (
-                <Badge variant="default" className="text-[10px]">Zaplaceno</Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px]">Nezaplaceno</Badge>
-              )}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
-}
-
-function aggregatePlayers(rows: AssignmentRow[]): PlayerAggregate[] {
-  const map = new Map<string, PlayerAggregate>();
-  for (const r of rows) {
-    const email = r.player_email?.trim().toLowerCase() || null;
-    const name = r.player_name?.trim() || null;
-    if (!email && !name) continue; // skip unassigned
-    const key = email ?? `name:${name?.toLowerCase()}`;
-    const display = name || email || "—";
-    const existing = map.get(key);
-    if (existing) {
-      existing.assignments.push(r);
-      if (!existing.phone && r.player_phone) existing.phone = r.player_phone;
-      if (!existing.email && email) existing.email = email;
-    } else {
-      map.set(key, {
-        key,
-        display_name: display,
-        email,
-        phone: r.player_phone || null,
-        assignments: [r],
-      });
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.display_name.localeCompare(b.display_name, "cs"));
 }
