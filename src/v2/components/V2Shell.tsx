@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays } from "lucide-react";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, LogOut, CalendarDays, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
 
 interface V2ShellProps {
@@ -22,6 +23,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
   const { signOut, user } = useAuth();
+  const { isSuperAdmin } = useAdminRole();
   const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         { to: `/v2/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
         { to: `/v2/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
         { to: `/v2/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
+        ...(isSuperAdmin ? [{ to: `/v2/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
     : [];
 
