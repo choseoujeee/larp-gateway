@@ -5,6 +5,7 @@ export interface RunData {
   id: string;
   name: string;
   slug: string;
+  run_number: number | null;
   date_from: string | null;
   date_to: string | null;
   location: string | null;
@@ -24,6 +25,32 @@ export function getRunStatus(run: Pick<RunData, "is_active" | "date_from" | "dat
   if (run.date_to && run.date_to < today) return "past";
   if (run.date_from && run.date_from <= today && (!run.date_to || run.date_to >= today)) return "active";
   return "unknown";
+}
+
+export function getRunDisplayName(run: Pick<RunData, "run_number" | "name" | "date_from">): string {
+  if (run.run_number) {
+    if (run.date_from) {
+      try {
+        const d = new Date(run.date_from);
+        const month = d.toLocaleDateString("cs-CZ", { month: "long" });
+        const year = d.toLocaleDateString("cs-CZ", { year: "numeric" });
+        return `${run.run_number}. - ${month} ${year}`;
+      } catch {
+        // fallthrough
+      }
+    }
+    return `${run.run_number}. - ${run.name}`;
+  }
+  if (run.date_from) {
+    try {
+      const d = new Date(run.date_from);
+      const month = d.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+      return `${run.name} · ${month}`;
+    } catch {
+      // fallthrough
+    }
+  }
+  return run.name;
 }
 
 export function useRun(larpSlug?: string, runSlug?: string) {
