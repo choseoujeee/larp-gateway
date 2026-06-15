@@ -177,7 +177,7 @@ export default function V2PersonDetailPage() {
                 <PortalLinkCard
                   label={person.type === "cp" ? "CP portál (individuální)" : "Hráčský portál"}
                   url={portalUrl}
-                  hint="Heslo nastavíš tlačítkem „Upravit" výše (pole Heslo do portálu)."
+                  hint={'Heslo nastavíš tlačítkem „Upravit" výše (pole Heslo do portálu).'}
                 />
                 {person.type === "cp" && (
                   <PortalLinkCard label="CP hub (přehled všech CP)" url={cpHubUrl} hint="Sdílený přístup pro všechny CP daného LARPu." />
