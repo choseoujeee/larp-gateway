@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, useParams, useLocation } from "react-router-dom";
-import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, ChevronDown, LogOut, CalendarDays, UserCog, Archive, Users2 } from "lucide-react";
+import { Menu, X, LayoutDashboard, FileText, Users, Theater, Palette, Calendar, ClipboardCheck, Mail, ChevronRight, ChevronDown, LogOut, CalendarDays, UserCog, Archive, Users2, UserCircle as UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
