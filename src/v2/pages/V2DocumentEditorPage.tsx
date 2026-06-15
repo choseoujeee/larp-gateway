@@ -57,6 +57,7 @@ export default function V2DocumentEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useUnsavedChangesGuard(dirty);
 
