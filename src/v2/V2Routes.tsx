@@ -8,6 +8,7 @@ import V2PersonDetailPage from "./pages/V2PersonDetailPage";
 import V2Stub from "./pages/V2Stub";
 import V2OrganizersPage from "./pages/V2OrganizersPage";
 import V2PastRunsPage from "./pages/V2PastRunsPage";
+import V2RunCockpit from "./pages/V2RunCockpit";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
@@ -33,7 +34,7 @@ export default function V2Routes() {
       <Route path=":larpSlug/design" element={<V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." />} />
       <Route path=":larpSlug/produkce" element={<V2Stub title="Produkce (sdílené pro celý LARP)" description="Sdílené produkční dokumenty, soubory, materiály a šablony checklistů — vše, co je stejné napříč běhy. Konkrétní použití pro daný běh najdete na stránce běhu → Produkce." />} />
       <Route path=":larpSlug/drivejsi-behy" element={<V2PastRunsPage />} />
-      <Route path=":larpSlug/beh/:runSlug" element={<V2Stub title="Cockpit běhu" description="Pre-flight přehled (Etapa 2)." />} />
+      <Route path=":larpSlug/beh/:runSlug" element={<V2RunCockpit />} />
       <Route path=":larpSlug/beh/:runSlug/hraci" element={<V2Stub title="Hráči a magic linky" description="Pozvánky hráčů přes Lovable Emails (Etapa 2)." />} />
       <Route path=":larpSlug/beh/:runSlug/cp" element={<V2Stub title="CP performeři" description="Přiřazení performerů k rolím a scénám (Etapa 3)." />} />
       <Route path=":larpSlug/beh/:runSlug/harmonogram" element={<V2Stub title="Harmonogram" description="Harmonogram běhu (Etapa 2)." />} />
