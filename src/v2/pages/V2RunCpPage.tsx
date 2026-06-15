@@ -127,7 +127,7 @@ export default function V2RunCpPage() {
             </Button>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">CP performeři — {run.name}</h1>
+                <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">CP performeři — {getRunDisplayName(run)}</h1>
                 <p className="text-sm text-muted-foreground">
                   Přiřazeno {totalAssigned} z {cps.length} CP
                 </p>

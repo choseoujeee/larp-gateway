@@ -594,7 +594,7 @@ export default function V2RunSchedulePage({ embedded, runIdOverride, larpIdOverr
       {!embedded && (
         <header>
           <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">
-            Harmonogram{run ? ` — ${run.name}` : ""}
+            Harmonogram{run ? ` — ${getRunDisplayName(run)}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground">Časový plán běhu — vstupy CP, materiály, organizační body, jídlo, přesuny.</p>
         </header>
