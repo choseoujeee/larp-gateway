@@ -25,9 +25,8 @@ export function RunHeader({ run, onEdit }: Props) {
         <h1 className="font-typewriter text-2xl tracking-wide md:text-3xl">{run.name}</h1>
         <Badge variant={s.variant}>{s.label}</Badge>
         {onEdit && (
-          <Button variant="ghost" size="sm" onClick={onEdit} className="ml-auto gap-1.5">
-            <Pencil className="h-4 w-4" />
-            Upravit běh
+          <Button variant="outline" size="sm" onClick={onEdit} className="ml-auto">
+            <Pencil className="mr-1 h-4 w-4" />Upravit
           </Button>
         )}
       </div>
