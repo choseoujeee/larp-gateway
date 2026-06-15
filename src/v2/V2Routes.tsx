@@ -9,6 +9,7 @@ import V2Stub from "./pages/V2Stub";
 import V2OrganizersPage from "./pages/V2OrganizersPage";
 import V2PastRunsPage from "./pages/V2PastRunsPage";
 import V2RunCockpit from "./pages/V2RunCockpit";
+import V2GroupsPage from "./pages/V2GroupsPage";
 
 /** V2 dashboard mounted at "/" */
 export function V2RootRoutes() {
