@@ -60,8 +60,26 @@ export function ProductionChecklistCard({ runId }: Props) {
   }
 
   async function remove(id: string) {
+    if (!confirm("Smazat položku?")) return;
     const { error } = await supabase.from("run_checklist").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
+    load();
+  }
+
+  function startEdit(item: Item) {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditGroup(item.checklist_group);
+  }
+  function cancelEdit() { setEditingId(null); setEditTitle(""); setEditGroup(""); }
+  async function saveEdit(item: Item) {
+    if (!editTitle.trim()) { toast.error("Vyplň název"); return; }
+    const { error } = await supabase.from("run_checklist").update({
+      title: editTitle.trim(),
+      checklist_group: editGroup.trim() || "Hlavní",
+    }).eq("id", item.id);
+    if (error) { toast.error(error.message); return; }
+    cancelEdit();
     load();
   }
 
