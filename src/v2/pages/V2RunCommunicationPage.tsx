@@ -99,7 +99,7 @@ export default function V2RunCommunicationPage() {
           <TabsList>
             <TabsTrigger value="composer"><Send className="h-4 w-4 mr-1.5" />Rozeslat</TabsTrigger>
             <TabsTrigger value="templates"><FileText className="h-4 w-4 mr-1.5" />Šablony</TabsTrigger>
-            <TabsTrigger value="magic"><KeyRound className="h-4 w-4 mr-1.5" />Magic linky</TabsTrigger>
+            <TabsTrigger value="magic"><KeyRound className="h-4 w-4 mr-1.5" />Odkazy pro hráče</TabsTrigger>
             <TabsTrigger value="log"><History className="h-4 w-4 mr-1.5" />Historie</TabsTrigger>
           </TabsList>
 
