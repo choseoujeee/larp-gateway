@@ -45,6 +45,7 @@ export default function V2DocumentsPage() {
   const [personNames, setPersonNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DocCategory | "all">("all");
+  const [groupBy, setGroupBy] = useState<"category" | "target">("category");
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 200);
 
