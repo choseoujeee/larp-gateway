@@ -298,9 +298,20 @@ export default function PortalViewPage() {
                     </div>
                   )}
                   {session.runAddress && (
-                    <div className="flex">
-                      <span className="font-semibold w-24 text-foreground">Adresa:</span>
-                      <span className="text-muted-foreground">{session.runAddress}</span>
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold w-24 text-foreground shrink-0">Adresa:</span>
+                      <span className="text-muted-foreground flex-1">{session.runAddress}</span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(session.runAddress)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-print inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+                        aria-label="Otevřít v Google Maps"
+                        title="Otevřít v Google Maps"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Mapa
+                      </a>
                     </div>
                   )}
                 </div>
