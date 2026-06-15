@@ -22,6 +22,7 @@ export default function V2LarpHome() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function V2LarpHome() {
       setLoading(true);
       const { data: larpRow } = await supabase
         .from("larps")
-        .select("id, name, slug, motto")
+        .select("id, name, slug, motto, payment_account")
         .eq("slug", larpSlug)
         .maybeSingle();
       if (!larpRow) { setNotFound(true); setLoading(false); return; }
