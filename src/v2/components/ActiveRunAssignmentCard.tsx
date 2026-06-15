@@ -6,6 +6,7 @@ import { Loader2, Pencil, Check, X, KeyRound, Trash2, Mail, Phone, User, Save } 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { randomPassword } from "../lib/slug";
+import { getRunDisplayName } from "../hooks/useRun";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
