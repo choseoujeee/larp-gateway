@@ -42,19 +42,21 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
     })();
   }, [larpSlug]);
 
-  const larpNav: NavItem[] = larpSlug
+  const larpNavAll: NavItem[] = larpSlug
     ? [
         { to: `/larp/${larpSlug}`, icon: LayoutDashboard, label: "Přehled" },
-        { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty" },
-        { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy" },
-        { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny" },
-        { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP" },
-        { to: `/larp/${larpSlug}/hraci`, icon: UsersIcon, label: "Hráči" },
-        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce" },
-        { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design" },
-        ...(isSuperAdmin ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
+        { to: `/larp/${larpSlug}/dokumenty`, icon: FileText, label: "Dokumenty", section: "documents" },
+        { to: `/larp/${larpSlug}/postavy`, icon: Users, label: "Postavy", section: "characters" },
+        { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny", section: "groups" },
+        { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP", section: "cp" },
+        { to: `/larp/${larpSlug}/hraci`, icon: UsersIcon, label: "Hráči", section: "players" },
+        { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce", section: "production" },
+        { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design", section: "design" },
+        ...((canManageOrganizers || isSuperAdmin) ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
       ]
     : [];
+
+  const larpNav = larpNavAll.filter((item) => !item.section || canView(item.section));
 
 
   const Sidebar = (
