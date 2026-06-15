@@ -50,6 +50,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
         { to: `/larp/${larpSlug}/skupiny`, icon: Users2, label: "Skupiny", section: "groups" },
         { to: `/larp/${larpSlug}/cp`, icon: Theater, label: "CP", section: "cp" },
         { to: `/larp/${larpSlug}/hraci`, icon: UsersIcon, label: "Hráči", section: "players" },
+        { to: `/larp/${larpSlug}/harmonogram`, icon: Calendar, label: "Harmonogram", section: "schedule" },
         { to: `/larp/${larpSlug}/produkce`, icon: ClipboardCheck, label: "Produkce", section: "production" },
         { to: `/larp/${larpSlug}/design`, icon: Palette, label: "Design", section: "design" },
         ...((canManageOrganizers || isSuperAdmin) ? [{ to: `/larp/${larpSlug}/organizatori`, icon: UserCog, label: "Organizátoři" }] : []),
