@@ -87,8 +87,9 @@ const App = () => (
                   {/* v2 — greenfield přestavba */}
                   <Route path="/v2/*" element={<V2Routes />} />
 
-                  {/* Public */}
-                  <Route path="/" element={<LandingPage />} />
+                  {/* Public — v1 landing odstavena, root jede na v2 */}
+                  <Route path="/" element={<Navigate to="/v2" replace />} />
+                  <Route path="/v1-archiv" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/zapomenute-heslo" element={<ForgotPasswordPage />} />
                   <Route path="/reset-heslo" element={<ResetPasswordPage />} />
