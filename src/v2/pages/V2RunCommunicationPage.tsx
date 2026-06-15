@@ -240,12 +240,38 @@ function ComposerTab({ runId, larpId }: { runId: string; larpId: string }) {
           </div>
           <div>
             <Label>Obsah (HTML)</Label>
-            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14}
-              placeholder="<p>Ahoj {{jmeno}},...</p>" className="font-mono text-sm" />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Proměnné: {"{{jmeno}}"}, {"{{postava}}"}, {"{{skupina}}"}, {"{{larp}}"}, {"{{beh}}"}, {"{{magic_link}}"}
-            </p>
+            <Textarea
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={14}
+              placeholder="<p>Ahoj {{jmeno}},...</p>"
+              className="font-mono text-sm"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="text-xs text-muted-foreground self-center mr-1">Vložit proměnnou:</span>
+              {[
+                { v: "jmeno", l: "Jméno" },
+                { v: "postava", l: "Postava" },
+                { v: "skupina", l: "Skupina" },
+                { v: "larp", l: "LARP" },
+                { v: "beh", l: "Běh" },
+                { v: "odkaz_na_portal", l: "Odkaz na portál" },
+              ].map((it) => (
+                <Button
+                  key={it.v}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => insertVar(it.v)}
+                >
+                  {`{{${it.v}}}`} <span className="ml-1 text-muted-foreground">{it.l}</span>
+                </Button>
+              ))}
+            </div>
           </div>
+
           <Button onClick={handleSend} disabled={sending || withEmail.length === 0}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
             Odeslat ({withEmail.length})
