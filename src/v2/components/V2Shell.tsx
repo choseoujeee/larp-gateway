@@ -26,6 +26,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
   const { larpSlug, runSlug } = useParams<{ larpSlug: string; runSlug: string }>();
   const { signOut, user } = useAuth();
   const { isSuperAdmin } = useAdminRole();
+  const { canView, canManageOrganizers } = useLarpPermissions(larpSlug);
   const [runs, setRuns] = useState<Array<{ id: string; name: string; slug: string; is_active: boolean | null; date_from: string | null }>>([]);
 
   useEffect(() => {
