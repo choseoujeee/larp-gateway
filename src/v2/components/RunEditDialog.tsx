@@ -217,12 +217,40 @@ export function RunEditDialog({ runId, larpSlug, open, onOpenChange, onSaved }: 
               <Textarea id="footer_text" rows={2} value={form.footer_text} onChange={(e) => set("footer_text", e.target.value)} />
             </div>
 
+            <div className="space-y-1.5">
+              <Label htmlFor="payment_account">Číslo účtu (pro platby hráčů)</Label>
+              <Input id="payment_account" value={form.payment_account} onChange={(e) => set("payment_account", e.target.value)} placeholder="1234567890/0100" />
+            </div>
+
             <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3">
               <div>
                 <div className="text-sm font-medium">Aktivní běh</div>
                 <div className="text-xs text-muted-foreground">Aktivní běh je viditelný v portálech hráčů a CP. Najednou může být aktivní jen jeden běh LARPu.</div>
               </div>
               <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
+            </div>
+
+            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <div className="text-sm font-medium">Rozsah uložení</div>
+              <RadioGroup value={scope} onValueChange={(v) => setScope(v as "this" | "all")} className="space-y-1">
+                <label className="flex items-start gap-2 text-sm">
+                  <RadioGroupItem value="this" id="scope-this" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">Uložit jen tento běh</span>
+                    <span className="block text-xs text-muted-foreground">Změny se promítnou pouze do běhu „{form.name || "?"}".</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <RadioGroupItem value="all" id="scope-all" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">Uložit pro všechny běhy LARPu</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Místo, adresa, kontakt, mission briefing, patička a číslo účtu se zapíší do všech ostatních běhů.
+                      Název, slug, datum a aktivnost zůstávají per-běh.
+                    </span>
+                  </span>
+                </label>
+              </RadioGroup>
             </div>
           </div>
         )}
