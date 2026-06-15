@@ -106,7 +106,7 @@ export default function V2PersonDetailPage() {
       content: "",
     }).select("id").single();
     if (error || !data) { toast.error("Vytvoření selhalo: " + (error?.message ?? "")); return; }
-    navigate(`/v2/larp/${larpSlug}/dokumenty/${data.id}`);
+    navigate(`/larp/${larpSlug}/dokumenty/${data.id}`);
   }
 
   async function confirmDelete() {
@@ -114,14 +114,14 @@ export default function V2PersonDetailPage() {
     const { error } = await supabase.from("persons").delete().eq("id", person.id);
     if (error) { toast.error("Smazání selhalo"); return; }
     toast.success("Smazáno");
-    navigate(`/v2/larp/${larpSlug}/${person.type === "cp" ? "cp" : "postavy"}`);
+    navigate(`/larp/${larpSlug}/${person.type === "cp" ? "cp" : "postavy"}`);
   }
 
-  if (!authLoading && !user) return <Navigate to={`/login?next=/v2/larp/${larpSlug}/postavy/${personId}`} replace />;
+  if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/postavy/${personId}`} replace />;
 
   const backLink = person?.type === "cp"
-    ? `/v2/larp/${larpSlug}/cp`
-    : `/v2/larp/${larpSlug}/postavy`;
+    ? `/larp/${larpSlug}/cp`
+    : `/larp/${larpSlug}/postavy`;
   const portalUrl = person && larpSlug
     ? person.type === "cp"
       ? `${window.location.origin}/${larpSlug}/cp/${person.slug}`
@@ -203,7 +203,7 @@ export default function V2PersonDetailPage() {
                       <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{CAT_LABEL[cat]}</h3>
                       <div className="space-y-1.5">
                         {grouped[cat].map((d) => (
-                          <Link key={d.id} to={`/v2/larp/${larpSlug}/dokumenty/${d.id}`}
+                          <Link key={d.id} to={`/larp/${larpSlug}/dokumenty/${d.id}`}
                             className="flex items-center gap-2 rounded border border-border p-2 transition-colors hover:border-primary">
                             <FileText className="h-4 w-4 shrink-0 text-primary" />
                             <span className="flex-1 truncate text-sm">{d.title}</span>

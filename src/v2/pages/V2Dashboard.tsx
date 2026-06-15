@@ -34,7 +34,7 @@ export default function V2Dashboard() {
   }, [user]);
 
   if (!authLoading && !user) {
-    return <Navigate to="/login?next=/v2" replace />;
+    return <Navigate to="/_archiv/login?next=/" replace />;
   }
 
   return (
@@ -69,7 +69,7 @@ export default function V2Dashboard() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {larps.map((l) => (
-              <Link key={l.id} to={`/v2/larp/${l.slug}`} className="block">
+              <Link key={l.id} to={`/larp/${l.slug}`} className="block">
                 <Card className="h-full transition-colors hover:border-primary">
                   <CardHeader>
                     <CardTitle className="font-typewriter">{l.name}</CardTitle>

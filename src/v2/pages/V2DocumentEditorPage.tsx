@@ -96,16 +96,16 @@ export default function V2DocumentEditorPage() {
     if (error) { toast.error("Smazání selhalo"); return; }
     toast.success("Smazáno");
     setDirty(false);
-    navigate(`/v2/larp/${larpSlug}/dokumenty`);
+    navigate(`/larp/${larpSlug}/dokumenty`);
   }
 
-  if (!authLoading && !user) return <Navigate to={`/login?next=/v2/larp/${larpSlug}/dokumenty/${docId}`} replace />;
+  if (!authLoading && !user) return <Navigate to={`/login?next=/larp/${larpSlug}/dokumenty/${docId}`} replace />;
 
   return (
     <V2Shell larpName={larpName}>
       <div className="mx-auto max-w-4xl space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <Link to={`/v2/larp/${larpSlug}/dokumenty`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <Link to={`/larp/${larpSlug}/dokumenty`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="mr-1 h-4 w-4" />Zpět na dokumenty
           </Link>
           <div className="flex items-center gap-2">
