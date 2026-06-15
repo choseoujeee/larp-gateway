@@ -60,9 +60,10 @@ export default function V2LarpHome() {
             {larp?.motto && <p className="italic text-muted-foreground">{larp.motto}</p>}
           </header>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={FileText} label="Dokumentů" value={counts.documents} to={`/larp/${larpSlug}/dokumenty`} />
-            <StatCard icon={Users} label="Postav" value={counts.persons} to={`/larp/${larpSlug}/postavy`} />
+            <StatCard icon={Users} label="Postav" value={counts.characters} to={`/larp/${larpSlug}/postavy`} />
+            <StatCard icon={Users} label="CP" value={counts.cp} to={`/larp/${larpSlug}/cp`} />
             <StatCard icon={Calendar} label="Běhů" value={runs.length} to={`#runs`} />
           </div>
 
