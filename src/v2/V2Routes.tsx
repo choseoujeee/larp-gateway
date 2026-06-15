@@ -17,6 +17,7 @@ import V2LarpProductionPage from "./pages/V2LarpProductionPage";
 import V2RunProductionPage from "./pages/V2RunProductionPage";
 import V2RunSchedulePage from "./pages/V2RunSchedulePage";
 import V2LarpSchedulePage from "./pages/V2LarpSchedulePage";
+import V2LarpDesignPage from "./pages/V2LarpDesignPage";
 import { SectionGuard } from "./components/SectionGuard";
 
 /** V2 dashboard mounted at "/" */
@@ -42,7 +43,7 @@ export default function V2Routes() {
       <Route path=":larpSlug/skupiny" element={<SectionGuard section="groups"><V2GroupsPage /></SectionGuard>} />
       <Route path=":larpSlug/hraci" element={<SectionGuard section="players"><V2LarpPlayersPage /></SectionGuard>} />
       <Route path=":larpSlug/organizatori" element={<V2OrganizersPage />} />
-      <Route path=":larpSlug/design" element={<SectionGuard section="design"><V2Stub title="Design" description="Vizuální identita LARPu — zatím spravujte v archivu (/_archiv/admin/design)." /></SectionGuard>} />
+      <Route path=":larpSlug/design" element={<SectionGuard section="design"><V2LarpDesignPage /></SectionGuard>} />
       <Route path=":larpSlug/produkce" element={<SectionGuard section="production"><V2LarpProductionPage /></SectionGuard>} />
       <Route path=":larpSlug/drivejsi-behy" element={<V2PastRunsPage />} />
       <Route path=":larpSlug/beh/:runSlug" element={<V2RunCockpit />} />
