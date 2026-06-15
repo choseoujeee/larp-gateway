@@ -18,6 +18,7 @@ interface NavItem {
   to: string;
   icon: typeof LayoutDashboard;
   label: string;
+  section?: SectionKey;
 }
 
 export function V2Shell({ children, larpName, runName }: V2ShellProps) {
