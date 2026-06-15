@@ -51,7 +51,7 @@ export function ActiveRunAssignmentCard({ personId, larpId, personType }: Props)
     setLoading(true);
     const { data: r } = await supabase
       .from("runs")
-      .select("id, name, date_from, is_active")
+      .select("id, name, run_number, date_from, is_active")
       .eq("larp_id", larpId)
       .eq("is_active", true)
       .maybeSingle();
