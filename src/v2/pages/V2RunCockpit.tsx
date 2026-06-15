@@ -39,7 +39,7 @@ export default function V2RunCockpit() {
         </div>
       ) : (
         <div className="mx-auto max-w-5xl space-y-6">
-          <RunHeader run={run} onEdit={() => setEditOpen(true)} />
+          <RunHeader run={run} onEdit={() => setEditOpen(true)} onNewRun={() => setCreateOpen(true)} />
           <RunEditDialog
             runId={run.id}
             larpSlug={run.larp_slug}
