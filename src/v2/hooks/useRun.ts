@@ -75,7 +75,7 @@ export function useRun(larpSlug?: string, runSlug?: string) {
 
       const { data: r } = await supabase
         .from("runs")
-        .select("id, name, slug, date_from, date_to, location, address, is_active, larp_id")
+        .select("id, name, slug, run_number, date_from, date_to, location, address, is_active, larp_id")
         .eq("larp_id", larp.id)
         .eq("slug", runSlug)
         .maybeSingle();
