@@ -14,6 +14,7 @@ import {
 interface Run {
   id: string;
   name: string;
+  run_number: number | null;
   date_from: string | null;
   is_active: boolean | null;
 }
