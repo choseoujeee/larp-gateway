@@ -18,6 +18,7 @@ import V2RunProductionPage from "./pages/V2RunProductionPage";
 import V2RunSchedulePage from "./pages/V2RunSchedulePage";
 import V2LarpSchedulePage from "./pages/V2LarpSchedulePage";
 import V2LarpDesignPage from "./pages/V2LarpDesignPage";
+import V2RunCommunicationPage from "./pages/V2RunCommunicationPage";
 import { SectionGuard } from "./components/SectionGuard";
 
 /** V2 dashboard mounted at "/" */
