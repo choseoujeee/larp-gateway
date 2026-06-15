@@ -88,11 +88,15 @@ export default function V2DocumentEditorPage() {
   async function save() {
     if (!doc) return;
     setSaving(true);
+    // Derive is_personal from targeting: a doc aimed at a specific person is "personal".
+    const targetsPerson =
+      (doc.target_type === "osoba" && !!doc.target_person_id) ||
+      (doc.extra_target_person_ids && doc.extra_target_person_ids.length > 0);
     const payload: any = {
       title: doc.title,
       content: doc.content,
       doc_category: doc.doc_category,
-      is_personal: doc.is_personal,
+      is_personal: !!targetsPerson,
       target_type: doc.target_type,
       target_group: doc.target_type === "skupina" ? doc.target_group : null,
       target_person_id: doc.target_type === "osoba" ? doc.target_person_id : null,
@@ -117,6 +121,7 @@ export default function V2DocumentEditorPage() {
     setDirty(false);
     toast.success("Uloženo");
   }
+
 
   async function remove() {
     if (!doc) return;
