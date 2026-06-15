@@ -130,7 +130,7 @@ function PersonList({ rows, larpSlug, emptyText }: { rows: AssignmentRow[]; larp
   }
   return (
     <div className="space-y-2">
-      {rows.map((r) => {
+      {localRows.map((r) => {
         const isCp = r.person?.type === "cp";
         const personPath = r.person?.slug
           ? `/larp/${larpSlug}/${isCp ? "cp" : "postavy"}/${r.person.slug}`
