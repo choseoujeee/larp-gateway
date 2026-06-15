@@ -64,7 +64,7 @@ export function V2Shell({ children, larpName, runName }: V2ShellProps) {
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <Link to="/" className="font-typewriter text-lg tracking-wider text-foreground">
-          LARP <span className="text-primary">v2</span>
+          LARP <span className="text-primary"></span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto p-3">
