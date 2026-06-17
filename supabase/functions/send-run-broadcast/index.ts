@@ -102,49 +102,99 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check email infra
-    const { data: domains } = await admin.from("email_domains" as any).select("status").limit(1);
-    const hasDomain = Array.isArray(domains) && domains.length > 0;
+    // Email sender config (matches send-transactional-email)
+    const SITE_NAME = "LARP Portal";
+    const SENDER_DOMAIN = "notify.larpportal.cz";
+    const FROM_DOMAIN = "larpportal.cz";
 
     // Log + enqueue
     const ts = Date.now();
-    const rows = recipients.map((r) => {
+    const logRows: any[] = [];
+    const enqueueResults: { ok: number; failed: number; errors: string[] } = { ok: 0, failed: 0, errors: [] };
+
+    for (const r of recipients) {
       const ctx = {
         jmeno: r.name, postava: r.characterName, skupina: r.group,
         larp: larpName, beh: run.name, magic_link: "", portal_link: "", odkaz_na_portal: "",
       };
       const renderedSubject = renderTemplate(body.subject, ctx);
       const renderedHtml = renderTemplate(body.html, ctx);
-      return {
+      const messageId = crypto.randomUUID();
+      const idempotencyKey = `broadcast-${body.runId}-${r.personId || r.email}-${ts}`;
+
+      // Suppression check
+      const { data: suppressed } = await admin
+        .from("suppressed_emails")
+        .select("id")
+        .eq("email", r.email.toLowerCase())
+        .maybeSingle();
+
+      let status: "pending" | "failed" | "suppressed" = "pending";
+      let error: string | null = null;
+
+      if (suppressed) {
+        status = "suppressed";
+        error = "Příjemce je na suppression listu (bounce/unsubscribe).";
+      } else {
+        const { error: enqErr } = await admin.rpc("enqueue_email", {
+          queue_name: "transactional_emails",
+          payload: {
+            message_id: messageId,
+            to: r.email,
+            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            sender_domain: SENDER_DOMAIN,
+            subject: renderedSubject,
+            html: renderedHtml,
+            text: renderedHtml.replace(/<[^>]+>/g, " "),
+            purpose: "transactional",
+            label: body.templateKind ?? "broadcast",
+            idempotency_key: idempotencyKey,
+            queued_at: new Date().toISOString(),
+          },
+        });
+        if (enqErr) {
+          status = "failed";
+          error = `Enqueue selhal: ${enqErr.message}`;
+          enqueueResults.failed++;
+          enqueueResults.errors.push(enqErr.message);
+        } else {
+          enqueueResults.ok++;
+        }
+      }
+
+      logRows.push({
         larp_id: larpId,
         run_id: body.runId,
         person_id: r.personId || null,
         recipient_email: r.email,
         subject: renderedSubject,
         template_kind: body.templateKind ?? "vlastni",
-        status: hasDomain ? "pending" : "failed",
-        error: hasDomain ? null : "Email doména není nastavena. Nastav ji v Cloud → Emails.",
-        idempotency_key: `broadcast-${body.runId}-${r.personId || r.email}-${ts}`,
-        metadata: { html: renderedHtml.slice(0, 500), recipient_name: r.name },
-      };
-    });
+        status,
+        error,
+        idempotency_key: idempotencyKey,
+        metadata: { html: renderedHtml.slice(0, 500), recipient_name: r.name, message_id: messageId },
+      });
+    }
 
-    if (rows.length === 0) {
+    if (logRows.length === 0) {
       return new Response(JSON.stringify({ queued: 0, warning: "Žádní příjemci s e-mailem" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { error: insErr } = await admin.from("email_log_v2").insert(rows);
+    const { error: insErr } = await admin.from("email_log_v2").insert(logRows);
     if (insErr) {
       return new Response(JSON.stringify({ error: insErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(
       JSON.stringify({
-        queued: rows.length,
-        warning: hasDomain ? null : "Nastav e-mailovou doménu, e-maily zatím čekají v logu jako failed.",
+        queued: enqueueResults.ok,
+        failed: enqueueResults.failed,
+        total: logRows.length,
+        warning: enqueueResults.failed > 0 ? `${enqueueResults.failed} e-mailů selhalo při zařazení do fronty.` : null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
