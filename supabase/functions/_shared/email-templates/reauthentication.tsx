@@ -17,17 +17,17 @@ interface ReauthenticationEmailProps {
 }
 
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="cs" dir="ltr">
     <Head />
-    <Preview>Your verification code</Preview>
+    <Preview>Tvůj ověřovací kód</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm reauthentication</Heading>
-        <Text style={text}>Use the code below to confirm your identity:</Text>
+        <Heading style={h1}>Potvrď identitu</Heading>
+        <Text style={text}>Použij kód níže k potvrzení své identity:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code will expire shortly. If you didn't request this, you can
-          safely ignore this email.
+          Tento kód brzy vyprší. Pokud jsi o něj nežádal/a, tento e-mail klidně
+          ignoruj.
         </Text>
       </Container>
     </Body>
@@ -36,25 +36,32 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
 
 export default ReauthenticationEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace" }
+const container = { padding: '24px 28px', backgroundColor: '#faf8f3', border: '1px solid #e7dccd' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#2e2118',
   margin: '0 0 20px',
+  fontFamily: "Georgia, 'Times New Roman', serif",
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  color: '#55514a',
+  lineHeight: '1.6',
+  margin: '0 0 20px',
 }
 const codeStyle = {
-  fontFamily: 'Courier, monospace',
-  fontSize: '22px',
+  fontFamily: "'Courier New', Courier, monospace",
+  fontSize: '24px',
   fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 30px',
+  color: '#2e2118',
+  margin: '0 0 28px',
+  padding: '12px 16px',
+  backgroundColor: '#f0ece0',
+  border: '1px solid #e7dccd',
+  display: 'inline-block',
+  borderRadius: '2px',
+  letterSpacing: '0.1em',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#8a7a66', margin: '28px 0 0' }
