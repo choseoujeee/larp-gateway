@@ -1,6 +1,9 @@
 project_id = "uhlmwmagflzowlqxxqrp"
 
-[functions.sync-fio-payments]
-verify_jwt = false
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.sync-fio-payments]
+    verify_jwt = false
