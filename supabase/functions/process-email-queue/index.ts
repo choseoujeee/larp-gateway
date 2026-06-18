@@ -7,6 +7,58 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
+function generateToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function getOrCreateUnsubscribeToken(
+  supabase: ReturnType<typeof createClient>,
+  email: unknown
+): Promise<string | null> {
+  if (typeof email !== 'string' || !email.includes('@')) return null
+  const normalizedEmail = email.toLowerCase()
+
+  const { data: existingToken, error: lookupError } = await supabase
+    .from('email_unsubscribe_tokens')
+    .select('token, used_at')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error('Failed to look up unsubscribe token', { email: normalizedEmail, error: lookupError })
+    return null
+  }
+  if (existingToken && !existingToken.used_at) return existingToken.token
+  if (existingToken?.used_at) return null
+
+  const token = generateToken()
+  const { error: insertError } = await supabase
+    .from('email_unsubscribe_tokens')
+    .upsert({ token, email: normalizedEmail }, { onConflict: 'email', ignoreDuplicates: true })
+
+  if (insertError) {
+    console.error('Failed to create unsubscribe token', { email: normalizedEmail, error: insertError })
+    return null
+  }
+
+  const { data: storedToken, error: rereadError } = await supabase
+    .from('email_unsubscribe_tokens')
+    .select('token')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
+  if (rereadError || !storedToken?.token) {
+    console.error('Failed to confirm unsubscribe token', { email: normalizedEmail, error: rereadError })
+    return null
+  }
+
+  return storedToken.token
+}
+
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
 // falls back to parsing the error message for older versions.
@@ -216,8 +268,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Move to DLQ if max failed send attempts reached.
-      if (failedAttempts >= MAX_RETRIES) {
+      const missingTransactionalUnsubscribe =
+        queue === 'transactional_emails' && !payload.unsubscribe_token
+
+      // Move to DLQ if max failed send attempts reached. A previously queued
+      // transactional email missing its token can still be repaired below.
+      if (failedAttempts >= MAX_RETRIES && !missingTransactionalUnsubscribe) {
         await moveToDlq(supabase, queue, msg, `Max retries (${MAX_RETRIES}) exceeded (attempted ${failedAttempts} times)`)
         continue
       }
@@ -249,6 +305,12 @@ Deno.serve(async (req) => {
       }
 
       try {
+        const unsubscribeToken = payload.unsubscribe_token ?? await getOrCreateUnsubscribeToken(supabase, payload.to)
+        if (queue === 'transactional_emails' && !unsubscribeToken) {
+          await moveToDlq(supabase, queue, msg, 'Missing unsubscribe token')
+          continue
+        }
+
         await sendLovableEmail(
           {
             run_id: payload.run_id,
@@ -261,7 +323,7 @@ Deno.serve(async (req) => {
             purpose: payload.purpose,
             label: payload.label,
             idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
+            unsubscribe_token: unsubscribeToken,
             message_id: payload.message_id,
           },
           // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
