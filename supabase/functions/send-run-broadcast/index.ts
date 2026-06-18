@@ -23,6 +23,38 @@ function renderTemplate(html: string, ctx: Record<string, string>) {
   return html.replace(/\{\{(\w+)\}\}/g, (_, k) => ctx[k] ?? "");
 }
 
+function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getOrCreateUnsubscribeToken(admin: ReturnType<typeof createClient>, email: string): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase();
+  const { data: existingToken, error: lookupError } = await admin
+    .from("email_unsubscribe_tokens")
+    .select("token, used_at")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (lookupError) return null;
+  if (existingToken && !existingToken.used_at) return existingToken.token;
+  if (existingToken?.used_at) return null;
+
+  const token = generateToken();
+  const { error: upsertError } = await admin
+    .from("email_unsubscribe_tokens")
+    .upsert({ token, email: normalizedEmail }, { onConflict: "email", ignoreDuplicates: true });
+  if (upsertError) return null;
+
+  const { data: storedToken } = await admin
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+  return storedToken?.token ?? null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -136,6 +168,27 @@ Deno.serve(async (req) => {
         status = "suppressed";
         error = "Příjemce je na suppression listu (bounce/unsubscribe).";
       } else {
+        const unsubscribeToken = await getOrCreateUnsubscribeToken(admin, r.email);
+        if (!unsubscribeToken) {
+          status = "failed";
+          error = "Nepodařilo se připravit odhlašovací token.";
+          enqueueResults.failed++;
+          enqueueResults.errors.push(error);
+          logRows.push({
+            larp_id: larpId,
+            run_id: body.runId,
+            person_id: r.personId || null,
+            recipient_email: r.email,
+            subject: renderedSubject,
+            template_kind: body.templateKind ?? "vlastni",
+            status,
+            error,
+            idempotency_key: idempotencyKey,
+            metadata: { html: renderedHtml.slice(0, 500), recipient_name: r.name, message_id: messageId },
+          });
+          continue;
+        }
+
         const { error: enqErr } = await admin.rpc("enqueue_email", {
           queue_name: "transactional_emails",
           payload: {
@@ -149,6 +202,7 @@ Deno.serve(async (req) => {
             purpose: "transactional",
             label: body.templateKind ?? "broadcast",
             idempotency_key: idempotencyKey,
+            unsubscribe_token: unsubscribeToken,
             queued_at: new Date().toISOString(),
           },
         });
